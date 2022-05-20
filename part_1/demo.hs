@@ -2,16 +2,6 @@ module Main where
 import Alex
 import Happy
 
--- Si scriva una funzione toStringTree che dato un albero si ottenga una stringa che lo rappresenti
-toStringTree :: (Eq a, Show a) => Tree a -> String
-toStringTree (Node (v,h) []) = "Nodo: v: " ++ show v ++ " h: " ++ show h
-toStringTree (Node (v,h) xs) = "Nodo: v: " ++ show v ++ " h: " ++ show h ++ " con Figli -> (" ++ (\(x:xs) -> foldl (\acc x -> acc ++ "; " ++ x) x xs) (map toStringTree xs) ++ ")"
-
--- Si scriva una funzione toStringTree che dato un albero si ottenga una stringa che lo rappresenti
-toStringTreeBasic :: (Eq a, Show a) => Tree a -> String
-toStringTreeBasic (Node (v,h) []) = "v: " ++ show v ++ ", h: " ++ show h ++ ""
-toStringTreeBasic (Node (v,h) xs) = "v: " ++ show v ++ ", h: " ++ show h ++ " {" ++ (\(x:xs) -> foldl (\acc x -> acc ++ "; " ++ x) x xs) (map toStringTreeBasic xs) ++ "}"
-
 -- si scriva un predicato isAlmostBalanced che, preso un albero, determina se ha la seguente proprietà: per ogni nodo le altezze di tutti i figli differiscono al massimo di 1.
 isAlmostBalanced :: (Show a) => Tree a -> Bool
 isAlmostBalanced (Node (v,h) xs) = ((h - minHeight) < 3) && and (map isAlmostBalanced xs) where
@@ -62,10 +52,5 @@ print_list f (x:xs) = do
 --main
 main = do
     putStrLn ""
-    --print_list_couple toStringTree trees_int_zipped
-    --print_list_couple toStringTree trees_double_zipped
-    --print_list_couple toStringTreeBasic trees_int_zipped
-    --print_list_couple toStringTreeBasic trees_double_zipped
     print_list_couple id trees_int_zipped
     print_list_couple id trees_double_zipped
-
