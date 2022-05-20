@@ -6,5 +6,9 @@ demo:
 	@ ghc -no-keep-hi-files -no-keep-o-files demo.hs
 	@ ./demo
 
-rm-compiled:
-	@ rm Alex.hs Happy.hs
+clear:
+	@ rm demo
+	
+clear_all:
+	@ rm demo Alex.hs Happy.hs
+

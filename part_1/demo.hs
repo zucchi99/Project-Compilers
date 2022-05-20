@@ -62,8 +62,8 @@ print_list f (x:xs) = do
 --main
 main = do
     putStrLn ""
-    print_list_couple toStringTreeBasic trees_int_zipped
-    print_list_couple toStringTreeBasic trees_double_zipped
+    --print_list_couple toStringTreeBasic trees_int_zipped
+    --print_list_couple toStringTreeBasic trees_double_zipped
     print_list_couple id trees_int_zipped
     print_list_couple id trees_double_zipped
 
