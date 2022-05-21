@@ -27,17 +27,21 @@ trees_double_parsed = map ( \ t -> parseTreeDouble $ alexScanTokens t) trees_dou
 trees_int_isAVL     = map isAlmostBalanced trees_int_parsed
 trees_double_isAVL  = map isAlmostBalanced trees_double_parsed
 
-trees_int_zipped    = zip trees_int_parsed    trees_int_isAVL
-trees_double_zipped = zip trees_double_parsed trees_double_isAVL
+trees_int_zipped    = zip trees_int    $ zip trees_int_parsed    trees_int_isAVL   
+trees_double_zipped = zip trees_double $ zip trees_double_parsed trees_double_isAVL
 
 --do nothing
 print_list_couple []     = do
     return ()
 
 --print a list of couples
-print_list_couple (x:xs) = do
-    print $ fst x
-    putStrLn $ "   is AVL? -> " ++ (show $ snd x) ++ "\n"
+print_list_couple ((x,(y,z)):xs) = do
+    putStrLn $ "original input:"
+    putStrLn $ " -> " ++ (show x)
+    putStrLn $ "parsed tree:"
+    putStrLn $ " -> " ++ (show y)
+    putStrLn $ "is AVL?" 
+    putStrLn $ " -> " ++ (show z) ++ "\n"
     print_list_couple xs
 
 --main
@@ -45,3 +49,4 @@ main = do
     putStrLn ""
     print_list_couple trees_int_zipped
     print_list_couple trees_double_zipped
+
