@@ -2,8 +2,11 @@ module Main where
 import Alex
 import Happy
 
--- NB per testare in ghci includere al path la sudirectory __build
+-- NB per testare in ghci includere al path la sudirectory __build:
 -- ghci -i./__build demo.hs
+
+--oppure includere build nel path di Alex ed appy:
+--ghci demo.hs __build/Alex.hs __build/Happy.hs
 
 -- si scriva un predicato isAlmostBalanced che, preso un albero, determina se ha la seguente proprietà: per ogni nodo le altezze di tutti i figli differiscono al massimo di 1.
 isAlmostBalanced :: (Show a) => Tree a -> Bool
