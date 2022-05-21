@@ -31,26 +31,17 @@ trees_int_zipped    = zip trees_int_parsed    trees_int_isAVL
 trees_double_zipped = zip trees_double_parsed trees_double_isAVL
 
 --do nothing
-print_list_couple f []     = do
+print_list_couple []     = do
     return ()
 
 --print a list of couples
-print_list_couple f (x:xs) = do
-    print $ f (fst x)
+print_list_couple (x:xs) = do
+    print $ fst x
     putStrLn $ "   is AVL? -> " ++ (show $ snd x) ++ "\n"
-    print_list_couple f xs
-    
---do nothing
-print_list f []     = do
-    return ()
-
---print a list
-print_list f (x:xs) = do
-    print $ f x
-    print_list f xs
+    print_list_couple xs
 
 --main
 main = do
     putStrLn ""
-    print_list_couple id trees_int_zipped
-    print_list_couple id trees_double_zipped
+    print_list_couple trees_int_zipped
+    print_list_couple trees_double_zipped
