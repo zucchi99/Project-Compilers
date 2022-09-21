@@ -1,10 +1,13 @@
 %{
+#include <iostream>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <fstream>
+#include <sstream>
 
-#include "Configuration.hpp"
+#include "Configuration2.hpp"
+//#include "Value.hpp"
 
 #define YYSTYPE char *
 
@@ -15,7 +18,15 @@ extern FILE* yyin;
 void yyerror(const char* s);
 
 Configuration configuration;
-std::map<std::string, std::string> assignments;
+std::map<std::string, Value> assignments;
+
+bool to_bool(std::string str) {
+    std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+    std::istringstream is(str);
+    bool b;
+    is >> std::boolalpha >> b;
+    return b;
+}
 %}
 
 %token NUMBER BOOL WORD REFPATH STRING OPEN_SQUARE CLOSED_SQUARE EQUALS
@@ -48,19 +59,19 @@ assignments:
 
 assignment: 
     WORD EQUALS NUMBER {
-        assignments[std::string($1)] = std::string($3); 
+        assignments[std::string($1)] = Value(std::stoi(std::string($3))); 
     }
 	|
 	WORD EQUALS STRING {
-        assignments[std::string($1)] = std::string($3); 
+        assignments[std::string($1)] = Value(std::string($3));
     }
 	|
 	WORD EQUALS BOOL {
-        assignments[std::string($1)] = std::string($3); 
+        assignments[std::string($1)] = Value(to_bool(std::string($3))); 
     }
 	|
 	WORD EQUALS REFPATH {
-        assignments[std::string($1)] = std::string($3); 
+        assignments[std::string($1)] = Value(std::string($3), NULL);
     }
 ;
 
@@ -95,6 +106,7 @@ int main() {
     // Cosi facendo possiamo puntare ad una sezione non ancora esistente
 	
     std::cout << configuration.to_String_with_comments(comments);
+    std::cout << configuration.to_String();
 
 	return 0;
 }
