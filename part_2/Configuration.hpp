@@ -10,7 +10,9 @@
 //  - Nome sezione come key, string
 //  - Lista di assegnazioni come value, Map avente:
 //      - Label come key, string
-//      - Value come value, string
+//      - coppia:
+//          - Value come value, classe Value con 4 possibiltà (bool, string, int, coppia <stringa, puntatore a Value>)
+//          - Lista di puntatori all'indietro
 
 class Configuration {
 private:
@@ -49,14 +51,13 @@ private:
 
 public:
     // Inserimento di una sezione
-    // WARNING: se è già presente una sezione con quel nome
-    // RETURN: true, se avviene l'inserimento; false, se è già presente una sezione con quel nome
-    bool insert_empty_section(const std::string name){
-        if(sections.emplace(name, std::map<std::string, std::string>()).second == false) {
-            std::cout << "WARNING: Section \"" << name << "\" already defined" << "\n\n";
-            return false;
+    // ERROR: se è già presente una sezione con quel nome
+    void insert_empty_section(const std::string name){
+        auto section = sections.find(name);
+        if (! (section == sections.end()) ) {
+            throw std::runtime_error("Section \"" + name + "\" already defined");
         }
-        return true;
+        sections.emplace(name, std::map<std::string, std::string>());
     }
 
     // Append di assignments ad 1 sezione
@@ -126,7 +127,7 @@ public:
         add_comments_to_string_if_any(pretty_printer, comments, lin_num);
 
         for(auto& section : sections){
-            pretty_printer += section.first + "{\n";
+            pretty_printer += "[" + section.first + "]\n";
 
             add_comments_to_string_if_any(pretty_printer, comments, ++lin_num);
 
@@ -134,9 +135,6 @@ public:
                 pretty_printer += "\t" + assignment.first + " = " + assignment.second + "\n";
                 add_comments_to_string_if_any(pretty_printer, comments, ++lin_num);
             }
-            pretty_printer += "}\n";
-            
-            add_comments_to_string_if_any(pretty_printer, comments, ++lin_num);
         }
 
         add_comments_to_string_if_any(pretty_printer, comments, ++lin_num);
