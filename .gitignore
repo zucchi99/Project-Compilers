@@ -1,3 +1,7 @@
+# parti individuali
 part_A/**
 part_B/**
 part_C/**
+
+# file dovuti alla compilazione
+__build/*
