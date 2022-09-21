@@ -2,6 +2,12 @@ module Main where
 import Alex
 import Happy
 
+-- NB per testare in ghci includere al path la sudirectory __build:
+-- ghci -i./__build demo.hs
+
+--oppure includere build nel path di Alex ed appy:
+--ghci demo.hs __build/Alex.hs __build/Happy.hs
+
 -- si scriva un predicato isAlmostBalanced che, preso un albero, determina se ha la seguente proprietà: per ogni nodo le altezze di tutti i figli differiscono al massimo di 1.
 isAlmostBalanced :: (Show a) => Tree a -> Bool
 isAlmostBalanced (Node (v,h) xs) = ((h - minHeight) < 3) && and (map isAlmostBalanced xs) where
@@ -21,14 +27,10 @@ trees_double =  [ "1.0"                                                         
                 , "21.43{41.89{60.63{  4.62 1.12 3.41 {62.71{ 7.11 5.44 6.14} 53.16} 7.74 }} 5.91}" -- Non bilanciato
                 , "1.876 { 2.456  {4.134 5.968 } 3.91 {6.013  7.987}}" ]                            -- Bilanciato
 
-trees_int_parsed    = map ( \ t -> parseTreeInt    $ alexScanTokens t) trees_int 
-trees_double_parsed = map ( \ t -> parseTreeDouble $ alexScanTokens t) trees_double 
+parse_trees_int    trees_int    = map ( \ t -> parseTreeInt    $ alexScanTokens t) trees_int
+parse_trees_double trees_double = map ( \ t -> parseTreeDouble $ alexScanTokens t) trees_double
 
-trees_int_isAVL     = map isAlmostBalanced trees_int_parsed
-trees_double_isAVL  = map isAlmostBalanced trees_double_parsed
-
-trees_int_zipped    = zip trees_int    $ zip trees_int_parsed    trees_int_isAVL   
-trees_double_zipped = zip trees_double $ zip trees_double_parsed trees_double_isAVL
+are_trees_AVL trees = map isAlmostBalanced trees
 
 --do nothing
 print_list_couple []     = do
@@ -44,9 +46,17 @@ print_list_couple ((x,(y,z)):xs) = do
     putStrLn $ " -> " ++ (show z) ++ "\n"
     print_list_couple xs
 
+--test own inputs
+test parse_fun trees = 
+    let parsed_trees = (parse_fun trees)
+    in  print_list_couple $ zip trees $ zip parsed_trees (are_trees_AVL parsed_trees)
+
+test_int trees    = test parse_trees_int trees
+
+test_double trees = test parse_trees_double trees
+
 --main
 main = do
     putStrLn ""
-    print_list_couple trees_int_zipped
-    print_list_couple trees_double_zipped
-
+    test_int    trees_int
+    test_double trees_double

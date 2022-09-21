@@ -1,0 +1,95 @@
+%{
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <fstream>
+
+#include "Configuration.hpp"
+
+#define YYSTYPE char *
+
+extern int yylex();
+extern int yyparse();
+extern FILE* yyin;
+
+void yyerror(const char* s);
+
+Configuration configuration;
+std::map<std::string, std::string> assignments;
+%}
+
+%token NUMBER BOOL WORD REFPATH STRING OPEN_BRACE CLOSED_BRACE EQUALS
+%%
+
+sections:
+    // empty
+    |
+    sections section {}
+;
+
+section: 
+    WORD OPEN_BRACE assignments CLOSED_BRACE {
+        auto section_name = std::string($1);
+
+        if(configuration.insert_empty_section(section_name)) {
+            configuration.modify_assignments_to_section(section_name, assignments);
+        } else {
+            yyerror("Redefined section");
+        }
+        
+        assignments.clear();
+    }
+;
+
+assignments:
+    // empty
+    |
+    assignments assignment {}
+;
+
+assignment: 
+    WORD EQUALS NUMBER { assignments[std::string($1)] = std::string($3); }
+	|
+	WORD EQUALS STRING { assignments[std::string($1)] = std::string($3); }
+	|
+	WORD EQUALS BOOL { assignments[std::string($1)] = std::string($3); }
+	|
+	WORD EQUALS REFPATH { assignments[std::string($1)] = std::string($3); }
+;
+
+%%
+
+// Mappa dei commenti fornita dal lexer
+extern std::map<int, std::string> comments;
+
+// Elimino gli spazi all'inizio del file per allineare il numero di righe coi commenti
+void delete_empty_lines(const std::string &FilePath){
+    std::ifstream inFile(FilePath, std::ifstream::in);
+    std::string line, text;
+
+    while (std::getline(inFile, line))
+        if ( !(line.empty() || line.find_first_not_of(' ') == std::string::npos) )
+            text += line + "\n";
+
+    inFile.close();
+
+    std::ofstream outFile(FilePath, std::ofstream::out);
+    outFile << text;
+    outFile.close();
+}
+
+int main() {
+    delete_empty_lines("./example.conf");
+
+	yyparse();
+
+	std::cout << configuration.to_String_with_comments(comments);
+
+	return 0;
+}
+
+// Ritorna semplice messaggio di errore di parsing
+void yyerror(const char* s) {
+	std::cout << "Parse error: " << s << "\n";
+	exit(1);
+}
