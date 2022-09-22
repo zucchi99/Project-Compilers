@@ -26,4 +26,4 @@ clean_prova:
 	@ rm prova
 
 list:
-	@grep '^[^#[:space:]].*:' Makefile
+	@ grep '^[^#[:space:]].*:' Makefile

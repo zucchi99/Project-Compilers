@@ -18,7 +18,22 @@
 
 class Configuration {
 private:
-    std::map<std::string, std::map<std::string, Value>> sections;
+
+    std::map<
+        // section name
+        std::string, 
+        // list of assignments
+        std::map<
+            // variable name
+            std::string, 
+            std::pair<
+                // value of variable assigned
+                Value, 
+                // list of entring pointers
+                std::list<Value*>
+            >
+        >
+    > sections;
 
     // Data una lista di coppie <sezione, label> cancella ricorsivamente tutte le variabili associate
     /* void delete_assignments_of_section(std::list<std::pair<std::string, std::string>> assignments_to_delete){
@@ -52,6 +67,61 @@ private:
     }
 
 public:
+
+    void add_pointers_references() {
+        for (auto& section : sections) {
+            for(auto& assignment : section.second) {
+                auto ass = assignment.second.first;
+                if(ass.type() == Value::ContentType::Pointer) {
+
+                    // get current pointer name
+                    std::string p_name = ass.pointerValue().first;
+                    // get current section name
+                    std::string cur_sec_name = section.first;
+
+                    // get section name pointed
+                    int dot_idx = p_name.find('.');
+                    std::string sec_name_pointed = (dot_idx == std::string::npos) ? cur_sec_name : p_name.substr(1,dot_idx-1);
+
+                    // get variable name pointed
+                    if(dot_idx != std::string::npos) {
+                        // remove section name pointed
+                        p_name = p_name.substr(dot_idx+1);
+                    } else {
+                        // remove starting $
+                        p_name = p_name.substr(1);
+                    }
+
+                    // get pointed section                     
+                    auto temp_sec = sections.find(sec_name_pointed);
+                    if (temp_sec == sections.end()) {
+                        throw std::runtime_error("Found a pointer to section \"" + sec_name_pointed + "\" but section doesn't exist");
+                    }
+                    auto pointed_section = sections[sec_name_pointed];
+
+                    // get pointed variable
+                    auto temp_var = pointed_section.find(p_name);
+                    if (temp_var == pointed_section.end()) {
+                        throw std::runtime_error("Found a pointer to variable \"" + p_name + "\" in section \"" + sec_name_pointed + "\" but variable doesn't exist");
+                    }
+                    auto pointed_assig = pointed_section[p_name];
+
+                    // get pointer to value of pointed variable
+                    Value* pointed_value = &pointed_assig.first;
+                    // set exiting pointer
+                    ass.setPointerValue(pointed_value);
+                    
+                    // get pointer to value of pointing variable
+                    Value* pointing_value = &ass;
+                    // add entring pointer
+                    pointed_assig.second.push_back(pointing_value);
+
+                }
+            }
+        }
+    }
+    
+
     // Inserimento di una sezione
     // ERROR: se è già presente una sezione con quel nome
     void insert_empty_section(const std::string name){
@@ -59,14 +129,14 @@ public:
         if (! (section == sections.end()) ) {
             throw std::runtime_error("Section \"" + name + "\" already defined");
         }
-        sections.emplace(name, std::map<std::string, Value>());
+        sections.emplace(name, std::map<std::string, std::pair<Value, std::list<Value*>>>());
     }
 
     // Append di assignments ad 1 sezione
     // ERROR: se la sezione non esiste
     // WARNING: se uno o più assegnamenti vengono sovrascritti
     // RETURN: true, se non ci sono sovrascritture; false, se ci sono sovrascritture 
-    bool modify_assignments_to_section(const std::string name, const std::map<std::string, Value> assignments){
+    bool modify_assignments_to_section(const std::string name, const std::map<std::string, std::pair<Value, std::list<Value*>>> assignments){
         auto section = sections.find(name);
         if (section == sections.end()) {
             throw std::runtime_error("Adding assignments to section \"" + name + "\" but it doesn't exist");
@@ -112,7 +182,7 @@ public:
         for(auto& section : sections){
             pretty_printer += section.first + "{\n";
             for(auto& assignment : section.second) {
-                pretty_printer += "\t" + assignment.first + " = " + assignment.second.to_String() + "\n";
+                pretty_printer += "\t" + assignment.first + " = " + assignment.second.first.to_String() + "\n";
             }
             pretty_printer += "}\n";
         }
@@ -134,7 +204,7 @@ public:
             add_comments_to_string_if_any(pretty_printer, comments, ++lin_num);
 
             for(auto& assignment : section.second) {
-                pretty_printer += "\t" + assignment.first + " = " + assignment.second.to_String() + "\n";
+                pretty_printer += "\t" + assignment.first + " = " + assignment.second.first.to_String() + "\n";
                 add_comments_to_string_if_any(pretty_printer, comments, ++lin_num);
             }
         }

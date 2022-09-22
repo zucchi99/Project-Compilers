@@ -18,7 +18,8 @@ extern FILE* yyin;
 void yyerror(const char* s);
 
 Configuration configuration;
-std::map<std::string, Value> assignments;
+std::map<std::string, std::pair<Value, std::list<Value*>>> temp_assignments;
+const std::list<Value*> temp_empty_list;
 
 bool to_bool(std::string str) {
     std::transform(str.begin(), str.end(), str.begin(), ::tolower);
@@ -44,9 +45,9 @@ section:
         auto section_name = std::string($2);
 
         configuration.insert_empty_section(section_name);
-        configuration.modify_assignments_to_section(section_name, assignments);
+        configuration.modify_assignments_to_section(section_name, temp_assignments);
         
-        assignments.clear();
+        temp_assignments.clear();
     }
 ;
 
@@ -59,19 +60,19 @@ assignments:
 
 assignment: 
     WORD EQUALS NUMBER {
-        assignments[std::string($1)] = Value(std::stoi(std::string($3))); 
+        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::stoi(std::string($3))), temp_empty_list); 
     }
 	|
 	WORD EQUALS STRING {
-        assignments[std::string($1)] = Value(std::string($3));
+        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::string($3)), temp_empty_list);
     }
 	|
 	WORD EQUALS BOOL {
-        assignments[std::string($1)] = Value(to_bool(std::string($3))); 
+        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(to_bool(std::string($3))), temp_empty_list); 
     }
 	|
 	WORD EQUALS REFPATH {
-        assignments[std::string($1)] = Value(std::string($3), NULL);
+        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::string($3), NULL), temp_empty_list);
     }
 ;
 
@@ -80,33 +81,17 @@ assignment:
 // Mappa dei commenti fornita dal lexer
 extern std::map<int, std::string> comments;
 
-// DA ELIMINARE delete_empty_lines E TROVARE UNA SOLUZIONE ALTERNATIVA
-// Elimino gli spazi all'inizio del file per allineare il numero di righe coi commenti
-void delete_empty_lines(const std::string &FilePath){
-    std::ifstream inFile(FilePath, std::ifstream::in);
-    std::string line, text;
-
-    while (std::getline(inFile, line))
-        if ( !(line.empty() || line.find_first_not_of(' ') == std::string::npos) )
-            text += line + "\n";
-
-    inFile.close();
-
-    std::ofstream outFile(FilePath, std::ofstream::out);
-    outFile << text;
-    outFile.close();
-}
-
 int main() {
-    delete_empty_lines("./example.conf");
 
 	yyparse();
 
     // Aggiungere i riferimenti
     // Cosi facendo possiamo puntare ad una sezione non ancora esistente
+
+    configuration.add_pointers_references();
 	
     std::cout << configuration.to_String_with_comments(comments);
-    std::cout << configuration.to_String();
+    //std::cout << configuration.to_String();
 
 	return 0;
 }

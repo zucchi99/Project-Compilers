@@ -39,12 +39,14 @@ class Value {
         bool boolValue() { return m_bContent; }
         std::pair<std::string, Value*> pointerValue() { return m_pContent; }
 
+        void setPointerValue(Value* p_value) { m_pContent.second = p_value; }
+
         // Restistuisce una stringa contenente il pretty_printer della Configurazione
         std::string to_String(){
             std::string string_content = "";
 
             switch(m_ctType) {
-                case Value::String: string_content = "\"" + m_strContent + "\""; break;
+                case Value::String: string_content = m_strContent; break;
                 case Value::Integer: string_content = std::to_string(m_iContent); break;
                 case Value::Bool: string_content = m_bContent ? "true" : "false"; break;
                 case Value::Pointer: string_content = m_pContent.first; break;
