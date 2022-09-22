@@ -4,7 +4,7 @@ compile:
 	@ g++ -o main Bison.tab.cpp lex.yy.c
 
 test:
-	./main < example.conf
+	@ ./main < example.conf
 
 clean:
 	@ rm Bison.output Bison.tab.cpp Bison.tab.hpp lex.yy.c main

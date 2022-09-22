@@ -69,26 +69,7 @@ assignment:
 // Mappa dei commenti fornita dal lexer
 extern std::map<int, std::string> comments;
 
-// DA ELIMINARE delete_empty_lines E TROVARE UNA SOLUZIONE ALTERNATIVA
-// Elimino gli spazi all'inizio del file per allineare il numero di righe coi commenti
-void delete_empty_lines(const std::string &FilePath){
-    std::ifstream inFile(FilePath, std::ifstream::in);
-    std::string line, text;
-
-    while (std::getline(inFile, line))
-        if ( !(line.empty() || line.find_first_not_of(' ') == std::string::npos) )
-            text += line + "\n";
-
-    inFile.close();
-
-    std::ofstream outFile(FilePath, std::ofstream::out);
-    outFile << text;
-    outFile.close();
-}
-
 int main() {
-    delete_empty_lines("./example.conf");
-
 	yyparse();
 
     // Aggiungere i riferimenti
