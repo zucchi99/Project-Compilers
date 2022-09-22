@@ -4,7 +4,7 @@ compile:
 	@ g++ -o main Bison.tab.cpp lex.yy.c
 
 test:
-	./main < example.conf
+	@ ./main < example.conf
 
 test-value:
 	@ g++ Value.hpp -o value_main

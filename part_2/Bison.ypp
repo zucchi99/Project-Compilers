@@ -82,8 +82,7 @@ assignment:
 extern std::map<int, std::string> comments;
 
 int main() {
-
-	yyparse();
+    yyparse();
 
     // Aggiungere i riferimenti
     // Cosi facendo possiamo puntare ad una sezione non ancora esistente

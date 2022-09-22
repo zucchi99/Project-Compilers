@@ -21,13 +21,13 @@ string                  [^\"]*
 %%
 [+-]?([0-9]*[.])?[0-9]+ yylval=strdup(yytext); return NUMBER;
 true|false              yylval=strdup(yytext); return BOOL;
-{id}                    yylval=strdup(yytext); return WORD;
+{id}                    yylval=strdup(yytext); ++lin_num; return WORD;
 \${id}(\.{id})?         yylval=strdup(yytext); return REFPATH;
 \"{string}\"            yylval=strdup(yytext); return STRING;
 \[                      return OPEN_SQUARE;
 \]                      return CLOSED_SQUARE;
 =                       return EQUALS;
-(\r\n|\r|\n)+           ++lin_num;
+(\r\n|\r|\n)+           /* ignore whitespace */;
 [ \t]+                  /* ignore whitespace */;
 \#.*\n                  comments[++lin_num] = std::string(yytext); 
 %%
