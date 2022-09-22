@@ -6,6 +6,10 @@ compile:
 test:
 	@ ./main < example.conf
 
+test-value:
+	@ g++ Value.hpp -o value_main
+	@ ./value_main
+
 clean:
 	@ rm Bison.output Bison.tab.cpp Bison.tab.hpp lex.yy.c main
 
@@ -22,4 +26,4 @@ clean_prova:
 	@ rm prova
 
 list:
-	@grep '^[^#[:space:]].*:' Makefile
+	@ grep '^[^#[:space:]].*:' Makefile

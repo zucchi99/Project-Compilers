@@ -1,10 +1,13 @@
 %{
+#include <iostream>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <fstream>
+#include <sstream>
 
-#include "Configuration.hpp"
+#include "Configuration2.hpp"
+//#include "Value.hpp"
 
 #define YYSTYPE char *
 
@@ -15,7 +18,16 @@ extern FILE* yyin;
 void yyerror(const char* s);
 
 Configuration configuration;
-std::map<std::string, std::string> assignments;
+std::map<std::string, std::pair<Value, std::list<Value*>>> temp_assignments;
+const std::list<Value*> temp_empty_list;
+
+bool to_bool(std::string str) {
+    std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+    std::istringstream is(str);
+    bool b;
+    is >> std::boolalpha >> b;
+    return b;
+}
 %}
 
 %token NUMBER BOOL WORD REFPATH STRING OPEN_SQUARE CLOSED_SQUARE EQUALS
@@ -33,9 +45,9 @@ section:
         auto section_name = std::string($2);
 
         configuration.insert_empty_section(section_name);
-        configuration.modify_assignments_to_section(section_name, assignments);
+        configuration.modify_assignments_to_section(section_name, temp_assignments);
         
-        assignments.clear();
+        temp_assignments.clear();
     }
 ;
 
@@ -48,19 +60,19 @@ assignments:
 
 assignment: 
     WORD EQUALS NUMBER {
-        assignments[std::string($1)] = std::string($3); 
+        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::stoi(std::string($3))), temp_empty_list); 
     }
 	|
 	WORD EQUALS STRING {
-        assignments[std::string($1)] = std::string($3); 
+        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::string($3)), temp_empty_list);
     }
 	|
 	WORD EQUALS BOOL {
-        assignments[std::string($1)] = std::string($3); 
+        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(to_bool(std::string($3))), temp_empty_list); 
     }
 	|
 	WORD EQUALS REFPATH {
-        assignments[std::string($1)] = std::string($3); 
+        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::string($3), NULL), temp_empty_list);
     }
 ;
 
@@ -70,12 +82,15 @@ assignment:
 extern std::map<int, std::string> comments;
 
 int main() {
-	yyparse();
+    yyparse();
 
     // Aggiungere i riferimenti
     // Cosi facendo possiamo puntare ad una sezione non ancora esistente
+
+    configuration.add_pointers_references();
 	
     std::cout << configuration.to_String_with_comments(comments);
+    //std::cout << configuration.to_String();
 
 	return 0;
 }

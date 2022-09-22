@@ -7,3 +7,5 @@ dabroscagay
 
 # file dovuti alla compilazione
 __build/*
+
+.vscode/*
