@@ -6,8 +6,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "Configuration2.hpp"
-//#include "Value.hpp"
+#include "Configuration.hpp"
 
 #define YYSTYPE char *
 
@@ -85,12 +84,9 @@ int main() {
     yyparse();
 
     // Aggiungere i riferimenti
-    // Cosi facendo possiamo puntare ad una sezione non ancora esistente
-
     configuration.add_pointers_references();
 	
     std::cout << configuration.to_String_with_comments(comments);
-    //std::cout << configuration.to_String();
 
 	return 0;
 }

@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <memory>
 
+#include "Value.hpp"
+
 // Si è pensato ad una struttura dati Map, avente:
 //  - Nome sezione come key, string
 //  - Lista di assegnazioni come value, Map avente:
@@ -16,29 +18,22 @@
 
 class Configuration {
 private:
-    std::map<std::string, std::map<std::string, std::string>> sections;
 
-    // Data una lista di coppie <sezione, label> cancella ricorsivamente tutte le variabili associate
-    void delete_assignments_of_section(std::list<std::pair<std::string, std::string>> assignments_to_delete){
-        if(!assignments_to_delete.empty()) {
-            // Prendo il primo assegnamento dalla lista, lo elimino da essa e genero la stringa refpath
-            auto section_assignment = assignments_to_delete.front();
-            assignments_to_delete.pop_front();
-            std::string refpath = "$" + section_assignment.first + "." + section_assignment.second;
-
-            // Eliminare l'assegnamento dalla struttua
-            sections.find(section_assignment.first)->second.erase(section_assignment.second);
-
-            // Controlla in ogni sezione se c'è una variabile che si riferisce a quella sezione e se la trova la aggiunge alla lista
-            for(const auto& section : sections)
-                for(const auto& assignment : section.second)
-                    if(assignment.second == refpath)
-                        assignments_to_delete.emplace_back(section.first, assignment.first);
-
-            // Ripeto la procedura fino a che non finisce la lista
-            delete_assignments_of_section(assignments_to_delete);
-        }
-    }
+    std::map<
+        // section name
+        std::string, 
+        // list of assignments
+        std::map<
+            // variable name
+            std::string, 
+            std::pair<
+                // value of variable assigned
+                Value, 
+                // list of entring pointers
+                std::list<Value*>
+            >
+        >
+    > sections;
 
     // Alla stringa da stampare aggiunge i commenti, se presenti e incrementa il numero di linea
     void add_comments_to_string_if_any(std::string& pretty_printer, const std::map<int, std::string> comments, int& lin_num) {
@@ -57,14 +52,14 @@ public:
         if (! (section == sections.end()) ) {
             throw std::runtime_error("Section \"" + name + "\" already defined");
         }
-        sections.emplace(name, std::map<std::string, std::string>());
+        sections.emplace(name, std::map<std::string, std::pair<Value, std::list<Value*>>>());
     }
 
     // Append di assignments ad 1 sezione
     // ERROR: se la sezione non esiste
     // WARNING: se uno o più assegnamenti vengono sovrascritti
     // RETURN: true, se non ci sono sovrascritture; false, se ci sono sovrascritture 
-    bool modify_assignments_to_section(const std::string name, const std::map<std::string, std::string> assignments){
+    bool modify_assignments_to_section(const std::string name, const std::map<std::string, std::pair<Value, std::list<Value*>>> assignments){
         auto section = sections.find(name);
         if (section == sections.end()) {
             throw std::runtime_error("Adding assignments to section \"" + name + "\" but it doesn't exist");
@@ -84,6 +79,116 @@ public:
         return !overwrites;
     }
 
+    // Aggiunge tutti i puntatori in avanti e in indietro ai corretti riferimenti
+    // ERROR: se il puntatore punta a una sezione che non esiste
+    // ERROR: se il puntatore punta a un assegnamento che non esiste, nella corretta sezione
+    void add_pointers_references() {
+        for (auto& section : sections) {
+            for(auto& assignment : section.second) {
+                auto& ass = assignment.second.first;
+                if(ass.type() == Value::ContentType::Pointer) {
+                    // get current pointer name
+                    std::string p_name = ass.pointerValue().first;
+                    // get current section name
+                    std::string cur_sec_name = section.first;
+
+                    // get section name pointed
+                    int dot_idx = p_name.find('.');
+                    std::string sec_name_pointed = (dot_idx == std::string::npos) ? cur_sec_name : p_name.substr(1,dot_idx-1);
+
+                    // get variable name pointed
+                    if(dot_idx != std::string::npos) {
+                        // remove section name pointed
+                        p_name = p_name.substr(dot_idx+1);
+                    } else {
+                        // remove starting $
+                        p_name = p_name.substr(1);
+                    }
+
+                    // get pointed section                     
+                    auto temp_sec = sections.find(sec_name_pointed);
+                    if (temp_sec == sections.end()) {
+                        throw std::runtime_error("Found a pointer to section \"" + sec_name_pointed + "\" but section doesn't exist");
+                    }
+                    auto& pointed_section = sections[sec_name_pointed];
+
+                    // get pointed variable
+                    auto temp_var = pointed_section.find(p_name);
+                    if (temp_var == pointed_section.end()) {
+                        throw std::runtime_error("Found a pointer to variable \"" + p_name + "\" in section \"" + sec_name_pointed + "\" but variable doesn't exist");
+                    }
+                    auto& pointed_assig = pointed_section[p_name];
+
+                    // get pointer to value of pointed variable
+                    Value* pointed_value = &pointed_assig.first;
+                    // set exiting pointer
+                    ass.setPointerValue(pointed_value);
+                    
+                    // get pointer to value of pointing variable
+                    Value* pointing_value = &ass;
+                    // add entring pointer
+                    pointed_assig.second.push_back(pointing_value);
+                }
+            }
+        }
+    }
+
+    // Dato un asignment, cancellare lui e gesitre tutti i riferimenti
+    // Caso1: A -> B -> C, cancello B, aggiorno puntatore di A da B a C, nella backlist di C metto A al posto di B
+    // Caso2: A -> B -> C, cancello C, cambio il Value (che è di tipo Pointer) di B con quello che aveva C
+    // Caso3: A -> B -> C, cancello A, cancello nella backlist di B il puntatore ad A
+    // Caso4: A, cancello A
+    // ERROR: se la sezione dell'assignemnt da eliminare non esiste
+    void delete_assignment(std::string section_name, std::string assignment_to_delete){
+        auto section = sections.find(section_name);
+        if (section == sections.end()) {
+            throw std::runtime_error("Section \"" + section_name + "\" not exist");
+        }
+
+        auto assignment = section->second.find(assignment_to_delete);
+        if (assignment == section->second.end()) {
+            throw std::runtime_error("Assignment \"" + assignment_to_delete + "\" not exist in section \"" + section->first + "\" ");
+        }
+
+        // Controllo se è un puntatore
+        if(assignment->second.first.type() == Value::ContentType::Pointer) {
+            std::pair<std::string, std::string> puntato = assignment->second.first.pointerAssignment();
+            puntato.first = (puntato.first == "") ? section_name : puntato.first;
+
+            auto temp_section = sections.find(puntato.first);
+            auto temp_assignment = temp_section->second.find(puntato.second);
+
+            if(! assignment->second.second.empty()) {
+                // Caso1
+                // aggiungere alla backlist del puntato il puntatore a quelli nella backlist di quello da eliminare
+                for(auto& elemento_da_aggiungere : assignment->second.second) {
+                    temp_assignment->second.second.push_back(elemento_da_aggiungere);
+                }
+
+                std::pair<std::string, Value*> puntato = assignment->second.first.pointerValue();
+
+                // quelli nella backlist punteranno al puntato e non a quello eliminato
+                for (auto& elemento_backlist : assignment->second.second) {
+                    (*elemento_backlist).setPointerValue(puntato.first, puntato.second);
+                }
+            }
+            // Caso3
+            // eliminare nella backlist del puntato il puntatore a quello che elimino
+            temp_assignment->second.second.remove(&(assignment->second.first));
+        } else {
+            if(! assignment->second.second.empty()) {
+                // Caso2
+                // trasformare nella backlist i puntatori, facendoli diventare valori con stesso valore attuale dell'eliminato
+                for (auto& elemento_backlist : assignment->second.second) {
+                    (*elemento_backlist) = Value(assignment->second.first);
+                }
+            }
+            // Caso4
+        }
+        // eliminare l'assignment da section
+        section->second.erase(assignment);
+    }
+
     // Cancellazione di una sezione e riferimenti a quella sezione
     // ERROR: se non è presente una sezione con quel nome
     void delete_section(const std::string name){
@@ -92,12 +197,10 @@ public:
             throw std::runtime_error("Requesting deletion of section " + name + " but it doesn't exist");
         }
 
-        // Per ogni assignment della sezione, elimare lui e ogni suo riferimento
-        std::list<std::pair<std::string, std::string>> assignments_to_delete;
-        for(auto& assignment : section->second) {
-            assignments_to_delete.emplace_back(section->first, assignment.first);
+        auto assignments_to_delete = section->second;
+        for(auto& assignment : assignments_to_delete) {
+            delete_assignment(name, assignment.first);
         }
-        delete_assignments_of_section(assignments_to_delete);
 
         // Eliminare la sezione ormai vuota
         sections.erase(section);
@@ -108,11 +211,10 @@ public:
         std::string pretty_printer = "";
 
         for(auto& section : sections){
-            pretty_printer += section.first + "{\n";
+            pretty_printer += "[" + section.first + "]\n";
             for(auto& assignment : section.second) {
-                pretty_printer += "\t" + assignment.first + " = " + assignment.second + "\n";
+                pretty_printer += "\t" + assignment.first + " = " + assignment.second.first.to_String() + "\n";
             }
-            pretty_printer += "}\n";
         }
 
         return pretty_printer;
@@ -132,7 +234,7 @@ public:
             add_comments_to_string_if_any(pretty_printer, comments, ++lin_num);
 
             for(auto& assignment : section.second) {
-                pretty_printer += "\t" + assignment.first + " = " + assignment.second + "\n";
+                pretty_printer += "\t" + assignment.first + " = " + assignment.second.first.to_String() + "\n";
                 add_comments_to_string_if_any(pretty_printer, comments, ++lin_num);
             }
         }

@@ -7,7 +7,7 @@ test:
 	@ ./main < example.conf
 
 test-value:
-	@ g++ Value.hpp -o value_main
+	@ g++ Value.cpp -o value_main
 	@ ./value_main
 
 clean:

@@ -27,6 +27,7 @@ class Value {
         explicit Value(int iContent) : m_iContent(iContent), m_ctType(Integer) {}
         explicit Value(bool bContent) : m_bContent(bContent), m_ctType(Bool) {}
         explicit Value(std::string ref, Value* valuePointer) : m_pContent(ref, valuePointer), m_ctType(Pointer) {}
+        explicit Value(const Value& value) : m_ctType(value.m_ctType), m_strContent(value.m_strContent), m_iContent(value.m_iContent), m_bContent(value.m_bContent), m_pContent(value.m_pContent.first, value.m_pContent.second) {}
 
         ~Value() {}
 
@@ -39,7 +40,32 @@ class Value {
         bool boolValue() { return m_bContent; }
         std::pair<std::string, Value*> pointerValue() { return m_pContent; }
 
+        std::pair<std::string, std::string> pointerAssignment() {
+            auto p_name = m_pContent.first;
+
+            // get section name pointed
+            int dot_idx = p_name.find('.');
+            std::string sezione = (dot_idx == std::string::npos) ? "" : p_name.substr(1,dot_idx-1);
+
+            // get variable name pointed
+            if(dot_idx != std::string::npos) {
+                // remove section name pointed
+                p_name = p_name.substr(dot_idx+1);
+            } else {
+                // remove starting $
+                p_name = p_name.substr(1);
+            }
+
+            std::pair<std::string, std::string> coppia = std::pair<std::string, std::string>(sezione, p_name);
+
+            return coppia;
+        }
+
         void setPointerValue(Value* p_value) { m_pContent.second = p_value; }
+        void setPointerValue(std::string label, Value* p_value) { 
+            m_pContent.first = label;
+            m_pContent.second = p_value; 
+        }
 
         // Restistuisce una stringa contenente il pretty_printer della Configurazione
         std::string to_String(){
@@ -49,7 +75,7 @@ class Value {
                 case Value::String: string_content = m_strContent; break;
                 case Value::Integer: string_content = std::to_string(m_iContent); break;
                 case Value::Bool: string_content = m_bContent ? "true" : "false"; break;
-                case Value::Pointer: string_content = m_pContent.first; break;
+                case Value::Pointer: string_content = m_pContent.first + " refers to -> " + (*m_pContent.second).to_String(); break;
             }
 
             return string_content;
@@ -65,19 +91,4 @@ std::ostream& operator<<(std::ostream& osStream, Value& valOut) {
     }
 
     return osStream;
-}
-
-
-
-int test() {
-    std::map<int, Value> mapAnyValue;
-
-    mapAnyValue[0] = Value(1337);
-    mapAnyValue[1] = Value("Collegamento2", &mapAnyValue[0]);
-    mapAnyValue[2] = Value("Collegamento2", &mapAnyValue[1]);
-    //mapAnyValue[2] = Value("Collegamento1", &mapAnyValue[2]);
-
-    std::cout << mapAnyValue[2] << std::endl;
-
-    return 0;
 }
