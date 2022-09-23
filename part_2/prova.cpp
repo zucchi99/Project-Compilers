@@ -54,15 +54,16 @@ int main() {
 int main_2() {
     Configuration s;
     std::list<Value*> l;
+
     auto assignment1 = my_pair(Value("ciao"), l); 
     auto assignment2 = my_pair(Value(1), l); 
     auto assignment3 = my_pair(Value(true), l); 
     auto assignment4 = my_pair(Value("$sezione2.c", NULL), l);
     auto assignment5 = my_pair(Value("$sezione1.a", NULL), l);
     auto assignment6 = my_pair(Value("$sezione1.d", NULL), l);
-    auto assignment7 = my_pair(Value("$sezione1.e", NULL), l);
+    auto assignment7 = my_pair(Value("$e", NULL), l);
 
-    std::map<std::string, my_pair> assignments = {
+       std::map<std::string, my_pair> assignments = {
         { "a", assignment1 }, 
         { "b", assignment2 }, 
         { "c", assignment3 }, 
@@ -70,17 +71,6 @@ int main_2() {
         { "e", assignment6 }, 
         { "f", assignment7 }
     };
-
-    std::list<Value*> temp_empty_list;
-    auto assignment1 = my_pair(Value("ciao"), temp_empty_list); 
-    auto assignment2 = my_pair(Value(1), temp_empty_list); 
-    auto assignment3 = my_pair(Value(true), temp_empty_list); 
-    auto assignment4 = my_pair(Value("$sezione2.c", NULL), temp_empty_list);
-    auto assignment5 = my_pair(Value("$sezione1.a", NULL), temp_empty_list);
-    auto assignment6 = my_pair(Value("$sezione1.d", NULL), temp_empty_list);
-    auto assignment7 = my_pair(Value("$e", NULL), temp_empty_list);
-
-   std::map<std::string, my_pair> assignments = {{ "a", assignment1 }, { "b", assignment2 }, { "c", assignment3 }, { "d", assignment4 }, { "e", assignment6 }, { "f", assignment7 }};
     
     s.insert_empty_section("sezione1");
     
@@ -127,3 +117,6 @@ int main_2() {
 
     return 0;
 }
+
+
+
