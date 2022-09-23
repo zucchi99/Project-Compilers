@@ -152,7 +152,9 @@ public:
 
         // Controllo se è un puntatore
         if(assignment->second.first.type() == Value::ContentType::Pointer) {
+            // pointerAssignment ritorna la coppia <sezione, assegnamento>
             std::pair<std::string, std::string> puntato = assignment->second.first.pointerAssignment();
+            // Se puntato.first (ovvero la "sezione") è vuota, allora la variabile si trova nello stessa sezione (Es. $var1)
             puntato.first = (puntato.first == "") ? section_name : puntato.first;
 
             auto temp_section = sections.find(puntato.first);
