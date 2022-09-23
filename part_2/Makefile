@@ -1,29 +1,39 @@
-compile:
-	@ flex Flex.l
-	@ bison -t -v -d Bison.ypp
-	@ g++ -o main Bison.tab.cpp lex.yy.c
+#bin directory
+OBJDIR = bin
+IN_DIR = test_files
 
-test:
-	@ ./main < example.conf
+# lex objects
+LEX_OBJ = $(OBJDIR)/lex.yy.c 
 
-test-value:
-	@ g++ Value.cpp -o value_main
-	@ ./value_main
+# bison objects :
+# 1) output file always generated
+BIS_CPP_OBJ = $(OBJDIR)/Bison.tab.cpp 
+# 2) option -d
+BIS_HPP_OBJ = $(OBJDIR)/Bison.tab.hpp
+# 3) option -v
+# BIS_OUT_OBJ = $(OBJDIR)/Bison.output
 
-clean:
-	@ rm Bison.output Bison.tab.cpp Bison.tab.hpp lex.yy.c main
+# g++ main file
+MAIN = $(OBJDIR)/main.out
 
-dirt:
-	@ rm Bison.output Bison.tab.cpp Bison.tab.hpp lex.yy.c
+# mkdir if not exists
+$(OBJDIR):
+	@ test -d $(OBJDIR) || mkdir $(OBJDIR)
 
-compile_prova:
-	@ g++ -o prova prova.cpp
+#@ bison -t -v -d Bison.ypp
+compile: $(OBJDIR) 
+	@ flex -o $(LEX_OBJ) Flex.l
+	@ bison -o $(BIS_CPP_OBJ) -d Bison.ypp
+	@ g++ -o $(MAIN) $(BIS_CPP_OBJ) $(LEX_OBJ)
 
-test_prova:	
-	@ ./prova
+run_test: compile
+	@ $(MAIN) < $(IN_DIR)/example.conf
 
-clean_prova:
-	@ rm prova
+clear:
+	@ rm $(OBJDIR)/*
+
+prova: $(OBJDIR)
+	@ g++ -o $(OBJDIR)/prova prova.cpp
 
 list:
-	@ grep '^[^#[:space:]].*:' Makefile
+	@ grep '^[^#[:space:]].*:' Makefile | sed s/:.*//g | grep -v \\$
