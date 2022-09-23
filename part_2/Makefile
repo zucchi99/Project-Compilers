@@ -33,7 +33,7 @@ clear:
 	@ rm $(OBJDIR)/*
 
 prova: $(OBJDIR)
-	@ g++ -o $(OBJDIR)/prova prova.cpp
+	@ g++ -o $(OBJDIR)/prova.out prova.cpp
 
 list:
 	@ grep '^[^#[:space:]].*:' Makefile | sed s/:.*//g | grep -v \\$
