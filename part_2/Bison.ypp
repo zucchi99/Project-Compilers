@@ -85,8 +85,10 @@ int main() {
 
     // Aggiungere i riferimenti
     configuration.add_pointers_references();
-	
-    std::cout << configuration.to_String_with_comments(comments);
+	    
+    // Il primo parametro passa alla funzione la mappa <numero di riga, commento> che andrà ad inserire. 
+    // Il secondo paramentro è "true" se si vogliono associare ai vari assegnamenti i valori delle variabili puntate, altrimenti "false" per ottenere i riferimenti.
+    std::cout << configuration.to_String(comments, false);
 
 	return 0;
 }

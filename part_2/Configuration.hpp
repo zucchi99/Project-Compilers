@@ -207,13 +207,14 @@ public:
     }
 
     // Restistuisce una stringa contenente il pretty_printer della Configurazione
-    std::string to_String(){
+    // direct_value è "true" se si vogliono associare ai vari assegnamenti i valori delle variabili puntate, "false" per ottenere i riferimenti.
+    std::string to_String(bool direct_value){
         std::string pretty_printer = "";
 
         for(auto& section : sections){
             pretty_printer += "[" + section.first + "]\n";
             for(auto& assignment : section.second) {
-                pretty_printer += "\t" + assignment.first + " = " + assignment.second.first.to_String() + "\n";
+                pretty_printer += "\t" + assignment.first + " = " + assignment.second.first.to_String(direct_value) + "\n";
             }
         }
 
@@ -222,7 +223,8 @@ public:
 
     // Restistuisce una stringa contenente il pretty_printer della Configurazione con i commenti
     // I commenti devono essere una map di coppie (numero linea, stringa contenente il commento)
-    std::string to_String_with_comments(std::map<int, std::string> comments){
+    // direct_value è "true" se si vogliono associare ai vari assegnamenti i valori delle variabili puntate, "false" per ottenere i riferimenti.
+    std::string to_String(std::map<int, std::string> comments, bool direct_value){
         std::string pretty_printer = "";
         int lin_num = 1;
 
@@ -234,7 +236,7 @@ public:
             add_comments_to_string_if_any(pretty_printer, comments, ++lin_num);
 
             for(auto& assignment : section.second) {
-                pretty_printer += "\t" + assignment.first + " = " + assignment.second.first.to_String() + "\n";
+                pretty_printer += "\t" + assignment.first + " = " + assignment.second.first.to_String(direct_value) + "\n";
                 add_comments_to_string_if_any(pretty_printer, comments, ++lin_num);
             }
         }
@@ -246,5 +248,5 @@ public:
 };
 
 std::ostream& operator<<(std::ostream &strm, Configuration &s) {
-    return strm << s.to_String();
+    return strm << s.to_String(false);
 }
