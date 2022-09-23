@@ -25,6 +25,7 @@ compile: $(OBJDIR)
 	@ flex -o $(LEX_OBJ) Flex.l
 	@ bison -o $(BIS_CPP_OBJ) -d Bison.ypp
 	@ g++ -o $(MAIN) $(BIS_CPP_OBJ) $(LEX_OBJ)
+	@ echo "bin file:" $(MAIN)
 
 run_test: compile
 	@ $(MAIN) < $(IN_DIR)/example.conf
@@ -34,6 +35,7 @@ clear:
 
 prova: $(OBJDIR)
 	@ g++ -o $(OBJDIR)/prova.out prova.cpp
+	@ echo "bin file:" $(OBJDIR)/prova.out
 
 list:
 	@ grep '^[^#[:space:]].*:' Makefile | sed s/:.*//g | grep -v \\$
