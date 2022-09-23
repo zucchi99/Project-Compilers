@@ -5,7 +5,6 @@
 
 int main() {
     Configuration s;
-<<<<<<< HEAD
     std::list<Value*> l;
 
     std::map<std::string, my_pair> assignments_s1 = {
@@ -71,7 +70,7 @@ int main_2() {
         { "e", assignment6 }, 
         { "f", assignment7 }
     };
-=======
+
     std::list<Value*> temp_empty_list;
     auto assignment1 = std::pair<Value, std::list<Value*>>(Value("ciao"), temp_empty_list); 
     auto assignment2 = std::pair<Value, std::list<Value*>>(Value(1), temp_empty_list); 
@@ -82,7 +81,6 @@ int main_2() {
     auto assignment7 = std::pair<Value, std::list<Value*>>(Value("$e", NULL), temp_empty_list);
 
    std::map<std::string, std::pair<Value, std::list<Value*>>> assignments = {{ "a", assignment1 }, { "b", assignment2 }, { "c", assignment3 }, { "d", assignment4 }, { "e", assignment6 }, { "f", assignment7 }};
->>>>>>> 7a318ab2ae6f8a7a76f64f67e1169d91bcff04b7
     
     s.insert_empty_section("sezione1");
     
@@ -96,17 +94,9 @@ int main_2() {
 
     s.add_pointers_references();
 
-<<<<<<< HEAD
-=======
-    // std::cout << s << std::endl;
-
-    // s.delete_section("sezione1");
-
->>>>>>> 7a318ab2ae6f8a7a76f64f67e1169d91bcff04b7
     std::cout << s << std::endl;
     std::cout << "--------------------------------------------------" << std::endl;
 
-<<<<<<< HEAD
     // Caso1
     s.delete_assignment("sezione1", "d");
     std::cout << "Caso1: A -> B -> C, cancello B, aggiorno puntatore di A da B a C, nella backlist di C metto A al posto di B" << std::endl;
@@ -132,20 +122,6 @@ int main_2() {
     std::cout << "Caso4: A, cancello A" << std::endl;
     std::cout << "Caso 4, delete sezione1 b " << std::endl << s << std::endl;
     std::cout << "--------------------------------------------------" << std::endl;
-=======
-    // // Caso1
-    // s.delete_assignment("sezione1", "d");
-    // std::cout << "Caso 1, sezione1 d " << std::endl << s << std::endl;
-    // // Caso2
-    //s.delete_assignment("sezione1", "a");
-    //std::cout << "Caso 2, sezione1 a " << std::endl << s << std::endl;
-    // Caso3
-    // s.delete_assignment("sezione1", "e");
-    // std::cout << "Caso 3, sezione1 e " << std::endl << s << std::endl;
-    // // Caso4
-    // s.delete_assignment("sezione1", "b");
-    // std::cout << "Caso 4, sezione1 b " << std::endl << s << std::endl;
->>>>>>> 7a318ab2ae6f8a7a76f64f67e1169d91bcff04b7
 
     std::cout << s.to_String(true) << std::endl;
 
