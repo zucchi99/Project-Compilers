@@ -80,15 +80,34 @@ assignment:
 // Mappa dei commenti fornita dal lexer
 extern std::map<int, std::string> comments;
 
-int main() {
+int main(int argc, char *argv[]) {
+
+    bool print_value = true;
+    if (argc > 1) {
+        char* param = argv[1];
+
+        if(     strcmp(param, "-v") == 0);
+        else if(strcmp(param, "-r") == 0) {
+            print_value = false;
+        } 
+        else if(strcmp(param, "--help") == 0) {
+            printf("Usage: %s [-v|-r]\n", argv[0]);
+            printf("-v: print values (default)\n-r: print reference\n");
+            exit(0);
+        } else {
+            printf("Parameter not recognised\n");
+            exit(1);
+        }
+    }
+    
     yyparse();
 
     // Aggiungere i riferimenti
     configuration.add_pointers_references();
-	    
+
     // Il primo parametro passa alla funzione la mappa <numero di riga, commento> che andrà ad inserire. 
     // Il secondo paramentro è "true" se si vogliono associare ai vari assegnamenti i valori delle variabili puntate, altrimenti "false" per ottenere i riferimenti.
-    std::cout << configuration.to_String(comments, false);
+    std::cout << configuration.to_String(comments, print_value);
 
 	return 0;
 }
