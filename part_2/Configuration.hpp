@@ -145,7 +145,8 @@ public:
     // Caso2: A -> B -> C, cancello C, cambio il Value (che è di tipo Pointer) di B con quello che aveva C
     // Caso3: A -> B -> C, cancello A, cancello nella backlist di B il puntatore ad A
     // Caso4: A, cancello A
-    // ERROR: se la sezione dell'assignemnt da eliminare non esiste
+    // ERROR: se il puntatore punta a una sezione che non esiste
+    // ERROR: se il puntatore punta a un assegnamento che non esiste, nella corretta sezione
     void delete_assignment(std::string section_name, std::string assignment_to_delete){
         auto section = sections.find(section_name);
         if (section == sections.end()) {
@@ -256,6 +257,9 @@ public:
     }
 
 
+    // Stampa la lista dei puntatori all'indietro di una variabile
+    // ERROR: se il puntatore punta a una sezione che non esiste
+    // ERROR: se il puntatore punta a un assegnamento che non esiste, nella corretta sezione
     void get_backlist(std::string sec_name, std::string var_name) {
         std::cout << "List of backpointers of " << sec_name << "." << var_name << std::endl;
         auto section_it = sections.find(sec_name);
