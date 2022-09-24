@@ -17,7 +17,7 @@ extern FILE* yyin;
 void yyerror(const char* s);
 
 Configuration configuration;
-std::map<std::string, std::pair<Value, std::list<Value*>>> temp_assignments;
+std::list<std::pair<std::string, std::pair<Value, std::list<Value*>>>> temp_assignments;
 const std::list<Value*> temp_empty_list;
 
 bool to_bool(std::string str) {
@@ -59,19 +59,35 @@ assignments:
 
 assignment: 
     WORD EQUALS NUMBER {
-        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::stoi(std::string($3))), temp_empty_list); 
+        auto ass_value = std::pair<Value, std::list<Value*>>(Value(std::stoi(std::string($3))), temp_empty_list);
+        auto ass_completo = std::pair<std::string, std::pair<Value, std::list<Value*>>>(std::string($1), ass_value);
+
+        temp_assignments.push_back(ass_completo);
+        // temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::stoi(std::string($3))), temp_empty_list); 
     }
 	|
 	WORD EQUALS STRING {
-        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::string($3)), temp_empty_list);
+        auto ass_value = std::pair<Value, std::list<Value*>>(Value(std::string($3)), temp_empty_list);
+        auto ass_completo = std::pair<std::string, std::pair<Value, std::list<Value*>>>(std::string($1), ass_value);
+
+        temp_assignments.push_back(ass_completo);
+        // temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::string($3)), temp_empty_list);
     }
 	|
 	WORD EQUALS BOOL {
-        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(to_bool(std::string($3))), temp_empty_list); 
+        auto ass_value = std::pair<Value, std::list<Value*>>(Value(to_bool(std::string($3))), temp_empty_list);
+        auto ass_completo = std::pair<std::string, std::pair<Value, std::list<Value*>>>(std::string($1), ass_value);
+
+        temp_assignments.push_back(ass_completo);
+        // temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(to_bool(std::string($3))), temp_empty_list); 
     }
 	|
 	WORD EQUALS REFPATH {
-        temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::string($3), NULL), temp_empty_list);
+        auto ass_value = std::pair<Value, std::list<Value*>>(Value(std::string($3), NULL), temp_empty_list);
+        auto ass_completo = std::pair<std::string, std::pair<Value, std::list<Value*>>>(std::string($1), ass_value);
+
+        temp_assignments.push_back(ass_completo);
+        // temp_assignments[std::string($1)] = std::pair<Value, std::list<Value*>>(Value(std::string($3), NULL), temp_empty_list);
     }
 ;
 

@@ -69,7 +69,7 @@ class Value {
 
         // Restistuisce una stringa contenente il pretty_printer della Configurazione
         // direct_value, nel caso l'instanza dell'oggetto sia di tipo "Pointer", se è "true" ritornerà i valori delle variabili puntate, mentre con "false" verranno restituiti i riferimenti.
-        std::string to_String(bool direct_value){
+        std::string to_String(bool direct_value) const {
             std::string string_content = "";
 
             switch(m_ctType) {

@@ -28,7 +28,7 @@ compile: $(OBJDIR)
 	@ echo "bin file:" $(MAIN)
 
 run_test: compile
-	@ $(MAIN) < $(IN_DIR)/example.conf
+	@ $(MAIN) < $(IN_DIR)/example2.conf
 
 clear:
 	@ rm $(OBJDIR)/*

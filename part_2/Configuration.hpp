@@ -59,7 +59,7 @@ public:
     // ERROR: se la sezione non esiste
     // WARNING: se uno o più assegnamenti vengono sovrascritti
     // RETURN: true, se non ci sono sovrascritture; false, se ci sono sovrascritture 
-    bool modify_assignments_to_section(const std::string name, const std::map<std::string, std::pair<Value, std::list<Value*>>> assignments){
+    bool modify_assignments_to_section(const std::string name, const std::list<std::pair<std::string, std::pair<Value, std::list<Value*>>>> assignments){
         auto section = sections.find(name);
         if (section == sections.end()) {
             throw std::runtime_error("ERROR: Adding assignments to section \"" + name + "\" but it doesn't exist");
@@ -83,6 +83,13 @@ public:
     // ERROR: se il puntatore punta a una sezione che non esiste
     // ERROR: se il puntatore punta a un assegnamento che non esiste, nella corretta sezione
     void add_pointers_references() {
+        // Reset delle liste contenenti i puntatori all'indietro
+        for (auto& section : sections) {
+            for(auto& assignment : section.second) {
+                assignment.second.second.clear();
+            }
+        }
+
         for (auto& section : sections) {
             for(auto& assignment : section.second) {
                 auto& ass = assignment.second.first;
