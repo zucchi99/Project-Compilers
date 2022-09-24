@@ -27,8 +27,8 @@ compile: $(OBJDIR)
 	@ g++ -o $(MAIN) $(BIS_CPP_OBJ) $(LEX_OBJ)
 	@ echo "bin file:" $(MAIN)
 
-run_test: compile
-	@ $(MAIN) < $(IN_DIR)/example2.conf
+run_test:
+	@ $(MAIN) < $(IN_DIR)/example.conf
 
 clear:
 	@ rm $(OBJDIR)/*

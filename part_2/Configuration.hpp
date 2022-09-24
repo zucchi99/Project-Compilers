@@ -70,7 +70,7 @@ public:
         for(auto& assignment : assignments) {
             auto ret = section->second.insert(assignment);
             if (ret.second == false) {
-                std::cout << "WARNING: In the section \"" + name + "\" the assignment \"" + assignment.first + "\" already existed" << "\n\n";
+                std::cout << "#WARNING: In the section \"" + name + "\" the assignment \"" + assignment.first + "\" already existed" << "\n";
                 section->second.at(assignment.first) = assignment.second;
                 overwrites = true;
             }
