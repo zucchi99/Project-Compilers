@@ -50,7 +50,7 @@ public:
     void insert_empty_section(const std::string name){
         auto section = sections.find(name);
         if (! (section == sections.end()) ) {
-            throw std::runtime_error("Section \"" + name + "\" already defined");
+            throw std::runtime_error("ERROR: Section \"" + name + "\" already defined");
         }
         sections.emplace(name, std::map<std::string, std::pair<Value, std::list<Value*>>>());
     }
@@ -59,10 +59,10 @@ public:
     // ERROR: se la sezione non esiste
     // WARNING: se uno o più assegnamenti vengono sovrascritti
     // RETURN: true, se non ci sono sovrascritture; false, se ci sono sovrascritture 
-    bool modify_assignments_to_section(const std::string name, const std::map<std::string, std::pair<Value, std::list<Value*>>> assignments){
+    bool modify_assignments_to_section(const std::string name, const std::list<std::pair<std::string, std::pair<Value, std::list<Value*>>>> assignments){
         auto section = sections.find(name);
         if (section == sections.end()) {
-            throw std::runtime_error("Adding assignments to section \"" + name + "\" but it doesn't exist");
+            throw std::runtime_error("ERROR: Adding assignments to section \"" + name + "\" but it doesn't exist");
         }
 
         bool overwrites = false;
@@ -70,7 +70,7 @@ public:
         for(auto& assignment : assignments) {
             auto ret = section->second.insert(assignment);
             if (ret.second == false) {
-                std::cout << "WARNING: In the section \"" + name + "\" the assignment \"" + assignment.first + "\" already existed" << "\n\n";
+                std::cout << "#WARNING: In the section \"" + name + "\" the assignment \"" + assignment.first + "\" already existed" << "\n";
                 section->second.at(assignment.first) = assignment.second;
                 overwrites = true;
             }
@@ -83,6 +83,13 @@ public:
     // ERROR: se il puntatore punta a una sezione che non esiste
     // ERROR: se il puntatore punta a un assegnamento che non esiste, nella corretta sezione
     void add_pointers_references() {
+        // Reset delle liste contenenti i puntatori all'indietro
+        for (auto& section : sections) {
+            for(auto& assignment : section.second) {
+                assignment.second.second.clear();
+            }
+        }
+
         for (auto& section : sections) {
             for(auto& assignment : section.second) {
                 auto& ass = assignment.second.first;
@@ -108,14 +115,14 @@ public:
                     // get pointed section                     
                     auto temp_sec = sections.find(sec_name_pointed);
                     if (temp_sec == sections.end()) {
-                        throw std::runtime_error("Found a pointer to section \"" + sec_name_pointed + "\" but section doesn't exist");
+                        throw std::runtime_error("ERROR: Found a pointer to section \"" + sec_name_pointed + "\" but section doesn't exist");
                     }
                     auto& pointed_section = sections[sec_name_pointed];
 
                     // get pointed variable
                     auto temp_var = pointed_section.find(p_name);
                     if (temp_var == pointed_section.end()) {
-                        throw std::runtime_error("Found a pointer to variable \"" + p_name + "\" in section \"" + sec_name_pointed + "\" but variable doesn't exist");
+                        throw std::runtime_error("ERROR: Found a pointer to variable \"" + p_name + "\" in section \"" + sec_name_pointed + "\" but variable doesn't exist");
                     }
                     auto& pointed_assig = pointed_section[p_name];
 
@@ -138,16 +145,17 @@ public:
     // Caso2: A -> B -> C, cancello C, cambio il Value (che è di tipo Pointer) di B con quello che aveva C
     // Caso3: A -> B -> C, cancello A, cancello nella backlist di B il puntatore ad A
     // Caso4: A, cancello A
-    // ERROR: se la sezione dell'assignemnt da eliminare non esiste
+    // ERROR: se il puntatore punta a una sezione che non esiste
+    // ERROR: se il puntatore punta a un assegnamento che non esiste, nella corretta sezione
     void delete_assignment(std::string section_name, std::string assignment_to_delete){
         auto section = sections.find(section_name);
         if (section == sections.end()) {
-            throw std::runtime_error("Section \"" + section_name + "\" not exist");
+            throw std::runtime_error("ERROR: Section \"" + section_name + "\" not exist");
         }
 
         auto assignment = section->second.find(assignment_to_delete);
         if (assignment == section->second.end()) {
-            throw std::runtime_error("Assignment \"" + assignment_to_delete + "\" not exist in section \"" + section->first + "\" ");
+            throw std::runtime_error("ERROR: Assignment \"" + assignment_to_delete + "\" not exist in section \"" + section->first + "\" ");
         }
 
         // Controllo se è un puntatore
@@ -196,7 +204,7 @@ public:
     void delete_section(const std::string name){
         auto section = sections.find(name);
         if (section == sections.end()) {
-            throw std::runtime_error("Requesting deletion of section " + name + " but it doesn't exist");
+            throw std::runtime_error("ERROR: Requesting deletion of section " + name + " but it doesn't exist");
         }
 
         auto assignments_to_delete = section->second;
@@ -247,6 +255,29 @@ public:
 
         return pretty_printer;
     }
+
+
+    // Stampa la lista dei puntatori all'indietro di una variabile
+    // ERROR: se il puntatore punta a una sezione che non esiste
+    // ERROR: se il puntatore punta a un assegnamento che non esiste, nella corretta sezione
+    void get_backlist(std::string sec_name, std::string var_name) {
+        std::cout << "List of backpointers of " << sec_name << "." << var_name << std::endl;
+        auto section_it = sections.find(sec_name);
+        if (section_it == sections.end()) {
+            throw std::runtime_error("ERROR: section\"" + sec_name + "\" doesn't exist");
+        }
+        auto section = section_it->second;
+        auto var = section.find(var_name);
+        if (var == section.end()) {
+            throw std::runtime_error("ERROR: variable\"" + var_name + "\" doesn't exist");
+        }
+        std::list<Value*> back_list = var->second.second;
+        std::cout << "Num of backpointers: " << back_list.size() << std::endl;
+        for (auto& back_pointer : back_list) {
+            std::cout << back_pointer << std::endl;
+        }
+    }
+
 };
 
 std::ostream& operator<<(std::ostream &strm, Configuration &s) {

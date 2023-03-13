@@ -6,8 +6,10 @@
 int main() {
     Configuration s;
     std::list<Value*> l;
+    
+    // -------------------------------------------------------------------------------
 
-    std::map<std::string, my_pair> assignments_s1 = {
+    std::list<std::pair<std::string, my_pair>> assignments_s1 = {
         { "a", my_pair(Value("ciao"), l) }, 
         { "b", my_pair(Value(1),      l) }, 
         { "c", my_pair(Value(true),   l) }
@@ -15,7 +17,9 @@ int main() {
     s.insert_empty_section("sezione1");
     s.modify_assignments_to_section("sezione1", assignments_s1);
 
-    std::map<std::string, my_pair> assignments_s2 = {
+    // -------------------------------------------------------------------------------
+
+    std::list<std::pair<std::string, my_pair>> assignments_s2 = {
         { "d", my_pair(Value("$sezione1.a", NULL), l) }, 
         { "e", my_pair(Value("$sezione2.d", NULL), l) }, 
         { "f", my_pair(Value("$sezione3.g", NULL), l) }, 
@@ -23,13 +27,30 @@ int main() {
     s.insert_empty_section("sezione2");
     s.modify_assignments_to_section("sezione2", assignments_s2);
     
-    std::map<std::string, my_pair> assignments_s3 = {
+    // -------------------------------------------------------------------------------
+    
+    std::list<std::pair<std::string, my_pair>> assignments_s3 = {
         { "g", my_pair(Value("$sezione2.e", NULL), l) }, 
         { "h", my_pair(Value("$sezione2.f", NULL), l) }, 
         { "i", my_pair(Value("$sezione3.h", NULL), l) }, 
     };
     s.insert_empty_section("sezione3");
     s.modify_assignments_to_section("sezione3", assignments_s3);
+    
+    // -------------------------------------------------------------------------------
+
+    std::list<std::pair<std::string, my_pair>> assignments_s4 = {
+        { "a", my_pair(Value("old"), l) }, 
+        { "b", my_pair(Value("new"), l) },  
+        { "x", my_pair(Value("$a", NULL), l) }
+    };
+    s.insert_empty_section("sezione4");
+    s.modify_assignments_to_section("sezione4", assignments_s4);
+
+    std::list<std::pair<std::string, my_pair>> assignments_s4_edit = { { "x", my_pair(Value("$b", NULL), l) } };
+
+    s.modify_assignments_to_section("sezione4", assignments_s4_edit);
+    // -------------------------------------------------------------------------------
 
     s.add_pointers_references();
 
@@ -47,6 +68,12 @@ int main() {
 
     std::cout << "--------------------------------------------------" << std::endl;
 
+    s.get_backlist("sezione4", "a");
+    
+    std::cout << "--------------------------------------------------" << std::endl;
+
+    s.get_backlist("sezione4", "b");
+
     return 0;
 }
 
@@ -63,7 +90,7 @@ int main_2() {
     auto assignment6 = my_pair(Value("$sezione1.d", NULL), l);
     auto assignment7 = my_pair(Value("$e", NULL), l);
 
-       std::map<std::string, my_pair> assignments = {
+       std::list<std::pair<std::string, my_pair>> assignments = {
         { "a", assignment1 }, 
         { "b", assignment2 }, 
         { "c", assignment3 }, 
