@@ -69,7 +69,7 @@ Per ogni test di ogni funzione, che dato un nome di file esega:
 * L'analisi di semantica statica
 * Il pretty-print del sorgente
 * Generazione + pretty-print del three-address code.  
- 
+
 Nel pretty-print del three-address code si serializzino gli identificatori che vengono dal programma aggiungendo l’informazione relativa al punto di dichiarazione
 nel sorgente originale
 
