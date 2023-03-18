@@ -8,41 +8,50 @@ comment "(*" "*)";
 -- entrypoints: set of initial states of the grammar
 entrypoints Program;
 
-ProgramStart.       Program ::= ProgramKW Ident ";" Declarations MainBlock ;
+ProgramStart.               Program ::= ProgramKW Ident ";" Declarations MainBlock ;
+
+-- Pascal keywords
+KeyWordBegin.               BeginKW      ::= "begin" ;
+KeyWordEnd.                 EndKW        ::= "end" ;
+KeyWordProgram.             ProgramKW    ::= "program" ;
+KeyWordFunction.            FunctionKW   ::= "function" ;
+KeyWordProcedure.           ProcedureKW  ::= "procedure" ;
+KeyWordVar.                 VarKW        ::= "var" ;
+keyWordIf.                  IfKW         ::= "if" ;
+keyWordThen.                ThenKW       ::= "then" ;
+
+-- variables, functions, procedures
+Declarations.               Declarations   ::= VariablesBlock [FunctionDeclaration] [ProcedureDeclaration] ;
+-- variables block declaration (can be empty)
+VariablesBlock.             VariablesBlock ::= {- empty -} | VarKW [VariableDecl] ;
+VariableDeclaration.        VariableDecl   ::= [Ident] ":" VarType ";";
+-- function and procedure declaration
+-- NB no need to add {- empty -} since [Rule] already includes {- empty -} option
+FunctionDeclaration.        FunctionDecl   ::= FunctionKW  Ident "(" Params ")" ":" ReturnType ";" OuterBlockWithDecl ;
+ProcedureDeclaration.       ProcedureDecl  ::= ProcedureKW Ident "(" Params ")" ";" OuterBlockWithDecl ;
 
 -- NB In Pascal is not mandatory to place ';' after end keyword --> begin [...] end  |  begin [...] end ; 
 -- BUT is mandatory to place '.' after the end keyword of the outer-most end of the main block of any module (program, unit or library) --> begin [...] end .
 
--- Pascal keywords
-KeyWordBegin.       BeginKW      ::= "begin" ;
-KeyWordEnd.         EndKW        ::= "end" ;
-KeyWordProgram.     ProgramKW    ::= "program" ;
-KeyWordFunction.    FunctionKW   ::= "function" ;
-KeyWordProcedure.   ProcedureKW  ::= "procedure" ;
-KeyWordVar.         VarKW        ::= "var" ;
+-- main block: mandatory "."
+MainBlock.                       MainBlock  ::= OuterBlockWithDecl "." ;
+-- blocks with non-mandatory ";"
+OuterBlockWithDeclaration.       OuterBlockWithDecl ::= InnerBlockWithDecl | InnerBlockWithDecl ";" ;
+OuterBlockOnlyExecution.         OuterBlockExec     ::= InnerBlockExec     | InnerBlockExec ";" ;        -- mandatory begin, end keywords
+-- block structure
+InnerBlockWithDeclarations.      InnerBlockWithDecl ::= Declarations InnerBlockExec ;
+InnerBlockOnlyExecution.         InnerBlockExec     ::= BeginKW [Statement] EndKW ;
 
--- variables, functions, procedures
-Declarations.          Declarations   ::= VariablesBlock [FunctionDeclaration] [ProcedureDeclaration] ;
--- variables block declaration (can be empty)
-VariablesBlock.        VariablesBlock ::= {- empty -} | VarKW [VariableDecl] ;
-VariableDeclaration.   VariableDecl   ::= [Ident] ":" VarType ";";
--- function and procedure declaration
--- NB no need to add {- empty -} since [Rule] already includes {- empty -} option
-FunctionDeclaration.   FunctionDecl   ::= FunctionKW  Ident "(" Params ")" ":" ReturnType ";" AnyBlock ;
-ProcedureDeclaration.  ProcedureDecl  ::= ProcedureKW Ident "(" Params ")" ";" AnyBlock ;
-
--- blocks definition
-MainBlock.             MainBlock ::= Block "." ;
-AnyBlock.              AnyBlock  ::= Block | Block ";" ;
-
--- general block
-BlockStructure.        Block ::= BeginKW Declarations [Statement] EndKW ;
 
 -- TODO
-VarType
+-- VarType
+-- Statement
+-- RExp
+
+StatementIf.                Statement ::= If;
 
 
-
+IfDefinition.               If ::= IfKW RExp ThenKW OuterBlockExec
 
 -- terminator: a macro that defines a pair of list rules by what token terminates each element in the list.
 terminator Statement ";" ;
