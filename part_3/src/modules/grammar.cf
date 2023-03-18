@@ -17,8 +17,9 @@ KeyWordProgram.             ProgramKW    ::= "program" ;
 KeyWordFunction.            FunctionKW   ::= "function" ;
 KeyWordProcedure.           ProcedureKW  ::= "procedure" ;
 KeyWordVar.                 VarKW        ::= "var" ;
-keyWordIf.                  IfKW         ::= "if" ;
-keyWordThen.                ThenKW       ::= "then" ;
+KeyWordIf.                  IfKW         ::= "if" ;
+KeyWordThen.                ThenKW       ::= "then" ;
+KeyWordElse.                ElseKW       ::= "else" ;
 
 -- variables, functions, procedures
 Declarations.               Declarations   ::= VariablesBlock [FunctionDeclaration] [ProcedureDeclaration] ;
@@ -48,10 +49,12 @@ InnerBlockOnlyExecution.         InnerBlockExec     ::= BeginKW [Statement] EndK
 -- Statement
 -- RExp
 
+StatementBlock.             Statement ::= OuterBlockExec;
 StatementIf.                Statement ::= If;
 
 
-IfDefinition.               If ::= IfKW RExp ThenKW OuterBlockExec
+IfDefinition.               If ::= IfKW RExp ThenKW Statement Else;
+ElseDefinition.             Else ::= {- empty -} | ElseKW Statement
 
 -- terminator: a macro that defines a pair of list rules by what token terminates each element in the list.
 terminator Statement ";" ;
