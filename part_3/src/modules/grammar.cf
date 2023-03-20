@@ -8,7 +8,7 @@ comment "(*" "*)";
 -- entrypoints: set of initial states of the grammar
 entrypoints Program;
 
-ProgramStart.                   Program      ::= ProgramKW Ident ";" Declarations MainBlock ;
+ProgramStart.                   Program      ::= ProgramKW Ident ";" Declarations InnerBlockWithDecl "." ;
 
 -- Pascal keywords
 KeyWordBegin.                   BeginKW      ::= "begin" ;
@@ -29,51 +29,54 @@ KeyWordTypeArray.               ArrayKW      ::= "array";
 
 
 -- variables, functions, procedures
-Declarations.                   Declarations   ::= VariablesBlock [FunctionDecl] [ProcedureDecl] ;
+rules                           Declarations   ::= VariablesBlock | [FunctionDecl] | [ProcedureDecl] ; --Declarations
 -- variables block declaration (can be empty)
-VariablesBlock.                 VariablesBlock ::= {- empty -} | VarKW [VariableDecl] ;
+rules                           VariablesBlock ::= {- empty -} | VarKW [VariableDecl] ; -- VariablesBlock. 
 VariableDeclaration.            VariableDecl   ::= [VariableName] ":" Type ";" ;
 VariableDeclarationNames.       VariableName   ::= Ident;
-separator nonempty VariableNames ",";
+separator nonempty VariableName ",";
 -- function and procedure declaration
 -- NB no need to add {- empty -} since [Rule] already includes {- empty -} option
-FunctionDeclaration.            FunctionDecl   ::= FunctionKW  Ident "(" [Parameter] ")" ":" Type ";" OuterBlockWithDecl ;
-ProcedureDeclaration.           ProcedureDecl  ::= ProcedureKW Ident "(" [Parameter] ")" ";" OuterBlockWithDecl ;
-
-ParameterDeclaration.           Parameter      ::= Ident ":" Type;
-separator Parameter ",";
-
+FunctionDeclaration.            FunctionDecl   ::= FunctionKW  Ident "(" [VariableDecl] ")" ":" Type ";" InnerBlockWithDecl ;
+ProcedureDeclaration.           ProcedureDecl  ::= ProcedureKW Ident "(" [VariableDecl] ")" ";" InnerBlockWithDecl ;
+terminator FunctionDecl  ";" ;
+terminator ProcedureDecl ";" ;
+separator VariableDecl   ";" ;
 
 -- NB In Pascal is not mandatory to place ';' after end keyword --> begin [...] end  |  begin [...] end ; 
 -- BUT is mandatory to place '.' after the end keyword of the outer-most end of the main block of any module (program, unit or library) --> begin [...] end .
 
 -- main block: mandatory "."
-MainBlock.                       MainBlock          ::= OuterBlockWithDecl "." ;
+-- MainBlock.                       MainBlock          ::= OuterBlockWithDecl "." ;
 -- blocks with non-mandatory ";"
-OuterBlockWithDeclaration.       OuterBlockWithDecl ::= InnerBlockWithDecl | InnerBlockWithDecl ";" ;
-OuterBlockOnlyExecution.         OuterBlockExec     ::= InnerBlockExec     | InnerBlockExec ";" ; 
+--rules                            OuterBlockWithDecl ::= InnerBlockWithDecl | InnerBlockWithDecl ";" ; --OuterBlockWithDeclaration.
+--rules                            OuterBlockExec     ::= InnerBlockExec     | InnerBlockExec ";" ;     --OuterBlockOnlyExecution.
 -- block structure
 InnerBlockWithDeclaration.       InnerBlockWithDecl ::= Declarations InnerBlockExec ;
 InnerBlockOnlyExecution.         InnerBlockExec     ::= BeginKW [Statement] EndKW ;
-
+separator InnerBlockExec ";" ;
 
 -- TODO
 -- Statement
 -- RExp
 
-StatementBlock.                 Statement       ::= OuterBlockExec ;
+StatementBlock.                 Statement       ::= InnerBlockExec ;
 StatementIf.                    Statement       ::= If ;
+StatementTemp.                  Statement       ::= "boh" ;
+RExpTemp.                       RExp            ::= "help" ;
 
-terminator Statement ";" ;
+separator Statement ";" ;
 
 IfDefinition.                   If              ::= IfKW RExp ThenKW Statement Else ;
-ElseDefinition.                 Else            ::= {- empty -} | ElseKW Statement ;
+rules                           Else            ::= {- empty -} | ElseKW Statement ; --ElseDefinition
 
 -- types definition
-AnyType.                        Type            ::= BaseType | CompositeType ;
-BaseType.                       BaseType        ::= IntKW | RealKW | CharKW | BoolKW | StringKW ;
+rules                           Type            ::= BaseType | CompositeType ; --AnyType
+rules                           BaseType        ::= IntKW | RealKW | CharKW | BoolKW | StringKW ; --BaseType
 -- actually for arrays should be: array [0..5, 1..6] of anytype
 -- semplication: array [5] of basetype (NB note that is case insensitive)
 CompTypeArray.                  CompositeType   ::= ArrayKW "[" Integer "]" "of" BaseType ;
 CompTypePointer.                CompositeType   ::= "^" Type ;
+
+
 
