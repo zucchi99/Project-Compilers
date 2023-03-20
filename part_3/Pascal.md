@@ -1,5 +1,8 @@
 # Pascal
 
+Insert a link to the official documentation of the language.
+![Sintassi Pascal](https://doc.tmssoftware.com/biz/scripter/guide/pascal.html#function-and-procedure-declaration)
+
 Pascal è composto da 5 elementi base:
 
 * `Program`, elemento di livello più alto
@@ -175,4 +178,39 @@ In Pascal le operazioni vengono eseguite secondo la seguente priorità, includen
 1. `not`
 1. `and` e `or`
 
-Dove il livello 1 ha la priorità più alta e il livello 5 ha la priorità più bassa.
+Dove il livello 1 ha la priorità più alta.
+
+### Albero di sintassi
+
+1. `Program`
+1. `Declarations`
+    1. `Var` block
+        1. variables
+        1. Consts
+        1. `Function`
+        1. `Procedure`
+    1. `Function`
+        1. `Declarations` block
+        1. `statements` block
+    1. `Procedure`
+        1. `Declarations` block
+        1. `statements` block
+1. `Main` `statements` block
+
+Quindi:
+
+    Program = "program" Ident ";" Block "."
+
+    Block = [Declaration] Statements
+
+    Declaration = VarDeclaration
+                | ConstDeclaration
+                | FunctionDeclaration
+                | ProcedureDeclaration
+
+    ConstDeclaration       = "const" [Ident "=" Expression ";"]
+    VarDeclaration         = "var" [Ident ":" Type ";"]
+    FunctionDeclaration    = "function" Ident "(" [Ident ":" Type] ")" ":" Type ";" Block ";"
+    ProcedureDeclaration   = "procedure" Ident "(" [Ident ":" Type] ")" ";" Block ";"
+
+    Statements = "begin" [Statement ";"] "end"

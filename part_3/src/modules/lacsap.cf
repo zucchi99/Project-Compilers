@@ -1,0 +1,17 @@
+entrypoints Program ;
+Program. Program ::= "program" Ident ";" Block "." ;
+Block. Block ::= Declarations Statements ;
+Declarations. Declarations ::= "ciao" ;
+-- ConstDeclarations. ConstDeclarations ::= "const" [ Ident "=" Expression ";" ] ;
+ConstDeclarations. ConstDeclarations ::= "const" Ident "=" Expression ";" ;
+-- VarDeclarations. VarDeclarations ::= "var" [ Ident ":" Type ";" ] ;
+VarDeclarations. VarDeclarations ::= "var" Ident ":" Type ";" ;
+-- FunctionDeclarations. FunctionDeclarations ::= "function" Ident "(" [ Ident ":" Type ] ")" ":" Type ";" Block ";" ;
+FunctionDeclarations. FunctionDeclarations ::= "function" Ident "(" Ident ":" Type ")" ":" Type ";" Block ";" ;
+-- ProcedureDeclarations. ProcedureDeclarations ::= "procedure" Ident "(" [ Ident ":" Type ] ")" ";" Block ";" ;
+ProcedureDeclarations. ProcedureDeclarations ::= "procedure" Ident "(" Ident ":" Type ")" ";" Block ";" ;
+-- Statements. Statements ::= "begin" [ Statement ";" ] "end" ;
+Statements. Statements ::= "begin" Statement ";" "end" ;
+Statement. Statement ::= "aiuto" ;
+Expression. Expression ::= "aiuto" ;
+Type. Type ::= "aiuto" ;

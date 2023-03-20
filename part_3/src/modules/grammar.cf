@@ -33,14 +33,14 @@ Declarations.                   Declarations   ::= VariablesBlock [FunctionDecl]
 -- variables block declaration (can be empty)
 VariablesBlock.                 VariablesBlock ::= {- empty -} | VarKW [VariableDecl] ;
 VariableDeclaration.            VariableDecl   ::= [VariableName] ":" Type ";" ;
-VariableDeclarationNames.       VariableName   ::= Ident
+VariableDeclarationNames.       VariableName   ::= Ident;
 separator nonempty VariableNames ",";
 -- function and procedure declaration
 -- NB no need to add {- empty -} since [Rule] already includes {- empty -} option
 FunctionDeclaration.            FunctionDecl   ::= FunctionKW  Ident "(" [Parameter] ")" ":" Type ";" OuterBlockWithDecl ;
 ProcedureDeclaration.           ProcedureDecl  ::= ProcedureKW Ident "(" [Parameter] ")" ";" OuterBlockWithDecl ;
 
-ParameterDeclaration.           Parameter      ::= Ident ":" Type
+ParameterDeclaration.           Parameter      ::= Ident ":" Type;
 separator Parameter ",";
 
 
