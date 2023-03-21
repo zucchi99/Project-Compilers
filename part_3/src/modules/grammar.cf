@@ -29,10 +29,10 @@ KeyWordTypeArray.               ArrayKW      ::= "array";
 
 
 -- variables, functions, procedures
-rules                           Declarations   ::= VariablesBlock | [FunctionDecl] | [ProcedureDecl] ; --Declarations
+rules                           Declarations   ::= {- empty -} | [VariablesBlock] | [FunctionDecl] | [ProcedureDecl] ; --Declarations
 -- variables block declaration (can be empty)
-rules                           VariablesBlock ::= {- empty -} | VarKW [VariableDecl] ; -- VariablesBlock. 
-VariableDeclaration.            VariableDecl   ::= [VariableName] ":" Type ";" ;
+rules                           VariablesBlock ::= VarKW [VariableDecl] ; -- VariablesBlock. 
+VariableDeclaration.            VariableDecl   ::= [VariableName] ":" Type ;
 VariableDeclarationNames.       VariableName   ::= Ident;
 separator nonempty VariableName ",";
 -- function and procedure declaration
@@ -41,7 +41,8 @@ FunctionDeclaration.            FunctionDecl   ::= FunctionKW  Ident "(" [Variab
 ProcedureDeclaration.           ProcedureDecl  ::= ProcedureKW Ident "(" [VariableDecl] ")" ";" InnerBlockWithDecl ;
 terminator FunctionDecl  ";" ;
 terminator ProcedureDecl ";" ;
-separator VariableDecl   ";" ;
+terminator VariableDecl  ";" ;
+terminator VariablesBlock  ""  ;
 
 -- NB In Pascal is not mandatory to place ';' after end keyword --> begin [...] end  |  begin [...] end ; 
 -- BUT is mandatory to place '.' after the end keyword of the outer-most end of the main block of any module (program, unit or library) --> begin [...] end .
@@ -53,7 +54,8 @@ separator VariableDecl   ";" ;
 --rules                            OuterBlockExec     ::= InnerBlockExec     | InnerBlockExec ";" ;     --OuterBlockOnlyExecution.
 -- block structure
 InnerBlockWithDeclaration.       InnerBlockWithDecl ::= Declarations InnerBlockExec ;
-InnerBlockOnlyExecution.         InnerBlockExec     ::= BeginKW [Statement] EndKW ;
+InnerBlockOnlyExecution.         InnerBlockExec     ::= BeginKW NonMandatoryTerminator [Statement] EndKW ;
+rules                            NonMandatoryTerminator ::= {- empty -} | ";" ;
 separator InnerBlockExec ";" ;
 
 -- TODO
@@ -62,8 +64,12 @@ separator InnerBlockExec ";" ;
 
 StatementBlock.                 Statement       ::= InnerBlockExec ;
 StatementIf.                    Statement       ::= If ;
-StatementTemp.                  Statement       ::= "boh" ;
-RExpTemp.                       RExp            ::= "help" ;
+StatementTemp.                  Statement       ::= Assign ;
+
+RExpTemp.                       RExp            ::= "0" ;
+
+VariableAssignment.             Assign          ::= Ident ":=" RExp;
+
 
 separator Statement ";" ;
 
