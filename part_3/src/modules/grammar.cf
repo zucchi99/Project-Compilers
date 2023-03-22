@@ -8,81 +8,145 @@ comment "(*" "*)";
 -- entrypoints: set of initial states of the grammar
 entrypoints Program;
 
-ProgramStart.                   Program      ::= ProgramKW Ident ";" Declarations InnerBlockWithDecl "." ;
-
 -- Pascal keywords
-KeyWordBegin.                   BeginKW      ::= "begin" ;
-KeyWordEnd.                     EndKW        ::= "end" ;
-KeyWordProgram.                 ProgramKW    ::= "program" ;
-KeyWordFunction.                FunctionKW   ::= "function" ;
-KeyWordProcedure.               ProcedureKW  ::= "procedure" ;
-KeyWordVar.                     VarKW        ::= "var" ;
-KeyWordIf.                      IfKW         ::= "if" ;
-KeyWordThen.                    ThenKW       ::= "then" ;
-KeyWordElse.                    ElseKW       ::= "else" ;
-KeyWordTypeInt.                 IntKW        ::= "integer";
-KeyWordTypeReal.                RealKW       ::= "real";
-KeyWordTypeChar.                CharKW       ::= "char";
-KeyWordTypeBoolean.             BoolKW       ::= "boolean";
-KeyWordTypeString.              StringKW     ::= "string";
-KeyWordTypeArray.               ArrayKW      ::= "array";
+KeyWordBegin.                   BeginKW         ::= "begin" ;
+KeyWordEnd.                     EndKW           ::= "end" ;
+KeyWordProgram.                 ProgramKW       ::= "program" ;
+KeyWordFunction.                FunctionKW      ::= "function" ;
+KeyWordProcedure.               ProcedureKW     ::= "procedure" ;
+KeyWordVar.                     VarKW           ::= "var" ;
+KeyWordConst.                   ConstKW         ::= "const" ;
+KeyWordIf.                      IfKW            ::= "if" ;
+KeyWordThen.                    ThenKW          ::= "then" ;
+KeyWordElse.                    ElseKW          ::= "else" ;
+KeyWordTypeInt.                 IntKW           ::= "integer";
+KeyWordTypeReal.                RealKW          ::= "real";
+KeyWordTypeChar.                CharKW          ::= "char";
+KeyWordTypeBoolean.             BoolKW          ::= "boolean";
+KeyWordTypeString.              StringKW        ::= "string";
+KeyWordTypeArray.               ArrayKW         ::= "array";
 
+-- program definition
+ProgramStart.                   Program      ::= ProgramKW Ident ";" InnerBlockWithDecl "." ;
+
+-- block structure
+InnerBlockWithDeclaration.       InnerBlockWithDecl ::= [Declaration] InnerBlockExec ;
+separator Declaration "" ;
+
+-- Useful, because inside a begin ... end block there can be a nested block, only without declarations
+InnerBlockOnlyExecution.         InnerBlockExec     ::= BeginKW NonMandatoryTerminator [Statement] EndKW ;
+separator Statement ";" ;
+
+rules                            NonMandatoryTerminator ::= {- empty -} | ";" ;
 
 -- variables, functions, procedures
-rules                           Declarations   ::= {- empty -} | [VariablesBlock] | [FunctionDecl] | [ProcedureDecl] ; --Declarations
--- variables block declaration (can be empty)
-rules                           VariablesBlock ::= VarKW [VariableDecl] ; -- VariablesBlock. 
-VariableDeclaration.            VariableDecl   ::= [VariableName] ":" Type ;
-VariableDeclarationNames.       VariableName   ::= Ident;
-separator nonempty VariableName ",";
+rules                           Declaration   ::= CostantsBlock | VariablesBlock | FunctionDecl | ProcedureDecl ; --Declaration
+
+-- costants block declaration (cannot be empty)
+rules                           CostantsBlock ::= ConstKW [ConstantDecl] ; -- CostantsBlock
+terminator nonempty ConstantDecl ";" ;
+ConstantDeclaration.            ConstantDecl  ::= Ident "=" RightExp ;
+
+-- variables block declaration (cannot be empty)
+rules                           VariablesBlock ::= VarKW [VariableDeclBlock] ; -- VariablesBlock. 
+
+-- if i use VarKW I need to declare at least 1 variable
+terminator nonempty VariableDeclBlock  ";" ;
+-- Declaring a function, i don't want always to declare a variable
+separator VariableDeclFunc  ";" ;
+
+-- Variables Declaration inside var block
+VariableDeclarationInsideBlock. VariableDeclBlock   ::= [VariableName] ":" Type ;
+-- Variables Declaration inside function parenthesis 
+-- Exist the possibility to declare a function without paranthesis, if it has no parameters
+rules                           DeclarationFunc     ::= | "(" [VariableDeclFunc] ")" ;
+VariableDeclarationInsideF.     VariableDeclFunc    ::= [VariableName] ":" Type ; 
+separator nonempty VariableName "," ;
+
+VariableDeclarationNames.       VariableName   ::= Ident ;
+
 -- function and procedure declaration
--- NB no need to add {- empty -} since [Rule] already includes {- empty -} option
-FunctionDeclaration.            FunctionDecl   ::= FunctionKW  Ident "(" [VariableDecl] ")" ":" Type ";" InnerBlockWithDecl ;
-ProcedureDeclaration.           ProcedureDecl  ::= ProcedureKW Ident "(" [VariableDecl] ")" ";" InnerBlockWithDecl ;
-terminator FunctionDecl  ";" ;
-terminator ProcedureDecl ";" ;
-terminator VariableDecl  ";" ;
-terminator VariablesBlock  ""  ;
+FunctionDeclaration.            FunctionDecl   ::= FunctionKW  Ident DeclarationFunc ":" Type ";" InnerBlockWithDecl ";" ;
+ProcedureDeclaration.           ProcedureDecl  ::= ProcedureKW Ident DeclarationFunc ";" InnerBlockWithDecl ";" ;
 
--- NB In Pascal is not mandatory to place ';' after end keyword --> begin [...] end  |  begin [...] end ; 
--- BUT is mandatory to place '.' after the end keyword of the outer-most end of the main block of any module (program, unit or library) --> begin [...] end .
+FunctionCall.                   FunctionCall   ::= Ident "(" [RightExp] ")" ;
+ProcedureCall.                  ProcedureCall  ::= Ident "(" [RightExp] ")" ;
+separator RightExp "," ;
 
--- main block: mandatory "."
--- MainBlock.                       MainBlock          ::= OuterBlockWithDecl "." ;
--- blocks with non-mandatory ";"
---rules                            OuterBlockWithDecl ::= InnerBlockWithDecl | InnerBlockWithDecl ";" ; --OuterBlockWithDeclaration.
---rules                            OuterBlockExec     ::= InnerBlockExec     | InnerBlockExec ";" ;     --OuterBlockOnlyExecution.
--- block structure
-InnerBlockWithDeclaration.       InnerBlockWithDecl ::= Declarations InnerBlockExec ;
-InnerBlockOnlyExecution.         InnerBlockExec     ::= BeginKW NonMandatoryTerminator [Statement] EndKW ;
-rules                            NonMandatoryTerminator ::= {- empty -} | ";" ;
-separator InnerBlockExec ";" ;
+
 
 -- TODO
 -- Statement
--- RExp
+-- LExp
 
 StatementBlock.                 Statement       ::= InnerBlockExec ;
 StatementIf.                    Statement       ::= If ;
-StatementTemp.                  Statement       ::= Assign ;
+StatementAssign.                Statement       ::= Assign ;
+StatementFunctionCall.          Statement       ::= FunctionCall ;
+StatementProcedureCall.         Statement       ::= ProcedureCall ;
+StatementWrite.                 Statement       ::= WritePrimitive ;
+StatementRead.                  Statement       ::= ReadPrimitive ;
 
-RExpTemp.                       RExp            ::= "0" ;
+VariableAssignment.             Assign          ::= LeftExp ":=" RightExp;
 
-VariableAssignment.             Assign          ::= Ident ":=" RExp;
+-- Right Expression
+coercions RightExp 7 ;
+RightExpOr.                     RightExp        ::= RightExp "or" RightExp1 ;
+
+RightExpAnd.                    RightExp1       ::= RightExp1 "and" RightExp2 ;
+
+RightExpGreater.                RightExp2       ::= RightExp2 ">" RightExp3 ;
+RightExpLess.                   RightExp2       ::= RightExp2 "<" RightExp3 ;
+RightExpGreaterEqual.           RightExp2       ::= RightExp2 ">=" RightExp3 ;
+RightExpLessEqual.              RightExp2       ::= RightExp2 "<=" RightExp3 ;
+RightExpEqual.                  RightExp2       ::= RightExp2 "=" RightExp3 ;
+
+RightExpPlus.                   RightExp3       ::= RightExp3 "+" RightExp4 ;
+RightExpMinus.                  RightExp3       ::= RightExp3 "-" RightExp4 ;
+
+RightExpTimes.                  RightExp4       ::= RightExp4 "*" RightExp5 ;
+RightExpDivide.                 RightExp4       ::= RightExp4 "/" RightExp5 ;
+RightExpMod.                    RightExp4       ::= RightExp4 "mod" RightExp5 ;
+RightExpDiv.                    RightExp4       ::= RightExp4 "div" RightExp5 ;
+
+RightExpPower.                  RightExp5       ::= RightExp5 "**" RightExp6 ;
+
+RightExpNot.                    RightExp6       ::= "not" RightExp7 ;
+RightExpMinusUnary.             RightExp6       ::= "-" RightExp7 ;
+RightExpPlusUnary.              RightExp6       ::= "+" RightExp7 ;
+
+RightExpIdent.                  RightExp7       ::= Ident ;
+RightExpInteger.                RightExp7       ::= Integer ;
+RightExpReal.                   RightExp7       ::= Double ;
+RightExpBoolean.                RightExp7       ::= Boolean ;
+RightExpChar.                   RightExp7       ::= Char ;
+RightExpString.                 RightExp7       ::= String ;
+RightExpFunctionCall.           RightExp7       ::= FunctionCall ;
+
+-- Left Expression
+LeftExp.                        LeftExp         ::= Ident ;
 
 
-separator Statement ";" ;
-
-IfDefinition.                   If              ::= IfKW RExp ThenKW Statement Else ;
+IfDefinition.                   If              ::= IfKW RightExp ThenKW Statement Else ; --IfDefinition
 rules                           Else            ::= {- empty -} | ElseKW Statement ; --ElseDefinition
 
--- types definition
+-- basic types definition
 rules                           Type            ::= BaseType | CompositeType ; --AnyType
 rules                           BaseType        ::= IntKW | RealKW | CharKW | BoolKW | StringKW ; --BaseType
+rules                           Boolean         ::= "true" | "false" ;
+
+-- complex types definition
 -- actually for arrays should be: array [0..5, 1..6] of anytype
 -- semplication: array [5] of basetype (NB note that is case insensitive)
 CompTypeArray.                  CompositeType   ::= ArrayKW "[" Integer "]" "of" BaseType ;
 CompTypePointer.                CompositeType   ::= "^" Type ;
 
-
-
+-- Read and write primitives definition
+WriteInt.                       WritePrimitive  ::= "writeInt" "(" RightExp ")" ;
+WriteReal.                      WritePrimitive  ::= "writeReal" "(" RightExp ")" ;
+WriteChar.                      WritePrimitive  ::= "writeChar" "(" RightExp ")" ;
+WriteString.                    WritePrimitive  ::= "writeString" "(" RightExp ")" ;
+ReadInt.                        ReadPrimitive   ::= "readInt" "(" LeftExp ")" ;
+ReadReal.                       ReadPrimitive   ::= "readReal" "(" LeftExp ")" ;
+ReadChar.                       ReadPrimitive   ::= "readChar" "(" LeftExp ")" ;
+ReadString.                     ReadPrimitive   ::= "readString" "(" LeftExp ")" ;

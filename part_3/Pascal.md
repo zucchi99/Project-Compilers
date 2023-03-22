@@ -169,14 +169,19 @@ Purtroppo BNFC non supporta i commenti nested.
 
 ### Priorità
 
-In Pascal le operazioni vengono eseguite secondo la seguente priorità, includendo le parentesi e le funzioni:
+In Pascal, an expression is made up of operands and operators, and it can be evaluated to produce a value. When evaluating an expression, the order in which the operations are performed is determined by the operator precedence and associativity.
 
-1. `^`
-1. `*`, `/`, `div`, `mod`, `and`
-1. `+`, `-`, `or`, `xor`
-1. `=`, `<>`, `<`, `<=`, `>`, `>=`
-1. `not`
-1. `and` e `or`
+The following is a list of the operator priorities in Pascal, listed from highest to lowest:
+
+1. Parentheses - Expressions inside parentheses are evaluated first.
+1. Unary operators - Unary operators (e.g., +, -, not) are evaluated next. They operate on a single operand.
+1. Multiplicative operators - Multiplicative operators (e.g., *, /, div, mod, and and) are evaluated next. They operate on two operands.
+1. Additive operators - Additive operators (e.g., +, -, or, xor) are evaluated next. They operate on two operands.
+1. Relational operators - Relational operators (e.g., <, >, <=, >=, =, <>) are evaluated next. They compare two operands and produce a Boolean result.
+1. Boolean operators - Boolean operators (e.g., and, or, xor) are evaluated next. They operate on two Boolean operands and produce a Boolean result.
+1. Assignment operator - The assignment operator (=) is evaluated last. It assigns the value of the right-hand operand to the left-hand operand.
+
+It's important to note that the order of evaluation can be overridden by using parentheses to group sub-expressions.
 
 Dove il livello 1 ha la priorità più alta.
 
