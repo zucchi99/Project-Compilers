@@ -8,7 +8,8 @@ comment "(*" "*)";
 -- entrypoints: set of initial states of the grammar
 entrypoints Program;
 
--- Pascal keywords
+-- __________ PASCAL KEYWORDS __________
+
 KeyWordBegin.                   BeginKW         ::= "begin" ;
 KeyWordEnd.                     EndKW           ::= "end" ;
 KeyWordProgram.                 ProgramKW       ::= "program" ;
@@ -35,7 +36,9 @@ KeyWordTypeArray.               ArrayKW         ::= "array";
 -- program definition
 ProgramStart.                   Program      ::= ProgramKW Ident ";" InnerBlockWithDecl "." ;
 
--- block structure
+-- __________ BLOCK STRUCTURE __________
+
+-- block structure with declarations
 InnerBlockWithDeclaration.       InnerBlockWithDecl ::= [Declaration] InnerBlockExec ;
 separator Declaration "" ;
 
@@ -48,10 +51,14 @@ rules                            NonMandatoryTerminator ::= {- empty -} | ";" ;
 -- variables, functions, procedures
 rules                           Declaration   ::= CostantsBlock | VariablesBlock | FunctionDecl | ProcedureDecl ; --Declaration
 
+-- __________ COSTANTS DECLARATIONS __________
+
 -- costants block declaration (cannot be empty)
 rules                           CostantsBlock ::= ConstKW [ConstantDecl] ; -- CostantsBlock
 terminator nonempty ConstantDecl ";" ;
 ConstantDeclaration.            ConstantDecl  ::= Ident "=" RightExp ;
+
+-- __________ VARIABLES DECLARATIONS __________
 
 -- variables block declaration (cannot be empty)
 rules                           VariablesBlock ::= VarKW [VariableDeclBlock] ; -- VariablesBlock. 
@@ -70,6 +77,8 @@ rules                           DeclarationFunc     ::= {- empty -} | "(" [Varia
 VariableDeclarationInsideF.     VariableDeclFunc    ::= [Ident] ":" Type ; 
 separator nonempty Ident "," ;
 
+-- __________ FUNCTION AND PROCEDURE DECLARATIONS __________
+
 -- function and procedure declaration
 FunctionDeclaration.            FunctionDecl   ::= FunctionKW  Ident DeclarationFunc ":" Type ";" InnerBlockWithDecl ";" ;
 ProcedureDeclaration.           ProcedureDecl  ::= ProcedureKW Ident DeclarationFunc ";" InnerBlockWithDecl ";" ;
@@ -78,10 +87,7 @@ FunctionCall.                   FunctionCall   ::= Ident "(" [RightExp] ")" ;
 ProcedureCall.                  ProcedureCall  ::= Ident "(" [RightExp] ")" ;
 separator RightExp "," ;
 
-
-
--- TODO
--- If, while, do..while, for, switch
+-- __________ STATEMENTS __________
 
 StatementBlock.                 Statement       ::= InnerBlockExec ;
 StatementIf.                    Statement       ::= IfKW RightExp ThenKW Statement ElseBlock ;
@@ -98,7 +104,8 @@ rules                           ElseBlock       ::= {- empty -} | ElseKW Stateme
 
 VariableAssignment.             Assign          ::= LeftExp ":=" RightExp;
 
--- Right Expression
+-- __________ RIGHT EXPRESSIONS __________
+
 coercions RightExp 7 ;
 RightExpOr.                     RightExp        ::= RightExp "or" RightExp1 ;
 
@@ -132,11 +139,14 @@ RightExpString.                 RightExp7       ::= String ;
 RightExpFunctionCall.           RightExp7       ::= FunctionCall ;
 RightExpCopy.                   RightExp7       ::= LeftExp ;
 
--- Left Expression
+-- __________ LEFT EXPRESSIONS __________
+
 LeftExpIdent.                   LeftExp         ::= Ident ;
 LeftExpArrayAccess.             LeftExp         ::= LeftExp "[" [RightExp] "]" ;
 LeftExpPointerValue.            LeftExp         ::= LeftExp "^" ;
 LeftExpPointerAddress.          LeftExp         ::= "@" LeftExp ;
+
+-- __________ TYPES __________
 
 -- basic types definition
 rules                           Type            ::= BaseType | CompositeType ; --AnyType
@@ -154,7 +164,8 @@ ArrayDeclarationDim.            ArrayDeclarationDim     ::= RightExp ".." RightE
 -- Pointer of pointer in Pascal is not allowed, but here is allowed, BECAUSE THIS IS NOT PASCAL
 CompTypePointer.                CompositeType   ::= "^" Type ;
 
--- Read and write primitives definition
+-- __________ READ AND WRITE __________
+
 WriteInt.                       WritePrimitive  ::= "writeInt" "(" RightExp ")" ;
 WriteReal.                      WritePrimitive  ::= "writeReal" "(" RightExp ")" ;
 WriteChar.                      WritePrimitive  ::= "writeChar" "(" RightExp ")" ;
