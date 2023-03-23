@@ -19,6 +19,12 @@ KeyWordConst.                   ConstKW         ::= "const" ;
 KeyWordIf.                      IfKW            ::= "if" ;
 KeyWordThen.                    ThenKW          ::= "then" ;
 KeyWordElse.                    ElseKW          ::= "else" ;
+KeyWordWhile.                   WhileKW         ::= "while" ;
+KeyWordFor.                     ForKW           ::= "for" ;
+KeyWordTo.                      ToKW            ::= "to" ;
+KeyWordDo.                      DoKW            ::= "do" ;
+KeyWordRepeat.                  RepeatKW        ::= "repeat" ;
+KeyWordUntil.                   UntilKW         ::= "until" ;
 KeyWordTypeInt.                 IntKW           ::= "integer";
 KeyWordTypeReal.                RealKW          ::= "real";
 KeyWordTypeChar.                CharKW          ::= "char";
@@ -56,14 +62,13 @@ terminator nonempty VariableDeclBlock  ";" ;
 separator VariableDeclFunc  ";" ;
 
 -- Variables Declaration inside var block
-VariableDeclarationInsideBlock. VariableDeclBlock   ::= [VariableName] ":" Type ;
+VariableDeclarationInsideBlock. VariableDeclBlock   ::= [Ident] ":" Type InitAssign ;
+rules                           InitAssign          ::= {- empty -} | "=" RightExp ;        
 -- Variables Declaration inside function parenthesis 
 -- Exist the possibility to declare a function without paranthesis, if it has no parameters
-rules                           DeclarationFunc     ::= | "(" [VariableDeclFunc] ")" ;
-VariableDeclarationInsideF.     VariableDeclFunc    ::= [VariableName] ":" Type ; 
-separator nonempty VariableName "," ;
-
-VariableDeclarationNames.       VariableName   ::= Ident ;
+rules                           DeclarationFunc     ::= {- empty -} | "(" [VariableDeclFunc] ")" ;
+VariableDeclarationInsideF.     VariableDeclFunc    ::= [Ident] ":" Type ; 
+separator nonempty Ident "," ;
 
 -- function and procedure declaration
 FunctionDeclaration.            FunctionDecl   ::= FunctionKW  Ident DeclarationFunc ":" Type ";" InnerBlockWithDecl ";" ;
@@ -76,16 +81,20 @@ separator RightExp "," ;
 
 
 -- TODO
--- Statement
--- LExp
+-- If, while, do..while, for, switch
 
 StatementBlock.                 Statement       ::= InnerBlockExec ;
-StatementIf.                    Statement       ::= If ;
+StatementIf.                    Statement       ::= IfKW RightExp ThenKW Statement ElseBlock ;
+StatementFor.                   Statement       ::= ForKW Assign ToKW RightExp DoKW Statement ;
+StatementWhile.                 Statement       ::= WhileKW RightExp DoKW Statement ;
+StatementRepeatUntil.           Statement       ::= RepeatKW [Statement] UntilKW RightExp ;
 StatementAssign.                Statement       ::= Assign ;
 StatementFunctionCall.          Statement       ::= FunctionCall ;
 StatementProcedureCall.         Statement       ::= ProcedureCall ;
 StatementWrite.                 Statement       ::= WritePrimitive ;
 StatementRead.                  Statement       ::= ReadPrimitive ;
+
+rules                           ElseBlock       ::= {- empty -} | ElseKW Statement ; --ElseDefinition
 
 VariableAssignment.             Assign          ::= LeftExp ":=" RightExp;
 
@@ -115,20 +124,19 @@ RightExpNot.                    RightExp6       ::= "not" RightExp7 ;
 RightExpMinusUnary.             RightExp6       ::= "-" RightExp7 ;
 RightExpPlusUnary.              RightExp6       ::= "+" RightExp7 ;
 
-RightExpIdent.                  RightExp7       ::= Ident ;
 RightExpInteger.                RightExp7       ::= Integer ;
 RightExpReal.                   RightExp7       ::= Double ;
 RightExpBoolean.                RightExp7       ::= Boolean ;
 RightExpChar.                   RightExp7       ::= Char ;
 RightExpString.                 RightExp7       ::= String ;
 RightExpFunctionCall.           RightExp7       ::= FunctionCall ;
+RightExpCopy.                   RightExp7       ::= LeftExp ;
 
 -- Left Expression
-LeftExp.                        LeftExp         ::= Ident ;
-
-
-IfDefinition.                   If              ::= IfKW RightExp ThenKW Statement Else ; --IfDefinition
-rules                           Else            ::= {- empty -} | ElseKW Statement ; --ElseDefinition
+LeftExpIdent.                   LeftExp         ::= Ident ;
+LeftExpArrayAccess.             LeftExp         ::= LeftExp "[" [RightExp] "]" ;
+LeftExpPointerValue.            LeftExp         ::= LeftExp "^" ;
+LeftExpPointerAddress.          LeftExp         ::= "@" LeftExp ;
 
 -- basic types definition
 rules                           Type            ::= BaseType | CompositeType ; --AnyType
@@ -136,9 +144,14 @@ rules                           BaseType        ::= IntKW | RealKW | CharKW | Bo
 rules                           Boolean         ::= "true" | "false" ;
 
 -- complex types definition
--- actually for arrays should be: array [0..5, 1..6] of anytype
--- semplication: array [5] of basetype (NB note that is case insensitive)
-CompTypeArray.                  CompositeType   ::= ArrayKW "[" Integer "]" "of" BaseType ;
+-- actually for arrays should be: array [0..5, 1..6] if multi-dimensional
+CompTypeArray.                  CompositeType   ::= ArrayKW "[" [ArrayDeclarationDim] "]" "of" BaseType ;
+separator ArrayDeclarationDim "," ;
+-- The declaration with variable length is not allowed in Pascal, but here it's allowed
+-- we need to be sure that the right expression produce an integer
+ArrayDeclarationDim.            ArrayDeclarationDim     ::= RightExp ".." RightExp ;
+
+-- Pointer of pointer in Pascal is not allowed, but here is allowed, BECAUSE THIS IS NOT PASCAL
 CompTypePointer.                CompositeType   ::= "^" Type ;
 
 -- Read and write primitives definition

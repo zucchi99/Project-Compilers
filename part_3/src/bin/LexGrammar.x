@@ -21,7 +21,7 @@ $i = [$l $d _ ']     -- identifier character
 $u = [. \n]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \; | \. | \= | \: | \( | \) | \, | \: \= | \> | \< | \> \= | \< \= | \+ | \- | \* | \/ | \* \* | \[ | \] | \^
+   \; | \. | \= | \: | \( | \) | \, | \: \= | \> | \< | \> \= | \< \= | \+ | \- | \* | \/ | \* \* | \[ | \] | \^ | \@ | \. \.
 
 :-
 "//" [.]* ; -- Toss single line comments
@@ -107,7 +107,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "div" 27 (b "<=" 14 (b "-" 7 (b "**" 4 (b ")" 2 (b "(" 1 N N) (b "*" 3 N N)) (b "," 6 (b "+" 5 N N) N)) (b ":=" 11 (b "/" 9 (b "." 8 N N) (b ":" 10 N N)) (b "<" 13 (b ";" 12 N N) N))) (b "and" 21 (b "[" 18 (b ">" 16 (b "=" 15 N N) (b ">=" 17 N N)) (b "^" 20 (b "]" 19 N N) N)) (b "boolean" 24 (b "begin" 23 (b "array" 22 N N) N) (b "const" 26 (b "char" 25 N N) N)))) (b "readChar" 40 (b "mod" 34 (b "function" 31 (b "end" 29 (b "else" 28 N N) (b "false" 30 N N)) (b "integer" 33 (b "if" 32 N N) N)) (b "or" 37 (b "of" 36 (b "not" 35 N N) N) (b "program" 39 (b "procedure" 38 N N) N))) (b "true" 47 (b "real" 44 (b "readReal" 42 (b "readInt" 41 N N) (b "readString" 43 N N)) (b "then" 46 (b "string" 45 N N) N)) (b "writeInt" 50 (b "writeChar" 49 (b "var" 48 N N) N) (b "writeString" 52 (b "writeReal" 51 N N) N))))
+resWords = b "else" 31 (b "=" 16 (b "." 8 (b "**" 4 (b ")" 2 (b "(" 1 N N) (b "*" 3 N N)) (b "," 6 (b "+" 5 N N) (b "-" 7 N N))) (b ":=" 12 (b "/" 10 (b ".." 9 N N) (b ":" 11 N N)) (b "<" 14 (b ";" 13 N N) (b "<=" 15 N N)))) (b "array" 24 (b "[" 20 (b ">=" 18 (b ">" 17 N N) (b "@" 19 N N)) (b "^" 22 (b "]" 21 N N) (b "and" 23 N N))) (b "const" 28 (b "boolean" 26 (b "begin" 25 N N) (b "char" 27 N N)) (b "do" 30 (b "div" 29 N N) N)))) (b "readReal" 46 (b "not" 39 (b "function" 35 (b "false" 33 (b "end" 32 N N) (b "for" 34 N N)) (b "integer" 37 (b "if" 36 N N) (b "mod" 38 N N))) (b "program" 43 (b "or" 41 (b "of" 40 N N) (b "procedure" 42 N N)) (b "readInt" 45 (b "readChar" 44 N N) N))) (b "until" 54 (b "string" 50 (b "real" 48 (b "readString" 47 N N) (b "repeat" 49 N N)) (b "to" 52 (b "then" 51 N N) (b "true" 53 N N))) (b "writeInt" 58 (b "while" 56 (b "var" 55 N N) (b "writeChar" 57 N N)) (b "writeString" 60 (b "writeReal" 59 N N) N))))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 

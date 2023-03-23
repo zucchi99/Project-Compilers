@@ -42,13 +42,15 @@ The set of reserved words is the set of terminals appearing in the grammar. Thos
 
 The reserved words used in grammar are the following:
   | ``and`` | ``array`` | ``begin`` | ``boolean``
-  | ``char`` | ``const`` | ``div`` | ``else``
-  | ``end`` | ``false`` | ``function`` | ``if``
-  | ``integer`` | ``mod`` | ``not`` | ``of``
-  | ``or`` | ``procedure`` | ``program`` | ``readChar``
-  | ``readInt`` | ``readReal`` | ``readString`` | ``real``
-  | ``string`` | ``then`` | ``true`` | ``var``
-  | ``writeChar`` | ``writeInt`` | ``writeReal`` | ``writeString``
+  | ``char`` | ``const`` | ``div`` | ``do``
+  | ``else`` | ``end`` | ``false`` | ``for``
+  | ``function`` | ``if`` | ``integer`` | ``mod``
+  | ``not`` | ``of`` | ``or`` | ``procedure``
+  | ``program`` | ``readChar`` | ``readInt`` | ``readReal``
+  | ``readString`` | ``real`` | ``repeat`` | ``string``
+  | ``then`` | ``to`` | ``true`` | ``until``
+  | ``var`` | ``while`` | ``writeChar`` | ``writeInt``
+  | ``writeReal`` | ``writeString`` |  |
 
 The symbols used in grammar are the following:
   | ; | . | = | :
@@ -56,6 +58,7 @@ The symbols used in grammar are the following:
   | > | < | >= | <=
   | + | - | * | /
   | ** | [ | ] | ^
+  | @ | .. |  |
 
 ===Comments===
 Single-line comments begin with //.Multiple-line comments are  enclosed with { and }, (* and *).
@@ -76,6 +79,12 @@ All other symbols are terminals.
   | //IfKW// | -> | ``if``
   | //ThenKW// | -> | ``then``
   | //ElseKW// | -> | ``else``
+  | //WhileKW// | -> | ``while``
+  | //ForKW// | -> | ``for``
+  | //ToKW// | -> | ``to``
+  | //DoKW// | -> | ``do``
+  | //RepeatKW// | -> | ``repeat``
+  | //UntilKW// | -> | ``until``
   | //IntKW// | -> | ``integer``
   | //RealKW// | -> | ``real``
   | //CharKW// | -> | ``char``
@@ -106,13 +115,14 @@ All other symbols are terminals.
   | //[VariableDeclFunc]// | -> | **eps**
   |  |  **|**  | //VariableDeclFunc//
   |  |  **|**  | //VariableDeclFunc// ``;`` //[VariableDeclFunc]//
-  | //VariableDeclBlock// | -> | //[VariableName]// ``:`` //Type//
+  | //VariableDeclBlock// | -> | //[Ident]// ``:`` //Type// //InitAssign//
+  | //InitAssign// | -> | **eps**
+  |  |  **|**  | ``=`` //RightExp//
   | //DeclarationFunc// | -> | **eps**
   |  |  **|**  | ``(`` //[VariableDeclFunc]// ``)``
-  | //VariableDeclFunc// | -> | //[VariableName]// ``:`` //Type//
-  | //[VariableName]// | -> | //VariableName//
-  |  |  **|**  | //VariableName// ``,`` //[VariableName]//
-  | //VariableName// | -> | //Ident//
+  | //VariableDeclFunc// | -> | //[Ident]// ``:`` //Type//
+  | //[Ident]// | -> | //Ident//
+  |  |  **|**  | //Ident// ``,`` //[Ident]//
   | //FunctionDecl// | -> | //FunctionKW// //Ident// //DeclarationFunc// ``:`` //Type// ``;`` //InnerBlockWithDecl// ``;``
   | //ProcedureDecl// | -> | //ProcedureKW// //Ident// //DeclarationFunc// ``;`` //InnerBlockWithDecl// ``;``
   | //FunctionCall// | -> | //Ident// ``(`` //[RightExp]// ``)``
@@ -121,12 +131,17 @@ All other symbols are terminals.
   |  |  **|**  | //RightExp//
   |  |  **|**  | //RightExp// ``,`` //[RightExp]//
   | //Statement// | -> | //InnerBlockExec//
-  |  |  **|**  | //If//
+  |  |  **|**  | //IfKW// //RightExp// //ThenKW// //Statement// //ElseBlock//
+  |  |  **|**  | //ForKW// //Assign// //ToKW// //RightExp// //DoKW// //Statement//
+  |  |  **|**  | //WhileKW// //RightExp// //DoKW// //Statement//
+  |  |  **|**  | //RepeatKW// //[Statement]// //UntilKW// //RightExp//
   |  |  **|**  | //Assign//
   |  |  **|**  | //FunctionCall//
   |  |  **|**  | //ProcedureCall//
   |  |  **|**  | //WritePrimitive//
   |  |  **|**  | //ReadPrimitive//
+  | //ElseBlock// | -> | **eps**
+  |  |  **|**  | //ElseKW// //Statement//
   | //Assign// | -> | //LeftExp// ``:=`` //RightExp//
   | //RightExp// | -> | //RightExp1//
   |  |  **|**  | //RightExp// ``or`` //RightExp1//
@@ -153,17 +168,17 @@ All other symbols are terminals.
   |  |  **|**  | ``-`` //RightExp7//
   |  |  **|**  | ``+`` //RightExp7//
   | //RightExp7// | -> | ``(`` //RightExp// ``)``
-  |  |  **|**  | //Ident//
   |  |  **|**  | //Integer//
   |  |  **|**  | //Double//
   |  |  **|**  | //Boolean//
   |  |  **|**  | //Char//
   |  |  **|**  | //String//
   |  |  **|**  | //FunctionCall//
+  |  |  **|**  | //LeftExp//
   | //LeftExp// | -> | //Ident//
-  | //If// | -> | //IfKW// //RightExp// //ThenKW// //Statement// //Else//
-  | //Else// | -> | **eps**
-  |  |  **|**  | //ElseKW// //Statement//
+  |  |  **|**  | //LeftExp// ``[`` //[RightExp]// ``]``
+  |  |  **|**  | //LeftExp// ``^``
+  |  |  **|**  | ``@`` //LeftExp//
   | //Type// | -> | //BaseType//
   |  |  **|**  | //CompositeType//
   | //BaseType// | -> | //IntKW//
@@ -173,8 +188,12 @@ All other symbols are terminals.
   |  |  **|**  | //StringKW//
   | //Boolean// | -> | ``true``
   |  |  **|**  | ``false``
-  | //CompositeType// | -> | //ArrayKW// ``[`` //Integer// ``]`` ``of`` //BaseType//
+  | //CompositeType// | -> | //ArrayKW// ``[`` //[ArrayDeclarationDim]// ``]`` ``of`` //BaseType//
   |  |  **|**  | ``^`` //Type//
+  | //[ArrayDeclarationDim]// | -> | **eps**
+  |  |  **|**  | //ArrayDeclarationDim//
+  |  |  **|**  | //ArrayDeclarationDim// ``,`` //[ArrayDeclarationDim]//
+  | //ArrayDeclarationDim// | -> | //RightExp// ``..`` //RightExp//
   | //WritePrimitive// | -> | ``writeInt`` ``(`` //RightExp// ``)``
   |  |  **|**  | ``writeReal`` ``(`` //RightExp// ``)``
   |  |  **|**  | ``writeChar`` ``(`` //RightExp// ``)``

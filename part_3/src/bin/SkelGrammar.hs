@@ -42,6 +42,24 @@ transThenKW x = case x of
 transElseKW :: ElseKW -> Result
 transElseKW x = case x of
   KeyWordElse -> failure x
+transWhileKW :: WhileKW -> Result
+transWhileKW x = case x of
+  KeyWordWhile -> failure x
+transForKW :: ForKW -> Result
+transForKW x = case x of
+  KeyWordFor -> failure x
+transToKW :: ToKW -> Result
+transToKW x = case x of
+  KeyWordTo -> failure x
+transDoKW :: DoKW -> Result
+transDoKW x = case x of
+  KeyWordDo -> failure x
+transRepeatKW :: RepeatKW -> Result
+transRepeatKW x = case x of
+  KeyWordRepeat -> failure x
+transUntilKW :: UntilKW -> Result
+transUntilKW x = case x of
+  KeyWordUntil -> failure x
 transIntKW :: IntKW -> Result
 transIntKW x = case x of
   KeyWordTypeInt -> failure x
@@ -90,17 +108,18 @@ transVariablesBlock x = case x of
   VariablesBlock1 varkw variabledeclblocks -> failure x
 transVariableDeclBlock :: VariableDeclBlock -> Result
 transVariableDeclBlock x = case x of
-  VariableDeclarationInsideBlock variablenames type_ -> failure x
+  VariableDeclarationInsideBlock idents type_ initassign -> failure x
+transInitAssign :: InitAssign -> Result
+transInitAssign x = case x of
+  InitAssign1 -> failure x
+  InitAssign2 rightexp -> failure x
 transDeclarationFunc :: DeclarationFunc -> Result
 transDeclarationFunc x = case x of
   DeclarationFunc1 -> failure x
   DeclarationFunc2 variabledeclfuncs -> failure x
 transVariableDeclFunc :: VariableDeclFunc -> Result
 transVariableDeclFunc x = case x of
-  VariableDeclarationInsideF variablenames type_ -> failure x
-transVariableName :: VariableName -> Result
-transVariableName x = case x of
-  VariableDeclarationNames ident -> failure x
+  VariableDeclarationInsideF idents type_ -> failure x
 transFunctionDecl :: FunctionDecl -> Result
 transFunctionDecl x = case x of
   FunctionDeclaration functionkw ident declarationfunc type_ innerblockwithdecl -> failure x
@@ -116,12 +135,19 @@ transProcedureCall x = case x of
 transStatement :: Statement -> Result
 transStatement x = case x of
   StatementBlock innerblockexec -> failure x
-  StatementIf if_ -> failure x
+  StatementIf ifkw rightexp thenkw statement elseblock -> failure x
+  StatementFor forkw assign tokw rightexp dokw statement -> failure x
+  StatementWhile whilekw rightexp dokw statement -> failure x
+  StatementRepeatUntil repeatkw statements untilkw rightexp -> failure x
   StatementAssign assign -> failure x
   StatementFunctionCall functioncall -> failure x
   StatementProcedureCall procedurecall -> failure x
   StatementWrite writeprimitive -> failure x
   StatementRead readprimitive -> failure x
+transElseBlock :: ElseBlock -> Result
+transElseBlock x = case x of
+  ElseBlock1 -> failure x
+  ElseBlock2 elsekw statement -> failure x
 transAssign :: Assign -> Result
 transAssign x = case x of
   VariableAssignment leftexp rightexp -> failure x
@@ -144,23 +170,19 @@ transRightExp x = case x of
   RightExpNot rightexp -> failure x
   RightExpMinusUnary rightexp -> failure x
   RightExpPlusUnary rightexp -> failure x
-  RightExpIdent ident -> failure x
   RightExpInteger integer -> failure x
   RightExpReal double -> failure x
   RightExpBoolean boolean -> failure x
   RightExpChar char -> failure x
   RightExpString string -> failure x
   RightExpFunctionCall functioncall -> failure x
+  RightExpCopy leftexp -> failure x
 transLeftExp :: LeftExp -> Result
 transLeftExp x = case x of
-  LeftExp ident -> failure x
-transIf :: If -> Result
-transIf x = case x of
-  IfDefinition ifkw rightexp thenkw statement else_ -> failure x
-transElse :: Else -> Result
-transElse x = case x of
-  Else1 -> failure x
-  Else2 elsekw statement -> failure x
+  LeftExpIdent ident -> failure x
+  LeftExpArrayAccess leftexp rightexps -> failure x
+  LeftExpPointerValue leftexp -> failure x
+  LeftExpPointerAddress leftexp -> failure x
 transType :: Type -> Result
 transType x = case x of
   TypeBaseType basetype -> failure x
@@ -178,8 +200,11 @@ transBoolean x = case x of
   Boolean_false -> failure x
 transCompositeType :: CompositeType -> Result
 transCompositeType x = case x of
-  CompTypeArray arraykw integer basetype -> failure x
+  CompTypeArray arraykw arraydeclarationdims basetype -> failure x
   CompTypePointer type_ -> failure x
+transArrayDeclarationDim :: ArrayDeclarationDim -> Result
+transArrayDeclarationDim x = case x of
+  ArrayDeclarationDim rightexp1 rightexp2 -> failure x
 transWritePrimitive :: WritePrimitive -> Result
 transWritePrimitive x = case x of
   WriteInt rightexp -> failure x

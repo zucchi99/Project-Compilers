@@ -36,6 +36,24 @@ data ThenKW = KeyWordThen
 data ElseKW = KeyWordElse
   deriving (Eq, Ord, Show, Read)
 
+data WhileKW = KeyWordWhile
+  deriving (Eq, Ord, Show, Read)
+
+data ForKW = KeyWordFor
+  deriving (Eq, Ord, Show, Read)
+
+data ToKW = KeyWordTo
+  deriving (Eq, Ord, Show, Read)
+
+data DoKW = KeyWordDo
+  deriving (Eq, Ord, Show, Read)
+
+data RepeatKW = KeyWordRepeat
+  deriving (Eq, Ord, Show, Read)
+
+data UntilKW = KeyWordUntil
+  deriving (Eq, Ord, Show, Read)
+
 data IntKW = KeyWordTypeInt
   deriving (Eq, Ord, Show, Read)
 
@@ -86,18 +104,17 @@ data VariablesBlock = VariablesBlock1 VarKW [VariableDeclBlock]
   deriving (Eq, Ord, Show, Read)
 
 data VariableDeclBlock
-    = VariableDeclarationInsideBlock [VariableName] Type
+    = VariableDeclarationInsideBlock [Ident] Type InitAssign
+  deriving (Eq, Ord, Show, Read)
+
+data InitAssign = InitAssign1 | InitAssign2 RightExp
   deriving (Eq, Ord, Show, Read)
 
 data DeclarationFunc
     = DeclarationFunc1 | DeclarationFunc2 [VariableDeclFunc]
   deriving (Eq, Ord, Show, Read)
 
-data VariableDeclFunc
-    = VariableDeclarationInsideF [VariableName] Type
-  deriving (Eq, Ord, Show, Read)
-
-data VariableName = VariableDeclarationNames Ident
+data VariableDeclFunc = VariableDeclarationInsideF [Ident] Type
   deriving (Eq, Ord, Show, Read)
 
 data FunctionDecl
@@ -116,12 +133,18 @@ data ProcedureCall = ProcedureCall Ident [RightExp]
 
 data Statement
     = StatementBlock InnerBlockExec
-    | StatementIf If
+    | StatementIf IfKW RightExp ThenKW Statement ElseBlock
+    | StatementFor ForKW Assign ToKW RightExp DoKW Statement
+    | StatementWhile WhileKW RightExp DoKW Statement
+    | StatementRepeatUntil RepeatKW [Statement] UntilKW RightExp
     | StatementAssign Assign
     | StatementFunctionCall FunctionCall
     | StatementProcedureCall ProcedureCall
     | StatementWrite WritePrimitive
     | StatementRead ReadPrimitive
+  deriving (Eq, Ord, Show, Read)
+
+data ElseBlock = ElseBlock1 | ElseBlock2 ElseKW Statement
   deriving (Eq, Ord, Show, Read)
 
 data Assign = VariableAssignment LeftExp RightExp
@@ -145,22 +168,20 @@ data RightExp
     | RightExpNot RightExp
     | RightExpMinusUnary RightExp
     | RightExpPlusUnary RightExp
-    | RightExpIdent Ident
     | RightExpInteger Integer
     | RightExpReal Double
     | RightExpBoolean Boolean
     | RightExpChar Char
     | RightExpString String
     | RightExpFunctionCall FunctionCall
+    | RightExpCopy LeftExp
   deriving (Eq, Ord, Show, Read)
 
-data LeftExp = LeftExp Ident
-  deriving (Eq, Ord, Show, Read)
-
-data If = IfDefinition IfKW RightExp ThenKW Statement Else
-  deriving (Eq, Ord, Show, Read)
-
-data Else = Else1 | Else2 ElseKW Statement
+data LeftExp
+    = LeftExpIdent Ident
+    | LeftExpArrayAccess LeftExp [RightExp]
+    | LeftExpPointerValue LeftExp
+    | LeftExpPointerAddress LeftExp
   deriving (Eq, Ord, Show, Read)
 
 data Type = TypeBaseType BaseType | TypeCompositeType CompositeType
@@ -178,7 +199,11 @@ data Boolean = Boolean_true | Boolean_false
   deriving (Eq, Ord, Show, Read)
 
 data CompositeType
-    = CompTypeArray ArrayKW Integer BaseType | CompTypePointer Type
+    = CompTypeArray ArrayKW [ArrayDeclarationDim] BaseType
+    | CompTypePointer Type
+  deriving (Eq, Ord, Show, Read)
+
+data ArrayDeclarationDim = ArrayDeclarationDim RightExp RightExp
   deriving (Eq, Ord, Show, Read)
 
 data WritePrimitive

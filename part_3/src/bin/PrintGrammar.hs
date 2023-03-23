@@ -90,6 +90,8 @@ instance Print Double where
 
 instance Print AbsGrammar.Ident where
   prt _ (AbsGrammar.Ident i) = doc (showString i)
+  prtList _ [x] = concatD [prt 0 x]
+  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print AbsGrammar.BeginKW where
   prt i e = case e of
@@ -130,6 +132,30 @@ instance Print AbsGrammar.ThenKW where
 instance Print AbsGrammar.ElseKW where
   prt i e = case e of
     AbsGrammar.KeyWordElse -> prPrec i 0 (concatD [doc (showString "else")])
+
+instance Print AbsGrammar.WhileKW where
+  prt i e = case e of
+    AbsGrammar.KeyWordWhile -> prPrec i 0 (concatD [doc (showString "while")])
+
+instance Print AbsGrammar.ForKW where
+  prt i e = case e of
+    AbsGrammar.KeyWordFor -> prPrec i 0 (concatD [doc (showString "for")])
+
+instance Print AbsGrammar.ToKW where
+  prt i e = case e of
+    AbsGrammar.KeyWordTo -> prPrec i 0 (concatD [doc (showString "to")])
+
+instance Print AbsGrammar.DoKW where
+  prt i e = case e of
+    AbsGrammar.KeyWordDo -> prPrec i 0 (concatD [doc (showString "do")])
+
+instance Print AbsGrammar.RepeatKW where
+  prt i e = case e of
+    AbsGrammar.KeyWordRepeat -> prPrec i 0 (concatD [doc (showString "repeat")])
+
+instance Print AbsGrammar.UntilKW where
+  prt i e = case e of
+    AbsGrammar.KeyWordUntil -> prPrec i 0 (concatD [doc (showString "until")])
 
 instance Print AbsGrammar.IntKW where
   prt i e = case e of
@@ -212,9 +238,14 @@ instance Print [AbsGrammar.VariableDeclFunc] where
 
 instance Print AbsGrammar.VariableDeclBlock where
   prt i e = case e of
-    AbsGrammar.VariableDeclarationInsideBlock variablenames type_ -> prPrec i 0 (concatD [prt 0 variablenames, doc (showString ":"), prt 0 type_])
+    AbsGrammar.VariableDeclarationInsideBlock ids type_ initassign -> prPrec i 0 (concatD [prt 0 ids, doc (showString ":"), prt 0 type_, prt 0 initassign])
   prtList _ [x] = concatD [prt 0 x, doc (showString ";")]
   prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
+
+instance Print AbsGrammar.InitAssign where
+  prt i e = case e of
+    AbsGrammar.InitAssign1 -> prPrec i 0 (concatD [])
+    AbsGrammar.InitAssign2 rightexp -> prPrec i 0 (concatD [doc (showString "="), prt 0 rightexp])
 
 instance Print AbsGrammar.DeclarationFunc where
   prt i e = case e of
@@ -223,19 +254,13 @@ instance Print AbsGrammar.DeclarationFunc where
 
 instance Print AbsGrammar.VariableDeclFunc where
   prt i e = case e of
-    AbsGrammar.VariableDeclarationInsideF variablenames type_ -> prPrec i 0 (concatD [prt 0 variablenames, doc (showString ":"), prt 0 type_])
+    AbsGrammar.VariableDeclarationInsideF ids type_ -> prPrec i 0 (concatD [prt 0 ids, doc (showString ":"), prt 0 type_])
   prtList _ [] = concatD []
   prtList _ [x] = concatD [prt 0 x]
   prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
 
-instance Print [AbsGrammar.VariableName] where
+instance Print [AbsGrammar.Ident] where
   prt = prtList
-
-instance Print AbsGrammar.VariableName where
-  prt i e = case e of
-    AbsGrammar.VariableDeclarationNames id -> prPrec i 0 (concatD [prt 0 id])
-  prtList _ [x] = concatD [prt 0 x]
-  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print AbsGrammar.FunctionDecl where
   prt i e = case e of
@@ -259,7 +284,10 @@ instance Print [AbsGrammar.RightExp] where
 instance Print AbsGrammar.Statement where
   prt i e = case e of
     AbsGrammar.StatementBlock innerblockexec -> prPrec i 0 (concatD [prt 0 innerblockexec])
-    AbsGrammar.StatementIf if_ -> prPrec i 0 (concatD [prt 0 if_])
+    AbsGrammar.StatementIf ifkw rightexp thenkw statement elseblock -> prPrec i 0 (concatD [prt 0 ifkw, prt 0 rightexp, prt 0 thenkw, prt 0 statement, prt 0 elseblock])
+    AbsGrammar.StatementFor forkw assign tokw rightexp dokw statement -> prPrec i 0 (concatD [prt 0 forkw, prt 0 assign, prt 0 tokw, prt 0 rightexp, prt 0 dokw, prt 0 statement])
+    AbsGrammar.StatementWhile whilekw rightexp dokw statement -> prPrec i 0 (concatD [prt 0 whilekw, prt 0 rightexp, prt 0 dokw, prt 0 statement])
+    AbsGrammar.StatementRepeatUntil repeatkw statements untilkw rightexp -> prPrec i 0 (concatD [prt 0 repeatkw, prt 0 statements, prt 0 untilkw, prt 0 rightexp])
     AbsGrammar.StatementAssign assign -> prPrec i 0 (concatD [prt 0 assign])
     AbsGrammar.StatementFunctionCall functioncall -> prPrec i 0 (concatD [prt 0 functioncall])
     AbsGrammar.StatementProcedureCall procedurecall -> prPrec i 0 (concatD [prt 0 procedurecall])
@@ -268,6 +296,11 @@ instance Print AbsGrammar.Statement where
   prtList _ [] = concatD []
   prtList _ [x] = concatD [prt 0 x]
   prtList _ (x:xs) = concatD [prt 0 x, doc (showString ";"), prt 0 xs]
+
+instance Print AbsGrammar.ElseBlock where
+  prt i e = case e of
+    AbsGrammar.ElseBlock1 -> prPrec i 0 (concatD [])
+    AbsGrammar.ElseBlock2 elsekw statement -> prPrec i 0 (concatD [prt 0 elsekw, prt 0 statement])
 
 instance Print AbsGrammar.Assign where
   prt i e = case e of
@@ -292,29 +325,23 @@ instance Print AbsGrammar.RightExp where
     AbsGrammar.RightExpNot rightexp -> prPrec i 6 (concatD [doc (showString "not"), prt 7 rightexp])
     AbsGrammar.RightExpMinusUnary rightexp -> prPrec i 6 (concatD [doc (showString "-"), prt 7 rightexp])
     AbsGrammar.RightExpPlusUnary rightexp -> prPrec i 6 (concatD [doc (showString "+"), prt 7 rightexp])
-    AbsGrammar.RightExpIdent id -> prPrec i 7 (concatD [prt 0 id])
     AbsGrammar.RightExpInteger n -> prPrec i 7 (concatD [prt 0 n])
     AbsGrammar.RightExpReal d -> prPrec i 7 (concatD [prt 0 d])
     AbsGrammar.RightExpBoolean boolean -> prPrec i 7 (concatD [prt 0 boolean])
     AbsGrammar.RightExpChar c -> prPrec i 7 (concatD [prt 0 c])
     AbsGrammar.RightExpString str -> prPrec i 7 (concatD [prt 0 str])
     AbsGrammar.RightExpFunctionCall functioncall -> prPrec i 7 (concatD [prt 0 functioncall])
+    AbsGrammar.RightExpCopy leftexp -> prPrec i 7 (concatD [prt 0 leftexp])
   prtList _ [] = concatD []
   prtList _ [x] = concatD [prt 0 x]
   prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print AbsGrammar.LeftExp where
   prt i e = case e of
-    AbsGrammar.LeftExp id -> prPrec i 0 (concatD [prt 0 id])
-
-instance Print AbsGrammar.If where
-  prt i e = case e of
-    AbsGrammar.IfDefinition ifkw rightexp thenkw statement else_ -> prPrec i 0 (concatD [prt 0 ifkw, prt 0 rightexp, prt 0 thenkw, prt 0 statement, prt 0 else_])
-
-instance Print AbsGrammar.Else where
-  prt i e = case e of
-    AbsGrammar.Else1 -> prPrec i 0 (concatD [])
-    AbsGrammar.Else2 elsekw statement -> prPrec i 0 (concatD [prt 0 elsekw, prt 0 statement])
+    AbsGrammar.LeftExpIdent id -> prPrec i 0 (concatD [prt 0 id])
+    AbsGrammar.LeftExpArrayAccess leftexp rightexps -> prPrec i 0 (concatD [prt 0 leftexp, doc (showString "["), prt 0 rightexps, doc (showString "]")])
+    AbsGrammar.LeftExpPointerValue leftexp -> prPrec i 0 (concatD [prt 0 leftexp, doc (showString "^")])
+    AbsGrammar.LeftExpPointerAddress leftexp -> prPrec i 0 (concatD [doc (showString "@"), prt 0 leftexp])
 
 instance Print AbsGrammar.Type where
   prt i e = case e of
@@ -336,8 +363,18 @@ instance Print AbsGrammar.Boolean where
 
 instance Print AbsGrammar.CompositeType where
   prt i e = case e of
-    AbsGrammar.CompTypeArray arraykw n basetype -> prPrec i 0 (concatD [prt 0 arraykw, doc (showString "["), prt 0 n, doc (showString "]"), doc (showString "of"), prt 0 basetype])
+    AbsGrammar.CompTypeArray arraykw arraydeclarationdims basetype -> prPrec i 0 (concatD [prt 0 arraykw, doc (showString "["), prt 0 arraydeclarationdims, doc (showString "]"), doc (showString "of"), prt 0 basetype])
     AbsGrammar.CompTypePointer type_ -> prPrec i 0 (concatD [doc (showString "^"), prt 0 type_])
+
+instance Print [AbsGrammar.ArrayDeclarationDim] where
+  prt = prtList
+
+instance Print AbsGrammar.ArrayDeclarationDim where
+  prt i e = case e of
+    AbsGrammar.ArrayDeclarationDim rightexp1 rightexp2 -> prPrec i 0 (concatD [prt 0 rightexp1, doc (showString ".."), prt 0 rightexp2])
+  prtList _ [] = concatD []
+  prtList _ [x] = concatD [prt 0 x]
+  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print AbsGrammar.WritePrimitive where
   prt i e = case e of

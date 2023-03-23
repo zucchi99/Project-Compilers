@@ -18,7 +18,7 @@ begin
   a := 2;
   if x > 2 then
   begin
-  writeln ('Hello World 2');
+  writeln ("Hello World 2");
   end
   else
   begin

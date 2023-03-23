@@ -21,50 +21,58 @@ import ErrM
   ',' { PT _ (TS _ 6) }
   '-' { PT _ (TS _ 7) }
   '.' { PT _ (TS _ 8) }
-  '/' { PT _ (TS _ 9) }
-  ':' { PT _ (TS _ 10) }
-  ':=' { PT _ (TS _ 11) }
-  ';' { PT _ (TS _ 12) }
-  '<' { PT _ (TS _ 13) }
-  '<=' { PT _ (TS _ 14) }
-  '=' { PT _ (TS _ 15) }
-  '>' { PT _ (TS _ 16) }
-  '>=' { PT _ (TS _ 17) }
-  '[' { PT _ (TS _ 18) }
-  ']' { PT _ (TS _ 19) }
-  '^' { PT _ (TS _ 20) }
-  'and' { PT _ (TS _ 21) }
-  'array' { PT _ (TS _ 22) }
-  'begin' { PT _ (TS _ 23) }
-  'boolean' { PT _ (TS _ 24) }
-  'char' { PT _ (TS _ 25) }
-  'const' { PT _ (TS _ 26) }
-  'div' { PT _ (TS _ 27) }
-  'else' { PT _ (TS _ 28) }
-  'end' { PT _ (TS _ 29) }
-  'false' { PT _ (TS _ 30) }
-  'function' { PT _ (TS _ 31) }
-  'if' { PT _ (TS _ 32) }
-  'integer' { PT _ (TS _ 33) }
-  'mod' { PT _ (TS _ 34) }
-  'not' { PT _ (TS _ 35) }
-  'of' { PT _ (TS _ 36) }
-  'or' { PT _ (TS _ 37) }
-  'procedure' { PT _ (TS _ 38) }
-  'program' { PT _ (TS _ 39) }
-  'readChar' { PT _ (TS _ 40) }
-  'readInt' { PT _ (TS _ 41) }
-  'readReal' { PT _ (TS _ 42) }
-  'readString' { PT _ (TS _ 43) }
-  'real' { PT _ (TS _ 44) }
-  'string' { PT _ (TS _ 45) }
-  'then' { PT _ (TS _ 46) }
-  'true' { PT _ (TS _ 47) }
-  'var' { PT _ (TS _ 48) }
-  'writeChar' { PT _ (TS _ 49) }
-  'writeInt' { PT _ (TS _ 50) }
-  'writeReal' { PT _ (TS _ 51) }
-  'writeString' { PT _ (TS _ 52) }
+  '..' { PT _ (TS _ 9) }
+  '/' { PT _ (TS _ 10) }
+  ':' { PT _ (TS _ 11) }
+  ':=' { PT _ (TS _ 12) }
+  ';' { PT _ (TS _ 13) }
+  '<' { PT _ (TS _ 14) }
+  '<=' { PT _ (TS _ 15) }
+  '=' { PT _ (TS _ 16) }
+  '>' { PT _ (TS _ 17) }
+  '>=' { PT _ (TS _ 18) }
+  '@' { PT _ (TS _ 19) }
+  '[' { PT _ (TS _ 20) }
+  ']' { PT _ (TS _ 21) }
+  '^' { PT _ (TS _ 22) }
+  'and' { PT _ (TS _ 23) }
+  'array' { PT _ (TS _ 24) }
+  'begin' { PT _ (TS _ 25) }
+  'boolean' { PT _ (TS _ 26) }
+  'char' { PT _ (TS _ 27) }
+  'const' { PT _ (TS _ 28) }
+  'div' { PT _ (TS _ 29) }
+  'do' { PT _ (TS _ 30) }
+  'else' { PT _ (TS _ 31) }
+  'end' { PT _ (TS _ 32) }
+  'false' { PT _ (TS _ 33) }
+  'for' { PT _ (TS _ 34) }
+  'function' { PT _ (TS _ 35) }
+  'if' { PT _ (TS _ 36) }
+  'integer' { PT _ (TS _ 37) }
+  'mod' { PT _ (TS _ 38) }
+  'not' { PT _ (TS _ 39) }
+  'of' { PT _ (TS _ 40) }
+  'or' { PT _ (TS _ 41) }
+  'procedure' { PT _ (TS _ 42) }
+  'program' { PT _ (TS _ 43) }
+  'readChar' { PT _ (TS _ 44) }
+  'readInt' { PT _ (TS _ 45) }
+  'readReal' { PT _ (TS _ 46) }
+  'readString' { PT _ (TS _ 47) }
+  'real' { PT _ (TS _ 48) }
+  'repeat' { PT _ (TS _ 49) }
+  'string' { PT _ (TS _ 50) }
+  'then' { PT _ (TS _ 51) }
+  'to' { PT _ (TS _ 52) }
+  'true' { PT _ (TS _ 53) }
+  'until' { PT _ (TS _ 54) }
+  'var' { PT _ (TS _ 55) }
+  'while' { PT _ (TS _ 56) }
+  'writeChar' { PT _ (TS _ 57) }
+  'writeInt' { PT _ (TS _ 58) }
+  'writeReal' { PT _ (TS _ 59) }
+  'writeString' { PT _ (TS _ 60) }
   L_ident  { PT _ (TV $$) }
   L_integ  { PT _ (TI $$) }
   L_doubl  { PT _ (TD $$) }
@@ -108,6 +116,18 @@ ThenKW :: { ThenKW }
 ThenKW : 'then' { AbsGrammar.KeyWordThen }
 ElseKW :: { ElseKW }
 ElseKW : 'else' { AbsGrammar.KeyWordElse }
+WhileKW :: { WhileKW }
+WhileKW : 'while' { AbsGrammar.KeyWordWhile }
+ForKW :: { ForKW }
+ForKW : 'for' { AbsGrammar.KeyWordFor }
+ToKW :: { ToKW }
+ToKW : 'to' { AbsGrammar.KeyWordTo }
+DoKW :: { DoKW }
+DoKW : 'do' { AbsGrammar.KeyWordDo }
+RepeatKW :: { RepeatKW }
+RepeatKW : 'repeat' { AbsGrammar.KeyWordRepeat }
+UntilKW :: { UntilKW }
+UntilKW : 'until' { AbsGrammar.KeyWordUntil }
 IntKW :: { IntKW }
 IntKW : 'integer' { AbsGrammar.KeyWordTypeInt }
 RealKW :: { RealKW }
@@ -158,17 +178,17 @@ ListVariableDeclFunc : {- empty -} { [] }
                      | VariableDeclFunc { (:[]) $1 }
                      | VariableDeclFunc ';' ListVariableDeclFunc { (:) $1 $3 }
 VariableDeclBlock :: { VariableDeclBlock }
-VariableDeclBlock : ListVariableName ':' Type { AbsGrammar.VariableDeclarationInsideBlock $1 $3 }
+VariableDeclBlock : ListIdent ':' Type InitAssign { AbsGrammar.VariableDeclarationInsideBlock $1 $3 $4 }
+InitAssign :: { InitAssign }
+InitAssign : {- empty -} { AbsGrammar.InitAssign1 }
+           | '=' RightExp { AbsGrammar.InitAssign2 $2 }
 DeclarationFunc :: { DeclarationFunc }
 DeclarationFunc : {- empty -} { AbsGrammar.DeclarationFunc1 }
                 | '(' ListVariableDeclFunc ')' { AbsGrammar.DeclarationFunc2 $2 }
 VariableDeclFunc :: { VariableDeclFunc }
-VariableDeclFunc : ListVariableName ':' Type { AbsGrammar.VariableDeclarationInsideF $1 $3 }
-ListVariableName :: { [VariableName] }
-ListVariableName : VariableName { (:[]) $1 }
-                 | VariableName ',' ListVariableName { (:) $1 $3 }
-VariableName :: { VariableName }
-VariableName : Ident { AbsGrammar.VariableDeclarationNames $1 }
+VariableDeclFunc : ListIdent ':' Type { AbsGrammar.VariableDeclarationInsideF $1 $3 }
+ListIdent :: { [Ident] }
+ListIdent : Ident { (:[]) $1 } | Ident ',' ListIdent { (:) $1 $3 }
 FunctionDecl :: { FunctionDecl }
 FunctionDecl : FunctionKW Ident DeclarationFunc ':' Type ';' InnerBlockWithDecl ';' { AbsGrammar.FunctionDeclaration $1 $2 $3 $5 $7 }
 ProcedureDecl :: { ProcedureDecl }
@@ -183,12 +203,18 @@ ListRightExp : {- empty -} { [] }
              | RightExp ',' ListRightExp { (:) $1 $3 }
 Statement :: { Statement }
 Statement : InnerBlockExec { AbsGrammar.StatementBlock $1 }
-          | If { AbsGrammar.StatementIf $1 }
+          | IfKW RightExp ThenKW Statement ElseBlock { AbsGrammar.StatementIf $1 $2 $3 $4 $5 }
+          | ForKW Assign ToKW RightExp DoKW Statement { AbsGrammar.StatementFor $1 $2 $3 $4 $5 $6 }
+          | WhileKW RightExp DoKW Statement { AbsGrammar.StatementWhile $1 $2 $3 $4 }
+          | RepeatKW ListStatement UntilKW RightExp { AbsGrammar.StatementRepeatUntil $1 $2 $3 $4 }
           | Assign { AbsGrammar.StatementAssign $1 }
           | FunctionCall { AbsGrammar.StatementFunctionCall $1 }
           | ProcedureCall { AbsGrammar.StatementProcedureCall $1 }
           | WritePrimitive { AbsGrammar.StatementWrite $1 }
           | ReadPrimitive { AbsGrammar.StatementRead $1 }
+ElseBlock :: { ElseBlock }
+ElseBlock : {- empty -} { AbsGrammar.ElseBlock1 }
+          | ElseKW Statement { AbsGrammar.ElseBlock2 $1 $2 }
 Assign :: { Assign }
 Assign : LeftExp ':=' RightExp { AbsGrammar.VariableAssignment $1 $3 }
 RightExp :: { RightExp }
@@ -224,20 +250,18 @@ RightExp6 : RightExp7 { $1 }
           | '+' RightExp7 { AbsGrammar.RightExpPlusUnary $2 }
 RightExp7 :: { RightExp }
 RightExp7 : '(' RightExp ')' { $2 }
-          | Ident { AbsGrammar.RightExpIdent $1 }
           | Integer { AbsGrammar.RightExpInteger $1 }
           | Double { AbsGrammar.RightExpReal $1 }
           | Boolean { AbsGrammar.RightExpBoolean $1 }
           | Char { AbsGrammar.RightExpChar $1 }
           | String { AbsGrammar.RightExpString $1 }
           | FunctionCall { AbsGrammar.RightExpFunctionCall $1 }
+          | LeftExp { AbsGrammar.RightExpCopy $1 }
 LeftExp :: { LeftExp }
-LeftExp : Ident { AbsGrammar.LeftExp $1 }
-If :: { If }
-If : IfKW RightExp ThenKW Statement Else { AbsGrammar.IfDefinition $1 $2 $3 $4 $5 }
-Else :: { Else }
-Else : {- empty -} { AbsGrammar.Else1 }
-     | ElseKW Statement { AbsGrammar.Else2 $1 $2 }
+LeftExp : Ident { AbsGrammar.LeftExpIdent $1 }
+        | LeftExp '[' ListRightExp ']' { AbsGrammar.LeftExpArrayAccess $1 $3 }
+        | LeftExp '^' { AbsGrammar.LeftExpPointerValue $1 }
+        | '@' LeftExp { AbsGrammar.LeftExpPointerAddress $2 }
 Type :: { Type }
 Type : BaseType { AbsGrammar.TypeBaseType $1 }
      | CompositeType { AbsGrammar.TypeCompositeType $1 }
@@ -251,8 +275,14 @@ Boolean :: { Boolean }
 Boolean : 'true' { AbsGrammar.Boolean_true }
         | 'false' { AbsGrammar.Boolean_false }
 CompositeType :: { CompositeType }
-CompositeType : ArrayKW '[' Integer ']' 'of' BaseType { AbsGrammar.CompTypeArray $1 $3 $6 }
+CompositeType : ArrayKW '[' ListArrayDeclarationDim ']' 'of' BaseType { AbsGrammar.CompTypeArray $1 $3 $6 }
               | '^' Type { AbsGrammar.CompTypePointer $2 }
+ListArrayDeclarationDim :: { [ArrayDeclarationDim] }
+ListArrayDeclarationDim : {- empty -} { [] }
+                        | ArrayDeclarationDim { (:[]) $1 }
+                        | ArrayDeclarationDim ',' ListArrayDeclarationDim { (:) $1 $3 }
+ArrayDeclarationDim :: { ArrayDeclarationDim }
+ArrayDeclarationDim : RightExp '..' RightExp { AbsGrammar.ArrayDeclarationDim $1 $3 }
 WritePrimitive :: { WritePrimitive }
 WritePrimitive : 'writeInt' '(' RightExp ')' { AbsGrammar.WriteInt $3 }
                | 'writeReal' '(' RightExp ')' { AbsGrammar.WriteReal $3 }
