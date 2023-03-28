@@ -11,3 +11,6 @@ part_3/language_grammar_old.cf
 __build/*
 
 .vscode/*
+
+part_3/tests/**
+part_3/src/bin/**
