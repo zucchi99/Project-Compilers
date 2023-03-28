@@ -144,7 +144,7 @@ RightExpCopy.                   RightExp7       ::= LeftExp ;
 LeftExpIdent.                   LeftExp         ::= Ident ;
 LeftExpArrayAccess.             LeftExp         ::= LeftExp "[" [RightExp] "]" ;
 LeftExpPointerValue.            LeftExp         ::= LeftExp "^" ;
-LeftExpPointerAddress.          LeftExp         ::= "@" LeftExp ;
+LeftExpPointerAddress.          LeftExp         ::= LeftExp "@" ;
 
 -- __________ TYPES __________
 

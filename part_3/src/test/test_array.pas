@@ -1,6 +1,6 @@
 program exArrays;
 var
-   n: array [1..10] of integer;   (* n is an array of 10 integers *)
+   n: array [1..10, 2+1..3*2-4] of integer;   (* n is an array of 10 integers *)
    i, j: integer;
 
 begin
