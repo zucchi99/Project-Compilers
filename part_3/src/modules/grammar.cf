@@ -15,6 +15,7 @@ KeyWordEnd.                     EndKW           ::= "end" ;
 KeyWordProgram.                 ProgramKW       ::= "program" ;
 KeyWordFunction.                FunctionKW      ::= "function" ;
 KeyWordProcedure.               ProcedureKW     ::= "procedure" ;
+KeyWordForward.                 ForwardKW       ::= "forward" ;
 KeyWordVar.                     VarKW           ::= "var" ;
 KeyWordConst.                   ConstKW         ::= "const" ;
 KeyWordIf.                      IfKW            ::= "if" ;
@@ -49,7 +50,7 @@ separator Statement ";" ;
 rules                            NonMandatoryTerminator ::= {- empty -} | ";" ;
 
 -- variables, functions, procedures
-rules                           Declaration   ::= CostantsBlock | VariablesBlock | FunctionDecl | ProcedureDecl ; --Declaration
+rules                           Declaration   ::= CostantsBlock | VariablesBlock | FunctionForw | ProcedureForw | FunctionDecl | ProcedureDecl ; --Declaration
 
 -- __________ COSTANTS DECLARATIONS __________
 
@@ -80,8 +81,12 @@ separator nonempty Ident "," ;
 -- __________ FUNCTION AND PROCEDURE DECLARATIONS __________
 
 -- function and procedure declaration
-FunctionDeclaration.            FunctionDecl   ::= FunctionKW  Ident DeclarationFunc ":" Type ";" InnerBlockWithDecl ";" ;
-ProcedureDeclaration.           ProcedureDecl  ::= ProcedureKW Ident DeclarationFunc ";" InnerBlockWithDecl ";" ;
+FunctionSignature.              FunctionSign    ::= FunctionKW Ident DeclarationFunc ":" Type ";" ;
+ProcedureSignature.             ProcedureSign   ::= ProcedureKW Ident DeclarationFunc ";" ;
+FunctionDeclaration.            FunctionDecl    ::= FunctionSign InnerBlockWithDecl ";" ;
+ProcedureDeclaration.           ProcedureDecl   ::= ProcedureSign InnerBlockWithDecl ";" ;
+FunctionForward.                FunctionForw    ::= FunctionSign ForwardKW ";" ;
+ProcedureForward.               ProcedureForw   ::= ProcedureSign ForwardKW ";" ;
 
 FunctionCall.                   FunctionCall   ::= Ident "(" [RightExp] ")" ;
 ProcedureCall.                  ProcedureCall  ::= Ident "(" [RightExp] ")" ;

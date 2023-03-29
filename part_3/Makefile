@@ -9,3 +9,7 @@ test:
 
 clean:
 	(cd src/bin && rm -r *)
+
+compile-main:
+	ghc -outputdir src/bin/ -o src/bin/Main src/modules/Main.hs src/modules/PrettyPrinter.hs src/bin/ParGrammar.hs src/bin/LexGrammar.hs src/bin/PrintGrammar.hs src/bin/ErrM.hs src/bin/AbsGrammar.hs
+	./src/bin/Main
