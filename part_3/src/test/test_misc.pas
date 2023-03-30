@@ -1,6 +1,6 @@
 program Hello;
 const x = 2.0;
-var a : integer;
+var a, b : integer;
 var j : integer;
 procedure f(); 
     procedure g();
