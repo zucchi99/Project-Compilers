@@ -58,4 +58,10 @@ sup IntegerType RealType = RealType
 sup RealType IntegerType = RealType
 sup t1 t2 = case t1 == t2 of
     True  -> t1 -- ok
-    False -> ErrorType { messages = [(show t1) ++ "is not compatible with type" ++ (show t2)] } -- error
+    False -> ErrorType { messages = [(show t1) ++ " is not compatible with type " ++ (show t2)] } -- error
+
+-- Funcion that handles the comparison of two types
+rel :: Type -> Type -> Type
+rel t1 t2 = case sup t1 t2 of
+    ErrorType{messages=m} -> ErrorType { messages = (("Relation operation not permitted"):m) } -- error
+    _ -> BooleanType -- ok
