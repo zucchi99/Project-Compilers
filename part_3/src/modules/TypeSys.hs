@@ -1,7 +1,12 @@
 -- Implementazione del typesystem
 -- Nota: Teoria principale --> lezione-LC-2022-04-26.pdf
 
+-- compile with
+-- ghci TypeSys.hs -o TypeSys.o Errors.hs
+
 module Types where
+
+import qualified ErrorMessage as Err
 
 -- any type definition
 data Type = 
@@ -10,6 +15,7 @@ data Type =
     | RealType
     | CharType
     | StringType
+    -- TODO handle array multidimensional
     | ArrayType { aType :: Type, leftPoint :: Int, rightPoint :: Int }
     | PointerType { pType :: Type }
     | ErrorType { messages :: [String] }
@@ -45,7 +51,7 @@ listToString xs sep = foldr (\a b -> a ++ if b == "" then b else sep ++ b) "" xs
 mathType :: Type -> Type
 mathType IntegerType = IntegerType
 mathType RealType    = RealType
-mathType _           = ErrorType { messages = ["Not a math type"] }
+mathType t           = ErrorType { messages = [Err.errMsgNotMathType t] }
 
 -- "sup" is used to make inference of binary expressions
 -- TODO:
@@ -58,10 +64,57 @@ sup IntegerType RealType = RealType
 sup RealType IntegerType = RealType
 sup t1 t2 = case t1 == t2 of
     True  -> t1 -- ok
-    False -> ErrorType { messages = [(show t1) ++ " is not compatible with type " ++ (show t2)] } -- error
+    False -> ErrorType { messages = [Err.errMsgNotCompatible t1 t2] } -- error
 
--- Funcion that handles the comparison of two types
+combineTypeErrors :: Type -> Type -> Maybe Type
+combineTypeErrors (ErrorType m1) (ErrorType m2) = Just $ ErrorType (m1 ++ m2)
+combineTypeErrors (ErrorType m1) _              = Just $ ErrorType m1
+combineTypeErrors _ (ErrorType m2)              = Just $ ErrorType m2
+combineTypeErrors _ _                           = Nothing
+
+-- Function that handles the comparison of two types
 rel :: Type -> Type -> Type
 rel t1 t2 = case sup t1 t2 of
     ErrorType{messages=m} -> ErrorType { messages = (("Relation operation not permitted"):m) } -- error
     _ -> BooleanType -- ok
+
+----------------- test
+main :: IO ()
+main = do
+    putStrLn "Test TypeSys.hs"
+
+    putStrLn "bool var"
+    let bool = BooleanType
+    putStrLn $ show bool
+
+    putStrLn "int var"
+    let int = IntegerType
+    putStrLn $ show int
+
+    putStrLn "real var"
+    let real = RealType
+    putStrLn $ show real
+
+    let sup_ok = sup int real
+    putStrLn "superior ok: int and real = real"
+    putStrLn $ show sup_ok
+    
+    let sup_err1 = sup int bool
+    putStrLn "superior err 1: int and bool = error"
+    putStrLn $ show sup_err1
+
+    let sup_err2 = sup real bool
+    putStrLn "superior err 2: real and bool = error"
+    putStrLn $ show sup_err2
+
+    putStrLn "cmb err sup_ok sup_err1"
+    putStrLn $ show $ combineTypeErrors sup_ok sup_err1
+    
+    putStrLn "cmb err sup_ok sup_err2"
+    putStrLn $ show $ combineTypeErrors sup_ok sup_err2
+    
+    putStrLn "cmb err sup_err1 sup_err2"
+    putStrLn $ show $ combineTypeErrors sup_err1 sup_err2
+
+
+    
