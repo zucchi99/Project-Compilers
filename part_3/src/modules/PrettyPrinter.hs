@@ -21,7 +21,16 @@ ident newline numtabs str   | newline    =  "\n" ++ concat (replicate numtabs " 
 
 
 -- concat of operations in a string
-stringPrettyConcat newline numtabs xs sep = foldl (\a b -> a ++ prettyprinterAux newline numtabs b ++ sep) "" xs 
+stringPrettyConcat newline numtabs [] sep concatType firstnewline   | concatType == "separator" = ""
+                                                                    | concatType == "terminator" = sep
+stringPrettyConcat newline numtabs (x:[]) sep concatType firstnewline = 
+    prettyprinterAux firstnewline numtabs x                                         ++
+    stringPrettyConcat newline numtabs [] sep concatType newline
+stringPrettyConcat newline numtabs (x:xs) sep concatType firstnewline = 
+    prettyprinterAux firstnewline numtabs x                                         ++
+    sep                                                                             ++
+    stringPrettyConcat newline numtabs xs sep concatType newline
+
 -- define a class for pretty printer
 -- this way we can define a pretty printer for each type of the abstract sintax tree
 class PrettyPrinterClass a where
@@ -49,8 +58,8 @@ instance PrettyPrinterClass Abs.Ident where
         ident newline numtabs name
 
 instance PrettyPrinterClass [Abs.Ident] where
-    prettyprinterAux newline numtabs idents = 
-        stringPrettyConcat newline numtabs idents ""
+    prettyprinterAux newline numtabs (ident:idents) = 
+        stringPrettyConcat False numtabs (ident:idents) ", " "separator" newline
 
 instance PrettyPrinterClass Abs.BeginKW where
     prettyprinterAux newline numtabs (Abs.KeyWordBegin) = 
@@ -180,7 +189,7 @@ instance PrettyPrinterClass Abs.Declaration where
 
 instance PrettyPrinterClass [Abs.Declaration] where
     prettyprinterAux newline numtabs blocks =
-        stringPrettyConcat newline numtabs blocks ""
+        stringPrettyConcat True numtabs blocks "" "separator" newline
 
 instance PrettyPrinterClass Abs.CostantsBlock where
     prettyprinterAux newline numtabs (Abs.CostantsBlock1 const declarations) =
@@ -195,7 +204,7 @@ instance PrettyPrinterClass Abs.ConstantDecl where
 
 instance PrettyPrinterClass [Abs.ConstantDecl] where
     prettyprinterAux newline numtabs constants =
-        stringPrettyConcat newline numtabs constants ";"
+        stringPrettyConcat True numtabs constants "; " "terminator" newline
 
 instance PrettyPrinterClass Abs.VariablesBlock where
     prettyprinterAux newline numtabs (Abs.VariablesBlock1 var declarations) =
@@ -211,7 +220,7 @@ instance PrettyPrinterClass Abs.VariableDeclBlock where
 
 instance PrettyPrinterClass [Abs.VariableDeclBlock] where
     prettyprinterAux newline numtabs variables =
-        stringPrettyConcat newline numtabs variables ";"
+        stringPrettyConcat True numtabs variables "; " "terminator" newline
 
 instance PrettyPrinterClass Abs.InitAssign where
     prettyprinterAux newline numtabs (Abs.InitAssign1) =
@@ -224,7 +233,9 @@ instance PrettyPrinterClass Abs.DeclarationFunc where
     prettyprinterAux newline numtabs (Abs.DeclarationFunc1) =
         ""
     prettyprinterAux newline numtabs (Abs.DeclarationFunc2 declarations) =
-        prettyprinterAux newline numtabs declarations
+        "( "                                                           ++
+        prettyprinterAux newline numtabs declarations                   ++
+        ") "
 
 instance PrettyPrinterClass Abs.VariableDeclFunc where
     prettyprinterAux newline numtabs (Abs.VariableDeclarationInsideF id tipo) =
@@ -234,7 +245,7 @@ instance PrettyPrinterClass Abs.VariableDeclFunc where
 
 instance PrettyPrinterClass [Abs.VariableDeclFunc] where
     prettyprinterAux newline numtabs variables =
-        stringPrettyConcat newline numtabs variables ";"
+        stringPrettyConcat True numtabs variables "; " "separator" newline
 
 instance PrettyPrinterClass Abs.FunctionSign where
     prettyprinterAux newline numtabs (Abs.FunctionSignature function id declaration tipo) =
@@ -255,12 +266,14 @@ instance PrettyPrinterClass Abs.ProcedureSign where
 instance PrettyPrinterClass Abs.FunctionDecl where
     prettyprinterAux newline numtabs (Abs.FunctionDeclaration functionsign block) =
         prettyprinterAux newline numtabs functionsign                   ++
-        prettyprinterAux newline numtabs block
+        prettyprinterAux newline numtabs block                          ++
+        "; "
 
 instance PrettyPrinterClass Abs.ProcedureDecl where
     prettyprinterAux newline numtabs (Abs.ProcedureDeclaration proceduresign block) =
         prettyprinterAux newline numtabs proceduresign                  ++
-        prettyprinterAux newline numtabs block    
+        prettyprinterAux newline numtabs block                          ++
+        "; "  
 
 instance PrettyPrinterClass Abs.FunctionForw where
     prettyprinterAux newline numtabs (Abs.FunctionForward functionsign forward) =
@@ -297,8 +310,7 @@ instance PrettyPrinterClass Abs.Statement where
         prettyprinterAux False numtabs condition                      ++
         ") "                                                           ++
         prettyprinterAux newline numtabs thenKW                         ++
-        prettyprinterAux newline numtabs statement                      ++
-        "; "                                                            ++               
+        prettyprinterAux newline (numtabs + 1) statement                      ++      
         prettyprinterAux newline numtabs elseblock
     prettyprinterAux newline numtabs (Abs.StatementFor forKW assign toKW expression doKW statement) =
         prettyprinterAux newline numtabs forKW                          ++
@@ -306,17 +318,17 @@ instance PrettyPrinterClass Abs.Statement where
         prettyprinterAux False numtabs toKW                           ++
         prettyprinterAux False numtabs expression                     ++
         prettyprinterAux False numtabs doKW                           ++
-        prettyprinterAux newline numtabs statement
+        prettyprinterAux newline (numtabs + 1) statement
     prettyprinterAux newline numtabs (Abs.StatementWhile whileKW condition doKW statement) =
         prettyprinterAux newline numtabs whileKW                        ++
         prettyprinterAux newline numtabs condition                      ++
         prettyprinterAux newline numtabs doKW                           ++
-        prettyprinterAux newline numtabs statement
+        prettyprinterAux newline (numtabs + 1) statement
     prettyprinterAux newline numtabs (Abs.StatementRepeatUntil repeatKW statements untilKW condition) =
         prettyprinterAux newline numtabs repeatKW                       ++
         prettyprinterAux newline numtabs statements                   ++
         prettyprinterAux newline numtabs untilKW                        ++
-        prettyprinterAux newline numtabs condition
+        prettyprinterAux newline (numtabs + 1) condition
     prettyprinterAux newline numtabs (Abs.StatementAssign assign) =
         prettyprinterAux newline numtabs assign
     prettyprinterAux newline numtabs (Abs.StatementFunctionCall functioncall) =
@@ -330,14 +342,14 @@ instance PrettyPrinterClass Abs.Statement where
 
 instance PrettyPrinterClass [Abs.Statement] where
     prettyprinterAux newline numtabs statements =
-        stringPrettyConcat newline numtabs statements ";"
+        stringPrettyConcat True numtabs statements "; " "separator" newline
 
 instance PrettyPrinterClass Abs.ElseBlock where
     prettyprinterAux newline numtabs (Abs.ElseBlock1) =
         ""
     prettyprinterAux newline numtabs (Abs.ElseBlock2 elseKW statement) =
         prettyprinterAux newline numtabs elseKW                         ++
-        prettyprinterAux newline numtabs statement
+        prettyprinterAux newline (numtabs + 1) statement
 
 instance PrettyPrinterClass Abs.Assign where
     prettyprinterAux newline numtabs (Abs.VariableAssignment leftExp rightExp) =
@@ -428,7 +440,7 @@ instance PrettyPrinterClass Abs.RightExp where
 
 instance PrettyPrinterClass [Abs.RightExp] where
     prettyprinterAux newline numtabs expressions =
-        stringPrettyConcat newline numtabs expressions ""
+        stringPrettyConcat False numtabs expressions ", " "separator" newline
 
 instance PrettyPrinterClass Abs.LeftExp where
     prettyprinterAux newline numtabs (Abs.LeftExpIdent id) =
@@ -436,7 +448,7 @@ instance PrettyPrinterClass Abs.LeftExp where
     prettyprinterAux newline numtabs (Abs.LeftExpArrayAccess leftExp rightExp) =
         prettyprinterAux newline numtabs leftExp                        ++
         "["                                                             ++
-        prettyprinterAux newline numtabs rightExp                       ++
+        prettyprinterAux False numtabs rightExp                       ++
         "]"
     prettyprinterAux newline numtabs (Abs.LeftExpPointerValue leftExp) =
         prettyprinterAux newline numtabs leftExp                        ++
@@ -474,9 +486,8 @@ instance PrettyPrinterClass Abs.CompositeType where
         prettyprinterAux newline numtabs array                          ++
         "["                                                             ++
         prettyprinterAux False numtabs leftExp                        ++
-        ".."                                                            ++
-        prettyprinterAux False numtabs rightExp                       ++
-        "]"
+        "] of "                                                            ++
+        prettyprinterAux False numtabs rightExp                       
     prettyprinterAux newline numtabs (Abs.CompTypePointer tipo) =       
         "^"                                                             ++
         prettyprinterAux False numtabs tipo
@@ -484,12 +495,12 @@ instance PrettyPrinterClass Abs.CompositeType where
 instance PrettyPrinterClass Abs.ArrayDeclarationDim where
     prettyprinterAux newline numtabs (Abs.ArrayDeclarationDim rightexp1 rightexp2) =
         prettyprinterAux False numtabs rightexp1                      ++
-        ".."                                                            ++
+        ".. "                                                            ++
         prettyprinterAux False numtabs rightexp2
 
 instance PrettyPrinterClass [Abs.ArrayDeclarationDim] where
     prettyprinterAux newline numtabs arrayDeclarations =
-        stringPrettyConcat newline numtabs arrayDeclarations ", "
+        stringPrettyConcat False numtabs arrayDeclarations ", " "separator" newline
 
 instance PrettyPrinterClass Abs.WritePrimitive where
     prettyprinterAux newline numtabs (Abs.WriteInt rightexp) =
