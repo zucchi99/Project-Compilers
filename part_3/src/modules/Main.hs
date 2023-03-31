@@ -16,7 +16,13 @@ testami test = do
 
     putStrLn $ PrettyPrinter.prettyprinter output
 
-    putStrLn ""
+    -- print output in a file
+    writeFile (concat ["src/test/test_prettytest.pas"]) $ PrettyPrinter.prettyprinter output
+
+    input <- readFile $ concat ["src/test/test_prettytest.pas"]
+    let output = Par.pProgram $ Lex.tokens input
+    putStrLn $ PrettyPrinter.prettyprinter output
+    putStrLn "OK"
 
 main = do
 

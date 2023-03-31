@@ -7,7 +7,7 @@ begin
    number := 100;
    writeln("Number is: ", number);
    
-   iptr := @number;
+   iptr := number@;
    writeln("iptr points to a value: ", iptr^);
    
    iptr^ := 200;
