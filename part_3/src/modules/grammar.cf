@@ -35,16 +35,16 @@ KeyWordTypeString.              StringKW        ::= "string";
 KeyWordTypeArray.               ArrayKW         ::= "array";
 
 -- program definition
-ProgramStart.                   Program      ::= ProgramKW Ident ";" InnerBlockWithDecl "." ;
+ProgramStart.                   Program      ::= ProgramKW Ident ";" BlockWithDecl "." ;
 
 -- __________ BLOCK STRUCTURE __________
 
 -- block structure with declarations
-InnerBlockWithDeclaration.       InnerBlockWithDecl ::= [Declaration] InnerBlockExec ;
+BlockWithDeclaration.       BlockWithDecl ::= [Declaration] BlockExec ;
 separator Declaration "" ;
 
 -- Useful, because inside a begin ... end block there can be a nested block, only without declarations
-InnerBlockOnlyExecution.         InnerBlockExec     ::= BeginKW NonMandatoryTerminator [Statement] EndKW ;
+BlockOnlyExecution.         BlockExec     ::= BeginKW NonMandatoryTerminator [Statement] EndKW ;
 separator Statement ";" ;
 
 rules                            NonMandatoryTerminator ::= {- empty -} | ";" ;
@@ -71,7 +71,8 @@ separator VariableDeclFunc  ";" ;
 
 -- Variables Declaration inside var block
 VariableDeclarationInsideBlock. VariableDeclBlock   ::= [Ident] ":" Type InitAssign ;
-rules                           InitAssign          ::= {- empty -} | "=" RightExp ;        
+rules                           InitAssign          ::= {- empty -} | "=" RightExp ;       
+ 
 -- Variables Declaration inside function parenthesis 
 -- Exist the possibility to declare a function without paranthesis, if it has no parameters
 rules                           DeclarationFunc     ::= {- empty -} | "(" [VariableDeclFunc] ")" ;
@@ -83,8 +84,8 @@ separator nonempty Ident "," ;
 -- function and procedure declaration
 FunctionSignature.              FunctionSign    ::= FunctionKW Ident DeclarationFunc ":" Type ";" ;
 ProcedureSignature.             ProcedureSign   ::= ProcedureKW Ident DeclarationFunc ";" ;
-FunctionDeclaration.            FunctionDecl    ::= FunctionSign InnerBlockWithDecl ";" ;
-ProcedureDeclaration.           ProcedureDecl   ::= ProcedureSign InnerBlockWithDecl ";" ;
+FunctionDeclaration.            FunctionDecl    ::= FunctionSign BlockWithDecl ";" ;
+ProcedureDeclaration.           ProcedureDecl   ::= ProcedureSign BlockWithDecl ";" ;
 FunctionForward.                FunctionForw    ::= FunctionSign ForwardKW ";" ;
 ProcedureForward.               ProcedureForw   ::= ProcedureSign ForwardKW ";" ;
 
@@ -94,7 +95,7 @@ separator RightExp "," ;
 
 -- __________ STATEMENTS __________
 
-StatementBlock.                 Statement       ::= InnerBlockExec ;
+StatementBlock.                 Statement       ::= BlockExec ;
 StatementIf.                    Statement       ::= IfKW RightExp ThenKW Statement ElseBlock ;
 StatementFor.                   Statement       ::= ForKW Assign ToKW RightExp DoKW Statement ;
 StatementWhile.                 Statement       ::= WhileKW RightExp DoKW Statement ;

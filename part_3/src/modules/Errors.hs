@@ -20,5 +20,6 @@ errMsgInternalErr = "Unexpected internal error"
 errMsgUnexpectedType :: (Show a1, Show a2) => [Char] -> a1 -> a2 -> [Char]
 errMsgUnexpectedType obj t_exp t_found = obj ++ " must be of type " ++ (show t_exp)  ++ " but type " ++ (show t_found) ++ " is given"
 
+errMsgTypeNotArray :: Show a => a -> [Char]
 errMsgTypeNotArray t_found = "Expected an array but type " ++ (show t_found) ++ " is given"
 

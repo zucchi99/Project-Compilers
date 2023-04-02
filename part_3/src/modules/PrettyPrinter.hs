@@ -155,13 +155,13 @@ instance PrettyPrinterClass Abs.ArrayKW where
 
 -- Program already done in the beginning for debugging
 
-instance PrettyPrinterClass Abs.InnerBlockWithDecl where
-    prettyprinterAux newline numtabs (Abs.InnerBlockWithDeclaration declarations block) =
+instance PrettyPrinterClass Abs.BlockWithDecl where
+    prettyprinterAux newline numtabs (Abs.BlockWithDeclaration declarations block) =
         prettyprinterAux newline numtabs declarations                 ++
         prettyprinterAux newline numtabs block
 
-instance PrettyPrinterClass Abs.InnerBlockExec where
-    prettyprinterAux newline numtabs (Abs.InnerBlockOnlyExecution begin terminator statements end) =
+instance PrettyPrinterClass Abs.BlockExec where
+    prettyprinterAux newline numtabs (Abs.BlockOnlyExecution begin terminator statements end) =
         prettyprinterAux True numtabs begin                          ++
         prettyprinterAux False numtabs terminator                     ++
         prettyprinterAux True (numtabs + 1) statements                    ++
