@@ -10,32 +10,8 @@ entrypoints Program;
 
 -- __________ PASCAL KEYWORDS __________
 
-KeyWordBegin.                   BeginKW         ::= "begin" ;
-KeyWordEnd.                     EndKW           ::= "end" ;
-KeyWordProgram.                 ProgramKW       ::= "program" ;
-KeyWordFunction.                FunctionKW      ::= "function" ;
-KeyWordProcedure.               ProcedureKW     ::= "procedure" ;
-KeyWordForward.                 ForwardKW       ::= "forward" ;
-KeyWordVar.                     VarKW           ::= "var" ;
-KeyWordConst.                   ConstKW         ::= "const" ;
-KeyWordIf.                      IfKW            ::= "if" ;
-KeyWordThen.                    ThenKW          ::= "then" ;
-KeyWordElse.                    ElseKW          ::= "else" ;
-KeyWordWhile.                   WhileKW         ::= "while" ;
-KeyWordFor.                     ForKW           ::= "for" ;
-KeyWordTo.                      ToKW            ::= "to" ;
-KeyWordDo.                      DoKW            ::= "do" ;
-KeyWordRepeat.                  RepeatKW        ::= "repeat" ;
-KeyWordUntil.                   UntilKW         ::= "until" ;
-KeyWordTypeInt.                 IntKW           ::= "integer";
-KeyWordTypeReal.                RealKW          ::= "real";
-KeyWordTypeChar.                CharKW          ::= "char";
-KeyWordTypeBoolean.             BoolKW          ::= "boolean";
-KeyWordTypeString.              StringKW        ::= "string";
-KeyWordTypeArray.               ArrayKW         ::= "array";
-
 -- program definition
-ProgramStart.                   Program      ::= ProgramKW Ident ";" BlockWithDecl "." ;
+ProgramStart.                   Program      ::= "program" Ident ";" BlockWithDecl "." ;
 
 -- __________ BLOCK STRUCTURE __________
 
@@ -44,7 +20,7 @@ BlockWithDeclaration.       BlockWithDecl ::= [Declaration] BlockExec ;
 separator Declaration "" ;
 
 -- Useful, because inside a begin ... end block there can be a nested block, only without declarations
-BlockOnlyExecution.         BlockExec     ::= BeginKW NonMandatoryTerminator [Statement] EndKW ;
+BlockOnlyExecution.         BlockExec     ::= "begin" NonMandatoryTerminator [Statement] "end" ;
 separator Statement ";" ;
 
 rules                            NonMandatoryTerminator ::= {- empty -} | ";" ;
@@ -55,16 +31,16 @@ rules                           Declaration   ::= CostantsBlock | VariablesBlock
 -- __________ COSTANTS DECLARATIONS __________
 
 -- costants block declaration (cannot be empty)
-rules                           CostantsBlock ::= ConstKW [ConstantDecl] ; -- CostantsBlock
+rules                           CostantsBlock ::= "const" [ConstantDecl] ; -- CostantsBlock
 terminator nonempty ConstantDecl ";" ;
 ConstantDeclaration.            ConstantDecl  ::= Ident "=" RightExp ;
 
 -- __________ VARIABLES DECLARATIONS __________
 
 -- variables block declaration (cannot be empty)
-rules                           VariablesBlock ::= VarKW [VariableDeclBlock] ; -- VariablesBlock. 
+rules                           VariablesBlock ::= "var" [VariableDeclBlock] ; -- VariablesBlock. 
 
--- if i use VarKW I need to declare at least 1 variable
+-- if i use "var" I need to declare at least 1 variable
 terminator nonempty VariableDeclBlock  ";" ;
 -- Declaring a function, i don't want always to declare a variable
 separator VariableDeclFunc  ";" ;
@@ -82,12 +58,12 @@ separator nonempty Ident "," ;
 -- __________ FUNCTION AND PROCEDURE DECLARATIONS __________
 
 -- function and procedure declaration
-FunctionSignature.              FunctionSign    ::= FunctionKW Ident DeclarationFunc ":" Type ";" ;
-ProcedureSignature.             ProcedureSign   ::= ProcedureKW Ident DeclarationFunc ";" ;
+FunctionSignature.              FunctionSign    ::= "function" Ident DeclarationFunc ":" Type ";" ;
+ProcedureSignature.             ProcedureSign   ::= "procedure" Ident DeclarationFunc ";" ;
 FunctionDeclaration.            FunctionDecl    ::= FunctionSign BlockWithDecl ";" ;
 ProcedureDeclaration.           ProcedureDecl   ::= ProcedureSign BlockWithDecl ";" ;
-FunctionForward.                FunctionForw    ::= FunctionSign ForwardKW ";" ;
-ProcedureForward.               ProcedureForw   ::= ProcedureSign ForwardKW ";" ;
+FunctionForward.                FunctionForw    ::= FunctionSign "forward" ";" ;
+ProcedureForward.               ProcedureForw   ::= ProcedureSign "forward" ";" ;
 
 FunctionCall.                   FunctionCall   ::= Ident "(" [RightExp] ")" ;
 ProcedureCall.                  ProcedureCall  ::= Ident "(" [RightExp] ")" ;
@@ -96,17 +72,17 @@ separator RightExp "," ;
 -- __________ STATEMENTS __________
 
 StatementBlock.                 Statement       ::= BlockExec ;
-StatementIf.                    Statement       ::= IfKW RightExp ThenKW Statement ElseBlock ;
-StatementFor.                   Statement       ::= ForKW Assign ToKW RightExp DoKW Statement ;
-StatementWhile.                 Statement       ::= WhileKW RightExp DoKW Statement ;
-StatementRepeatUntil.           Statement       ::= RepeatKW [Statement] UntilKW RightExp ;
+StatementIf.                    Statement       ::= "if" RightExp "then" Statement ElseBlock ;
+StatementFor.                   Statement       ::= "for" Assign "to" RightExp "do" Statement ;
+StatementWhile.                 Statement       ::= "while" RightExp "do" Statement ;
+StatementRepeatUntil.           Statement       ::= "repeat" [Statement] "until" RightExp ;
 StatementAssign.                Statement       ::= Assign ;
 StatementFunctionCall.          Statement       ::= FunctionCall ;
 StatementProcedureCall.         Statement       ::= ProcedureCall ;
 StatementWrite.                 Statement       ::= WritePrimitive ;
 StatementRead.                  Statement       ::= ReadPrimitive ;
 
-rules                           ElseBlock       ::= {- empty -} | ElseKW Statement ; --ElseDefinition
+rules                           ElseBlock       ::= {- empty -} | "else" Statement ; --ElseDefinition
 
 VariableAssignment.             Assign          ::= LeftExp ":=" RightExp;
 
@@ -156,12 +132,12 @@ LeftExpPointerAddress.          LeftExp         ::= LeftExp "@" ;
 
 -- basic types definition
 rules                           Type            ::= BaseType | CompositeType ; --AnyType
-rules                           BaseType        ::= IntKW | RealKW | CharKW | BoolKW | StringKW ; --BaseType
+rules                           BaseType        ::= "integer" | "real" | "char" | "boolean" | "string" ; --BaseType
 rules                           Boolean         ::= "true" | "false" ;
 
 -- complex types definition
 -- actually for arrays should be: array [0..5, 1..6] if multi-dimensional
-CompTypeArray.                  CompositeType   ::= ArrayKW "[" [ArrayDeclarationDim] "]" "of" BaseType ;
+CompTypeArray.                  CompositeType   ::= "array" "[" [ArrayDeclarationDim] "]" "of" BaseType ;
 separator ArrayDeclarationDim "," ;
 -- The declaration with variable length is not allowed in Pascal, but here it's allowed
 -- we need to be sure that the right expression produce an integer
