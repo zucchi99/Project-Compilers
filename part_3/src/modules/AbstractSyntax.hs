@@ -25,22 +25,14 @@ data BlockExec = BlockOnlyExecution         { statements :: [Statement], block_e
 
 -- Declarations
 data Declaration
-    = DeclarationCostantsBlock              { costant_declarations :: [ConstantDecl], declaration_pos :: (Int, Int) }
-    | DeclarationVariablesBlock             { variable_declarations :: [VariableDecl], declaration_pos :: (Int, Int) }
-    -- NB v_value in params must be all nothing !               (OR we can acept default values)
-    -- NB (f_body == Nothing) <==> is forward
-    | DeclarationFunction                   { declaration_name :: Ident, declaration_params :: [VariableDecl], function_type :: Type, declaration_body_maybe :: Maybe BlockWithDecl, declaration_pos :: (Int, Int) }
-    -- NB v_value in params must be all nothing !               (OR we can acept default values)
-    -- NB (f_body == Nothing) <==> is forward
-    | DeclarationProcedure                  { declaration_name :: Ident, declaration_params :: [VariableDecl], declaration_body_maybe :: Maybe BlockWithDecl, declaration_pos :: (Int, Int) }
-    deriving (Show)
-
-data ConstantDecl 
     = ConstantDeclaration                   { costant_name :: Ident, costant_type :: BaseType, costant_value :: RightExp, constant_decl_pos :: (Int, Int) }
-    deriving (Show)
-
-data VariableDecl 
-    = VariableDecl                          { variable_name :: Ident, variable_type :: Type, variable_value_maybe :: Maybe RightExp, variable_decl_pos :: (Int, Int) }
+    | VariableDecl                          { variable_name :: Ident, variable_type :: Type, variable_value_maybe :: Maybe RightExp, variable_decl_pos :: (Int, Int) }
+    -- NB v_value in params must be all nothing !               (OR we can acept default values)
+    -- NB (f_body == Nothing) <==> is forward
+    | DeclarationFunction                   { declaration_name :: Ident, declaration_params :: [Declaration], function_type :: Type, declaration_body_maybe :: Maybe BlockWithDecl, declaration_pos :: (Int, Int) }
+    -- NB v_value in params must be all nothing !               (OR we can acept default values)
+    -- NB (f_body == Nothing) <==> is forward
+    | DeclarationProcedure                  { declaration_name :: Ident, declaration_params :: [Declaration], declaration_body_maybe :: Maybe BlockWithDecl, declaration_pos :: (Int, Int) }
     deriving (Show)
 
 -- Statements
