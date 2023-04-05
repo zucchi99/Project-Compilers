@@ -72,11 +72,11 @@ data RightExp
     | RightExpNot                           { dx :: RightExp , right_exp_pos :: (Int, Int) }
     | RightExpMinusUnary                    { dx :: RightExp , right_exp_pos :: (Int, Int) }
     | RightExpPlusUnary                     { dx :: RightExp , right_exp_pos :: (Int, Int) }
-    | RightExpInteger                       { right_exp_int :: BaseType, right_exp_pos :: (Int, Int) }
-    | RightExpReal                          { right_exp_double :: BaseType, right_exp_pos :: (Int, Int) }
-    | RightExpBoolean                       { right_exp_bool :: BaseType, right_exp_pos :: (Int, Int) }
-    | RightExpChar                          { right_exp_char :: BaseType, right_exp_pos :: (Int, Int) }
-    | RightExpString                        { right_exp_string :: BaseType, right_exp_pos :: (Int, Int) }
+    | RightExpInteger                       { right_exp_int :: Int, right_exp_pos :: (Int, Int) }
+    | RightExpReal                          { right_exp_double :: Double, right_exp_pos :: (Int, Int) }
+    | RightExpBoolean                       { right_exp_bool :: Bool, right_exp_pos :: (Int, Int) }
+    | RightExpChar                          { right_exp_char :: Char, right_exp_pos :: (Int, Int) }
+    | RightExpString                        { right_exp_string :: String, right_exp_pos :: (Int, Int) }
     | RightExpFunctionCall                  { call_name_right_exp :: Ident, call_params_right_exp :: [RightExp], right_exp_pos :: (Int, Int) }
     | RightExpCopy                          { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int) }
     deriving (Show)
@@ -89,28 +89,6 @@ data LeftExp
     deriving (Show)
 
 data Assign = VariableAssignment            { left_exp_assignment :: LeftExp, right_exp_assignment :: RightExp, assign_pos :: (Int, Int) }
-    deriving (Show)
-
--- Types
-data Type 
-    = TypeBaseType                          { base_type :: BaseType, type_pos :: (Int, Int) }
-    | TypeCompositeType                     { composite_type :: CompositeType, type_pos :: (Int, Int) }
-    deriving (Show)
-
-data BaseType
-    = BaseType_integer                      { value_int :: Int, base_type_pos  :: (Int, Int) }
-    | BaseType_real                         { value_real :: Double, base_type_pos  :: (Int, Int) }
-    | BaseType_char                         { value_char :: Char, base_type_pos  :: (Int, Int) }
-    | BaseType_boolean                      { value_bool :: Bool, base_type_pos  :: (Int, Int) }
-    | BaseType_string                       { value_string :: String, base_type_pos  :: (Int, Int) }
-    deriving (Show)
-
-data CompositeType
-    = CompTypeArray                         { declaration_dim :: [ArrayDeclarationDim], arrayType :: BaseType, composite_type_pos :: (Int, Int) }
-    | CompTypePointer                       { pointer_type :: Tipi.Type, composite_type_pos :: (Int, Int) }
-    deriving (Show)
-
-data ArrayDeclarationDim = ArrayDeclarationDim  { array_declaration_dim :: (RightExp, RightExp), array_declaration_dim_pos :: (Int, Int) }
     deriving (Show)
 
 data WritePrimitive

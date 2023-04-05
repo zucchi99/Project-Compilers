@@ -94,39 +94,21 @@ Ident   : L_ident   { Ident {   id_name = (prToken $1),
                             } 
                     }
 
-Integer :: { BaseType }
-Integer : L_integ   { BaseType_integer  {   value_int = (read (prToken $1)) :: Int,
-                                            base_type_pos = (tokenLineCol $1)
-                                        } 
-                    }
+Integer :: { (Int, (Int, Int)) }
+Integer : L_integ   { ((read (prToken $1)) :: Int, tokenLineCol $1) }
 
-Double  :: { BaseType }
-Double  : L_doubl   { BaseType_real     {   value_real = (read (prToken $1)) :: Double,
-                                            base_type_pos = (tokenLineCol $1)
-                                        } 
-                    }
+Double  :: { (Double, (Int, Int)) }
+Double  : L_doubl   { ((read (prToken $1)) :: Double, tokenLineCol $1) }
 
-Char    :: { BaseType }
-Char    : L_charac  { BaseType_char     {   value_char = (read (prToken $1)) :: Char,
-                                            base_type_pos = (tokenLineCol $1)
-                                        } 
-                    }
+Char    :: { (Char, (Int, Int)) }
+Char    : L_charac  { ((read (prToken $1)) :: Char, tokenLineCol $1) }
 
-String  :: { BaseType }
-String  : L_quoted  { BaseType_string   {   value_string = (prToken $1),
-                                            base_type_pos = (tokenLineCol $1)
-                                        } 
-                    }
+String  :: { (String, (Int, Int))}
+String  : L_quoted  { (prToken $1, tokenLineCol $1) }
 
-Boolean :: { BaseType }
-Boolean : 'true'        { BaseType_boolean  {   value_bool = True,
-                                                base_type_pos = (tokenLineCol $1)
-                                            } 
-                        }
-        | 'false'       { BaseType_boolean  {   value_bool = False,
-                                                base_type_pos = (tokenLineCol $1)
-                                            } 
-                        }
+Boolean :: { (Bool, (Int, Int)) }
+Boolean : 'true'        { (True, tokenLineCol $1) }
+        | 'false'       { (False, tokenLineCol $1) }
 
 Program :: { Program }
 Program : 'program' Ident ';' BlockWithDecl '.' { ProgramStart   {   program_name = $2,
@@ -389,24 +371,24 @@ RightExp6   : RightExp7                         { $1 }
 
 RightExp7   :: { RightExp }
 RightExp7   : '(' RightExp ')'                  { $2 }
-            | Integer                           { RightExpInteger   {   right_exp_int = $1,
-                                                                        right_exp_pos = (base_type_pos $1)
+            | Integer                           { RightExpInteger   {   right_exp_int = fst $1,
+                                                                        right_exp_pos = snd $1
                                                                     }
                                                 }
-            | Double                            { RightExpReal      {   right_exp_double = $1,
-                                                                        right_exp_pos = (base_type_pos $1)
+            | Double                            { RightExpReal      {   right_exp_double = fst $1,
+                                                                        right_exp_pos = snd $1
                                                                     }
                                                 }
-            | Char                              { RightExpChar      {   right_exp_char = $1,
-                                                                        right_exp_pos = (base_type_pos $1)
+            | Char                              { RightExpChar      {   right_exp_char = fst $1,
+                                                                        right_exp_pos = snd $1
                                                                     }
                                                 }
-            | Boolean                           { RightExpBoolean   {   right_exp_bool = $1,
-                                                                        right_exp_pos = (base_type_pos $1)
+            | Boolean                           { RightExpBoolean   {   right_exp_bool = fst $1,
+                                                                        right_exp_pos = snd $1
                                                                     }
                                                 }
-            | String                            { RightExpString    {   right_exp_string = $1,
-                                                                        right_exp_pos = (base_type_pos $1)
+            | String                            { RightExpString    {   right_exp_string = fst $1,
+                                                                        right_exp_pos = snd $1
                                                                     }
                                                 }
             | FunctionCall                      { RightExpFunctionCall  {   call_name_right_exp = call_name $1,
@@ -446,7 +428,7 @@ ListArrayDeclarationDim : {- empty -}                                       { []
                         | ArrayDeclarationDim ',' ListArrayDeclarationDim   { (:) $1 $3 }
 
 ArrayDeclarationDim :: { (Int, Int) }
-ArrayDeclarationDim : Integer '..' Integer    { (value_int $1, value_int $3) }
+ArrayDeclarationDim : Integer '..' Integer    { (fst $1, fst $3) }
 
 WritePrimitive :: { WritePrimitive }
 WritePrimitive  : 'writeInt' '(' RightExp ')'       { WriteInt  {   write_exp = $3,
@@ -501,4 +483,3 @@ happyError ts =
 
 myLexer = tokens
 }
-
