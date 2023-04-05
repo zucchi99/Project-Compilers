@@ -3,7 +3,7 @@
 {
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns -fno-warn-overlapping-patterns #-}
 
-module ParGrammar where
+module Parser where
 
 import ErrM
 import LexGrammar
@@ -117,6 +117,16 @@ String  : L_quoted  { BaseType_string   {   value_string = (prToken $1),
                                             base_type_pos = (tokenLineCol $1)
                                         } 
                     }
+
+Boolean :: { BaseType }
+Boolean : 'true'        { BaseType_boolean  {   value_bool = True,
+                                                base_type_pos = (tokenLineCol $1)
+                                            } 
+                        }
+        | 'false'       { BaseType_boolean  {   value_bool = False,
+                                                base_type_pos = (tokenLineCol $1)
+                                            } 
+                        }
 
 Program :: { Program }
 Program : 'program' Ident ';' BlockWithDecl '.' { ProgramStart   {   program_name = $2,
@@ -379,23 +389,23 @@ RightExp6   : RightExp7                         { $1 }
 
 RightExp7   :: { RightExp }
 RightExp7   : '(' RightExp ')'                  { $2 }
-            | Integer                           { RightExpInteger   {   right_exp_int = (value_int $1),
+            | Integer                           { RightExpInteger   {   right_exp_int = $1,
                                                                         right_exp_pos = (base_type_pos $1)
                                                                     }
                                                 }
-            | Double                            { RightExpReal      {   right_exp_double = (value_real $1),
+            | Double                            { RightExpReal      {   right_exp_double = $1,
                                                                         right_exp_pos = (base_type_pos $1)
                                                                     }
                                                 }
-            | Char                              { RightExpChar      {   right_exp_char = (value_char $1),
+            | Char                              { RightExpChar      {   right_exp_char = $1,
                                                                         right_exp_pos = (base_type_pos $1)
                                                                     }
                                                 }
             | Boolean                           { RightExpBoolean   {   right_exp_bool = $1,
-                                                                        right_exp_pos = (0, 0)
+                                                                        right_exp_pos = (base_type_pos $1)
                                                                     }
                                                 }
-            | String                            { RightExpString    {   right_exp_string = (value_string $1),
+            | String                            { RightExpString    {   right_exp_string = $1,
                                                                         right_exp_pos = (base_type_pos $1)
                                                                     }
                                                 }
@@ -426,15 +436,10 @@ BaseType    : 'integer'                         { Tipi.BooleanType }
             | 'boolean'                         { Tipi.RealType }
             | 'string'                          { Tipi.StringType }
 
-Boolean :: { Bool }
-Boolean : 'true' { True }
-        | 'false' { False }
-
 CompositeType   :: { Tipi.Type }
 CompositeType   : 'array' '[' ListArrayDeclarationDim ']' 'of' BaseType     { Tipi.ArrayType { Tipi.aType = $6, Tipi.dimensions = $3 }  }
                 | '^' Type                                                  { Tipi.PointerType { Tipi.pType = $2 } }
 
--- SONO QUI
 ListArrayDeclarationDim :: { [(Int, Int)] }
 ListArrayDeclarationDim : {- empty -}                                       { [] }
                         | ArrayDeclarationDim                               { (:[]) $1 }

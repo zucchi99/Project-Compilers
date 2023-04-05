@@ -1,8 +1,8 @@
 -- to compile this file
--- ghci src/modules/Main.hs src/modules/PrettyPrinter.hs src/modules/ParGrammar.hs src/bin/LexGrammar.hs src/bin/PrintGrammar.hs src/bin/ErrM.hs src/bin/AbsGrammar.hs src/modules/AbstractSyntax.hs
+-- make test-main
 
 -- import qualified PrettyPrinter
-import qualified ParGrammar         as Par
+import qualified Parser             as Par
 import qualified LexGrammar         as Lex
 -- import Giusti
 

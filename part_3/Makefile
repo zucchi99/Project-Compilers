@@ -15,7 +15,5 @@ compile-main:
 	./src/bin/Main
 
 test-main:
-	happy src/modules/ParGrammar.y
-	# ghci src/modules/Main.hs src/modules/PrettyPrinter.hs src/modules/ParGrammar.hs src/bin/LexGrammar.hs src/bin/PrintGrammar.hs src/bin/ErrM.hs src/bin/AbsGrammar.hs src/modules/AbstractSyntax.hs
-	# ghci src/modules/Main.hs src/modules/PrettyPrinter.hs src/modules/ParGrammar.hs src/bin/LexGrammar.hs src/modules/Errors.hs src/modules/AbstractSyntax.hs src/modules/TypeSys.hs
-	ghci src/modules/Main.hs src/modules/ParGrammar.hs src/bin/LexGrammar.hs src/modules/Errors.hs src/modules/AbstractSyntax.hs src/modules/TypeSys.hs src/bin/ErrM.hs
+	happy src/modules/Parser.y
+	ghci src/modules/Main.hs src/modules/Parser.hs src/bin/LexGrammar.hs src/modules/Errors.hs src/modules/AbstractSyntax.hs src/modules/TypeSys.hs src/bin/ErrM.hs

@@ -56,29 +56,29 @@ data ElseBlock = ElseBlock                  { else_body :: Statement, else_block
 
 data RightExp
     = RightExpOr                            { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
-    | RightExpAnd                           { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpGreater                       { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpLess                          { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpGreaterEqual                  { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpLessEqual                     { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpEqual                         { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpPlus                          { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpMinus                         { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpTimes                         { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpDivide                        { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpMod                           { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpDiv                           { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpPower                         { sx, dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpNot                           { dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpMinusUnary                    { dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpPlusUnary                     { dx :: RightExp , right_exp_pos  :: (Int, Int) }
-    | RightExpInteger                       { right_exp_int :: Int, right_exp_pos  :: (Int, Int) }
-    | RightExpReal                          { right_exp_double :: Double, right_exp_pos  :: (Int, Int) }
-    | RightExpBoolean                       { right_exp_bool :: Bool, right_exp_pos  :: (Int, Int) }
-    | RightExpChar                          { right_exp_char :: Char, right_exp_pos  :: (Int, Int) }
-    | RightExpString                        { right_exp_string :: String, right_exp_pos  :: (Int, Int) }
-    | RightExpFunctionCall                  { call_name_right_exp :: Ident, call_params_right_exp :: [RightExp], right_exp_pos  :: (Int, Int) }
-    | RightExpCopy                          { left_exp_right_exp :: LeftExp, right_exp_pos  :: (Int, Int) }
+    | RightExpAnd                           { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpGreater                       { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpLess                          { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpGreaterEqual                  { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpLessEqual                     { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpEqual                         { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpPlus                          { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpMinus                         { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpTimes                         { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpDivide                        { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpMod                           { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpDiv                           { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpPower                         { sx, dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpNot                           { dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpMinusUnary                    { dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpPlusUnary                     { dx :: RightExp , right_exp_pos :: (Int, Int) }
+    | RightExpInteger                       { right_exp_int :: BaseType, right_exp_pos :: (Int, Int) }
+    | RightExpReal                          { right_exp_double :: BaseType, right_exp_pos :: (Int, Int) }
+    | RightExpBoolean                       { right_exp_bool :: BaseType, right_exp_pos :: (Int, Int) }
+    | RightExpChar                          { right_exp_char :: BaseType, right_exp_pos :: (Int, Int) }
+    | RightExpString                        { right_exp_string :: BaseType, right_exp_pos :: (Int, Int) }
+    | RightExpFunctionCall                  { call_name_right_exp :: Ident, call_params_right_exp :: [RightExp], right_exp_pos :: (Int, Int) }
+    | RightExpCopy                          { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int) }
     deriving (Show)
 
 data LeftExp
