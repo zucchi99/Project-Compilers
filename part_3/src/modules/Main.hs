@@ -1,7 +1,7 @@
 -- to compile this file
 -- make test-main
 
--- import qualified PrettyPrinter
+import qualified PrettyPrinter
 import qualified Parser             as Par
 import qualified LexGrammar         as Lex
 -- import Giusti
@@ -19,21 +19,21 @@ testami test = do
     -- Parsing
     let par = Par.pProgram lex
     putStrLn ""
-    putStrLn $ show par
+    putStrLn $ PrettyPrinter.printAst par
     
     -- PrettyPrinter
-    -- let pretty = PrettyPrinter.printAst par
-    -- putStrLn ""
-    -- putStrLn pretty
+    let pretty = PrettyPrinter.prettyprinter par
+    putStrLn ""
+    putStrLn pretty
 
     -- PrettyPrinter to file
-    -- writeFile (concat ["src/test/test_prettytest.pas"]) pretty
+    writeFile (concat ["src/test/test_prettytest.pas"]) pretty
 
     -- Repeat for test PrettyPrinter
-    -- input <- readFile $ concat ["src/test/test_prettytest.pas"]
-    -- let output = Par.pProgram $ Lex.tokens input
-    -- putStrLn $ PrettyPrinter.prettyprinter output
-    -- putStrLn "OK"
+    input <- readFile $ concat ["src/test/test_prettytest.pas"]
+    let output = Par.pProgram $ Lex.tokens input
+    putStrLn $ PrettyPrinter.prettyprinter output
+    putStrLn "OK"
 
 main = do
 

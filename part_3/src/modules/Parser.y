@@ -104,14 +104,14 @@ Char    :: { (Char, (Int, Int)) }
 Char    : L_charac  { ((read (prToken $1)) :: Char, tokenLineCol $1) }
 
 String  :: { (String, (Int, Int))}
-String  : L_quoted  { (prToken $1, tokenLineCol $1) }
+String  : L_quoted  { ((read (prToken $1)) :: String, tokenLineCol $1) }
 
 Boolean :: { (Bool, (Int, Int)) }
 Boolean : 'true'        { (True, tokenLineCol $1) }
         | 'false'       { (False, tokenLineCol $1) }
 
 Program :: { Program }
-Program : 'program' Ident ';' BlockWithDecl '.' { ProgramStart   {   program_name = $2,
+Program : 'program' Ident ';' BlockWithDecl '.' { ProgramStart  {   program_name = $2,
                                                                     program_block_decl = $4,
                                                                     program_pos = (tokenLineCol $1)
                                                                 } 
@@ -120,7 +120,7 @@ Program : 'program' Ident ';' BlockWithDecl '.' { ProgramStart   {   program_nam
 BlockWithDecl   :: { BlockWithDecl }
 BlockWithDecl   : ListDeclaration BlockExec { BlockWithDeclaration  {   block_declarations = (reverse $1),
                                                                         block_exec = $2,
-                                                                        block_with_decl_pos = (declaration_pos (head $1))
+                                                                        block_with_decl_pos = if (null $1) then (block_exec_pos $2) else (declaration_pos (head $1))
                                                                     } 
                                             }
 
@@ -184,7 +184,7 @@ VariableDeclBlock : ListIdent ':' Type InitAssign   {
     let createDeclarationVariable :: Ident -> Declaration
         createDeclarationVariable ident = DeclarationVariable   {   variable_name = ident,
                                                                     variable_type = $3,
-                                                                    variable_value_maybe = Nothing,
+                                                                    variable_value_maybe = $4,
                                                                     declaration_pos = (ident_pos ident)
                                                                 } 
     in map (createDeclarationVariable) $1
@@ -412,10 +412,10 @@ Type    : BaseType                              { $1 }
         | CompositeType                         { $1 }
 
 BaseType    :: { Tipi.Type }
-BaseType    : 'integer'                         { Tipi.BooleanType }
+BaseType    : 'integer'                         { Tipi.IntegerType }
             | 'real'                            { Tipi.RealType }
             | 'char'                            { Tipi.CharType }
-            | 'boolean'                         { Tipi.RealType }
+            | 'boolean'                         { Tipi.BooleanType }
             | 'string'                          { Tipi.StringType }
 
 CompositeType   :: { Tipi.Type }

@@ -16,4 +16,4 @@ compile-main:
 
 test-main:
 	happy src/modules/Parser.y
-	ghci src/modules/Main.hs src/modules/Parser.hs src/bin/LexGrammar.hs src/modules/Errors.hs src/modules/AbstractSyntax.hs src/modules/TypeSys.hs src/bin/ErrM.hs
+	ghci src/modules/Main.hs src/modules/Parser.hs src/bin/LexGrammar.hs src/modules/Errors.hs src/modules/AbstractSyntax.hs src/modules/Types.hs src/bin/ErrM.hs src/modules/PrettyPrinter.hs
