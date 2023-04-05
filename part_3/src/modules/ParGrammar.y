@@ -8,8 +8,9 @@ module ParGrammar where
 import ErrM
 import LexGrammar
 -- import qualified AbstractSyntax as AbsSyn
--- import AbstractSyntax
-import AbsGrammar
+import AbstractSyntax
+import qualified Types as Tipi
+-- import AbsGrammar
 
 }
 
@@ -88,229 +89,395 @@ import AbsGrammar
 %%
 
 Ident   :: { Ident }
-Ident   : L_ident  { Ident (prToken $1) }
+Ident   : L_ident   { Ident {   id_name = (prToken $1),
+                                ident_pos = (tokenLineCol $1)
+                            } 
+                    }
 
-Integer :: { Integer }
-Integer : L_integ  { (read (prToken $1)) :: Integer }
+Integer :: { BaseType }
+Integer : L_integ   { BaseType_integer  {   value_int = (read (prToken $1)) :: Int,
+                                            base_type_pos = (tokenLineCol $1)
+                                        } 
+                    }
 
-Double  :: { Double }
-Double  : L_doubl  { (read (prToken $1)) :: Double }
+Double  :: { BaseType }
+Double  : L_doubl   { BaseType_real     {   value_real = (read (prToken $1)) :: Double,
+                                            base_type_pos = (tokenLineCol $1)
+                                        } 
+                    }
 
-Char    :: { Char }
-Char    : L_charac { (read (prToken $1)) :: Char }
+Char    :: { BaseType }
+Char    : L_charac  { BaseType_char     {   value_char = (read (prToken $1)) :: Char,
+                                            base_type_pos = (tokenLineCol $1)
+                                        } 
+                    }
 
-String  :: { String }
-String  : L_quoted { (prToken $1) }
+String  :: { BaseType }
+String  : L_quoted  { BaseType_string   {   value_string = (prToken $1),
+                                            base_type_pos = (tokenLineCol $1)
+                                        } 
+                    }
 
 Program :: { Program }
-Program : 'program' Ident ';' BlockWithDecl '.' { AbsGrammar.ProgramStart $2 $4 }
+Program : 'program' Ident ';' BlockWithDecl '.' { ProgramStart   {   program_name = $2,
+                                                                    program_block_decl = $4,
+                                                                    program_pos = (tokenLineCol $1)
+                                                                } 
+                                                }
 
 BlockWithDecl   :: { BlockWithDecl }
-BlockWithDecl   : ListDeclaration BlockExec { AbsGrammar.BlockWithDeclaration (reverse $1) $2 }
+BlockWithDecl   : ListDeclaration BlockExec { BlockWithDeclaration  {   block_declarations = (reverse $1),
+                                                                        block_exec = $2,
+                                                                        block_with_decl_pos = (declaration_pos (head $1))
+                                                                    } 
+                                            }
 
 ListDeclaration :: { [Declaration] }
-ListDeclaration : {- empty -} { [] }
-                | ListDeclaration Declaration { flip (:) $1 $2 }
+ListDeclaration : {- empty -}                   { [] }
+                | ListDeclaration Declaration   { $2 ++ $1 }
 
 BlockExec   :: { BlockExec }
-BlockExec   : 'begin' NonMandatoryTerminator ListStatement 'end' { AbsGrammar.BlockOnlyExecution $2 $3 }
+BlockExec   : 'begin' NonMandatoryTerminator ListStatement 'end'    { BlockOnlyExecution    {   statements = $3,
+                                                                                                block_exec_pos = (tokenLineCol $1)
+                                                                                            }
+                                                                    } 
 
 ListStatement   :: { [Statement] }
-ListStatement   : {- empty -} { [] }
-                | Statement { (:[]) $1 }
-                | Statement ';' ListStatement { (:) $1 $3 }
+ListStatement   : {- empty -}                   { [] }
+                | Statement                     { (:[]) $1 }
+                | Statement ';' ListStatement   { (:) $1 $3 }
 
-NonMandatoryTerminator  :: { NonMandatoryTerminator }
-NonMandatoryTerminator  : {- empty -} { AbsGrammar.NonMandatoryTerminator1 }
-                        | ';' { AbsGrammar.NonMandatoryTerminator2 }
-Declaration :: { Declaration }
-Declaration : CostantsBlock { AbsGrammar.DeclarationCostantsBlock $1 }
-            | VariablesBlock { AbsGrammar.DeclarationVariablesBlock $1 }
-            | FunctionForw { AbsGrammar.DeclarationFunctionForw $1 }
-            | ProcedureForw { AbsGrammar.DeclarationProcedureForw $1 }
-            | FunctionDecl { AbsGrammar.DeclarationFunctionDecl $1 }
-            | ProcedureDecl { AbsGrammar.DeclarationProcedureDecl $1 }
+NonMandatoryTerminator  :: {}
+NonMandatoryTerminator  : {- empty -}   {}
+                        | ';'           {}
 
-CostantsBlock   :: { CostantsBlock }
-CostantsBlock   : 'const' ListConstantDecl { AbsGrammar.CostantsBlock1 $2 }
+Declaration :: { [Declaration] }
+Declaration : CostantsBlock     { $1 } 
+            | VariablesBlock    { $1 } 
+            | FunctionForw      { [$1] } 
+            | ProcedureForw     { [$1] } 
+            | FunctionDecl      { [$1] } 
+            | ProcedureDecl     { [$1] } 
 
-ListConstantDecl    :: { [ConstantDecl] }
-ListConstantDecl    : ConstantDecl ';' { (:[]) $1 }
-                    | ConstantDecl ';' ListConstantDecl { (:) $1 $3 }
+CostantsBlock   :: { [Declaration] }
+CostantsBlock   : 'const' ListConstantDecl  { $2 }
 
-ConstantDecl    :: { ConstantDecl }
-ConstantDecl    : Ident '=' RightExp { AbsGrammar.ConstantDeclaration $1 $3 }
+ListConstantDecl    :: { [Declaration] }
+ListConstantDecl    : ConstantDecl ';'                      { (:[]) $1 }
+                    | ConstantDecl ';' ListConstantDecl     { (:) $1 $3 }
 
-VariablesBlock  :: { VariablesBlock }
-VariablesBlock  : 'var' ListVariableDeclBlock { AbsGrammar.VariablesBlock1 $2 }
+ConstantDecl    :: { Declaration }
+ConstantDecl    : Ident '=' RightExp { DeclarationCostant   {   costant_name = $1,
+                                                                costant_type_maybe = Nothing,
+                                                                costant_value = $3,
+                                                                declaration_pos = (ident_pos $1)
+                                                            } 
+                                    }
 
-ListVariableDeclBlock   :: { [VariableDeclBlock] }
-ListVariableDeclBlock   : VariableDeclBlock ';' { (:[]) $1 }
-                        | VariableDeclBlock ';' ListVariableDeclBlock { (:) $1 $3 }
+VariablesBlock  :: { [Declaration] }
+VariablesBlock  : 'var' ListVariableDeclBlock { $2 }
 
-ListVariableDeclFunc    :: { [VariableDeclFunc] }
-ListVariableDeclFunc    : {- empty -} { [] }
-                        | VariableDeclFunc { (:[]) $1 }
-                        | VariableDeclFunc ';' ListVariableDeclFunc { (:) $1 $3 }
+ListVariableDeclBlock   :: { [Declaration] }
+ListVariableDeclBlock   : VariableDeclBlock ';'                         { $1 }
+                        | VariableDeclBlock ';' ListVariableDeclBlock   { $1 ++ $3 }
 
-VariableDeclBlock :: { VariableDeclBlock }
-VariableDeclBlock : ListIdent ':' Type InitAssign { AbsGrammar.VariableDeclarationInsideBlock $1 $3 $4 }
+ListVariableDeclFunc    :: { [Declaration] }
+ListVariableDeclFunc    : {- empty -}                                   { [] }
+                        | VariableDeclFunc                              { $1 }
+                        | VariableDeclFunc ';' ListVariableDeclFunc     { $1 ++ $3 }
 
-InitAssign  :: { InitAssign }
-InitAssign  : {- empty -} { AbsGrammar.InitAssign1 }
-            | '=' RightExp { AbsGrammar.InitAssign2 $2 }
+VariableDeclBlock :: { [Declaration] }
+VariableDeclBlock : ListIdent ':' Type InitAssign   { 
+    -- foreach element in ListIdent, create a DeclarationVariable
+    let createDeclarationVariable :: Ident -> Declaration
+        createDeclarationVariable ident = DeclarationVariable   {   variable_name = ident,
+                                                                    variable_type = $3,
+                                                                    variable_value_maybe = Nothing,
+                                                                    declaration_pos = (ident_pos ident)
+                                                                } 
+    in map (createDeclarationVariable) $1
+    }
 
-DeclarationFunc :: { DeclarationFunc }
-DeclarationFunc : {- empty -} { AbsGrammar.DeclarationFunc1 }
-                | '(' ListVariableDeclFunc ')' { AbsGrammar.DeclarationFunc2 $2 }
+InitAssign  :: { Maybe (RightExp) }
+InitAssign  : {- empty -}       { Nothing }
+            | '=' RightExp      { Just $2 }
 
-VariableDeclFunc    :: { VariableDeclFunc }
-VariableDeclFunc    : ListIdent ':' Type { AbsGrammar.VariableDeclarationInsideF $1 $3 }
+DeclarationFunc :: { [Declaration] }
+DeclarationFunc : {- empty -}                   { [] }
+                | '(' ListVariableDeclFunc ')'  { $2 }
+
+VariableDeclFunc    :: { [Declaration] }
+VariableDeclFunc    : ListIdent ':' Type    { 
+    -- foreach element in ListIdent, create a DeclarationVariable
+    let createDeclarationVariable :: Ident -> Declaration
+        createDeclarationVariable ident = DeclarationVariable   {   variable_name = ident,
+                                                                    variable_type = $3,
+                                                                    variable_value_maybe = Nothing,
+                                                                    declaration_pos = (ident_pos ident)
+                                                                } 
+    in map (createDeclarationVariable) $1
+    }
 
 ListIdent   :: { [Ident] }
-ListIdent   : Ident { (:[]) $1 } 
-            | Ident ',' ListIdent { (:) $1 $3 }
+ListIdent   : Ident                 { (:[]) $1 } 
+            | Ident ',' ListIdent   { (:) $1 $3 }
 
-FunctionSign    :: { FunctionSign }
-FunctionSign    : 'function' Ident DeclarationFunc ':' Type ';' { AbsGrammar.FunctionSignature $2 $3 $5 }
+FunctionSign    :: { Declaration }
+FunctionSign    : 'function' Ident DeclarationFunc ':' Type ';' { DeclarationFunction   {   declaration_name = $2,
+                                                                                            declaration_params = $3,
+                                                                                            function_type = $5,
+                                                                                            declaration_body_maybe = Nothing,
+                                                                                            declaration_pos = (tokenLineCol $1)
+                                                                                        }
+                                                                }
 
-ProcedureSign   :: { ProcedureSign }
-ProcedureSign   : 'procedure' Ident DeclarationFunc ';' { AbsGrammar.ProcedureSignature $2 $3 }
+ProcedureSign   :: { Declaration }
+ProcedureSign   : 'procedure' Ident DeclarationFunc ';' { DeclarationProcedure  {   declaration_name = $2,
+                                                                                    declaration_params = $3,
+                                                                                    declaration_body_maybe = Nothing,
+                                                                                    declaration_pos = (tokenLineCol $1)
+                                                                                }
+                                                        }
 
-FunctionDecl    :: { FunctionDecl }
-FunctionDecl    : FunctionSign BlockWithDecl ';' { AbsGrammar.FunctionDeclaration $1 $2 }
+FunctionDecl    :: { Declaration }
+FunctionDecl    : FunctionSign BlockWithDecl ';'    { DeclarationFunction   {   declaration_name = declaration_name $1,
+                                                                                declaration_params = declaration_params $1,
+                                                                                function_type = function_type $1,
+                                                                                declaration_body_maybe = Just $2,
+                                                                                declaration_pos = (declaration_pos $1)
+                                                                            }
+                                                    }
 
-ProcedureDecl   :: { ProcedureDecl }
-ProcedureDecl   : ProcedureSign BlockWithDecl ';' { AbsGrammar.ProcedureDeclaration $1 $2 }
+ProcedureDecl   :: { Declaration }
+ProcedureDecl   : ProcedureSign BlockWithDecl ';'   { DeclarationProcedure  {   declaration_name = declaration_name $1,
+                                                                                declaration_params = declaration_params $1,
+                                                                                declaration_body_maybe = Just $2,
+                                                                                declaration_pos = (declaration_pos $1)
+                                                                            }
+                                                    }
 
-FunctionForw    :: { FunctionForw }
-FunctionForw    : FunctionSign 'forward' ';' { AbsGrammar.FunctionForward $1 }
+FunctionForw    :: { Declaration }
+FunctionForw    : FunctionSign 'forward' ';'    { $1 }
 
-ProcedureForw   :: { ProcedureForw }
-ProcedureForw   : ProcedureSign 'forward' ';' { AbsGrammar.ProcedureForward $1 }
+ProcedureForw   :: { Declaration }
+ProcedureForw   : ProcedureSign 'forward' ';'   { $1 }
 
-FunctionCall    :: { FunctionCall }
-FunctionCall    : Ident '(' ListRightExp ')' { AbsGrammar.FunctionCall $1 $3 }
+FunctionCall    :: { Statement }
+FunctionCall    : Ident '(' ListRightExp ')'    { StatementFunctionCall {   call_name = $1,
+                                                                            call_params = $3,
+                                                                            statement_pos = (ident_pos $1)
+                                                                        }
+                                                }
 
-ProcedureCall   :: { ProcedureCall }
-ProcedureCall   : Ident '(' ListRightExp ')' { AbsGrammar.ProcedureCall $1 $3 }
+ProcedureCall   :: { Statement }
+ProcedureCall   : Ident '(' ListRightExp ')'    { StatementProcedureCall    {   call_name = $1,
+                                                                                call_params = $3,
+                                                                                statement_pos = (ident_pos $1)
+                                                                            }
+                                                }
 
 ListRightExp    :: { [RightExp] }
-ListRightExp    : {- empty -} { [] }
-                | RightExp { (:[]) $1 }
-                | RightExp ',' ListRightExp { (:) $1 $3 }
+ListRightExp    : {- empty -}                   { [] }
+                | RightExp                      { (:[]) $1 }
+                | RightExp ',' ListRightExp     { (:) $1 $3 }
 
 Statement :: { Statement }
-Statement   : BlockExec { AbsGrammar.StatementBlock $1 }
-            | 'if' RightExp 'then' Statement ElseBlock { AbsGrammar.StatementIf $2 $4 $5 }
-            | 'for' Assign 'to' RightExp 'do' Statement { AbsGrammar.StatementFor $2 $4 $6 }
-            | 'while' RightExp 'do' Statement { AbsGrammar.StatementWhile $2 $4 }
-            | 'repeat' Statement 'until' RightExp { AbsGrammar.StatementRepeatUntil $2 $4 }
-            | Assign { AbsGrammar.StatementAssign $1 }
-            | FunctionCall { AbsGrammar.StatementFunctionCall $1 }
-            | ProcedureCall { AbsGrammar.StatementProcedureCall $1 }
-            | WritePrimitive { AbsGrammar.StatementWrite $1 }
-            | ReadPrimitive { AbsGrammar.StatementRead $1 }
+Statement   : BlockExec                                     { StatementBlock    {   block = $1,
+                                                                                    statement_pos = (block_exec_pos $1)
+                                                                                }
+                                                            }
+            | 'if' RightExp 'then' Statement ElseBlock      { StatementIf   {   condition = $2,
+                                                                                then_body = $4,
+                                                                                else_body_maybe = $5,
+                                                                                statement_pos = (tokenLineCol $1)
+                                                                            }
+                                                            }
+            | 'for' Assign 'to' RightExp 'do' Statement     { StatementFor  {   condition = $4,
+                                                                                then_body = $6,
+                                                                                for_var = $2,
+                                                                                statement_pos = (tokenLineCol $1)
+                                                                            }
+                                                            }
+            | 'while' RightExp 'do' Statement               { StatementWhile    {   condition = $2,
+                                                                                    then_body = $4,
+                                                                                    statement_pos = (tokenLineCol $1)
+                                                                                }
+                                                            }
+            | 'repeat' Statement 'until' RightExp           { StatementRepeatUntil  {   condition = $4,
+                                                                                        then_body = $2,
+                                                                                        statement_pos = (tokenLineCol $1)
+                                                                                    }
+                                                            }
+            | Assign                                        { StatementAssign   {   assign = $1,
+                                                                                    statement_pos = (assign_pos $1)
+                                                                                }
+                                                            }
+            | FunctionCall                                  { $1 }
+            | ProcedureCall                                 { $1 }
+            | WritePrimitive                                { StatementWrite    {   write_primitive = $1,
+                                                                                    statement_pos = (write_primitive_pos $1)
+                                                                                }
+                                                            }
+            | ReadPrimitive                                 { StatementRead     {   read_primitive = $1,
+                                                                                    statement_pos = (read_primitive_pos $1)
+                                                                                }
+                                                            }
 
-ElseBlock   :: { ElseBlock }
-ElseBlock   : {- empty -} { AbsGrammar.ElseBlock1 }
-            | 'else' Statement { AbsGrammar.ElseBlock2 $2 }
+ElseBlock   :: { Maybe ElseBlock }
+ElseBlock   : {- empty -}                                   { Nothing }
+            | 'else' Statement                              { Just ElseBlock    {   else_body = $2,
+                                                                                    else_block_pos = (tokenLineCol $1)
+                                                                                }
+                                                            }
 
 Assign      :: { Assign }
-Assign      : LeftExp ':=' RightExp { AbsGrammar.VariableAssignment $1 $3 }
+Assign      : LeftExp ':=' RightExp { VariableAssignment    {   left_exp_assignment = $1,
+                                                                right_exp_assignment = $3,
+                                                                assign_pos = (left_exp_pos $1)
+                                                            }
+                                    }
 
 RightExp    :: { RightExp }
-RightExp    : RightExp1 { $1 }
-            | RightExp 'or' RightExp1 { AbsGrammar.RightExpOr $1 $3 }
-
+RightExp    : RightExp1                         { $1 }
+            | RightExp 'or' RightExp1           { RightExpOr    {   sx = $1,
+                                                                    dx = $3,
+                                                                    right_exp_pos = (right_exp_pos $1)
+                                                                }
+                                                }
 RightExp1   :: { RightExp }
-RightExp1   : RightExp2 { $1 }
-            | RightExp1 'and' RightExp2 { AbsGrammar.RightExpAnd $1 $3 }
-
+RightExp1   : RightExp2                         { $1 }
+            | RightExp1 'and' RightExp2         { RightExpAnd { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
 RightExp2   :: { RightExp }
-RightExp2   : RightExp3 { $1 }
-            | RightExp2 '>' RightExp3 { AbsGrammar.RightExpGreater $1 $3 }
-            | RightExp2 '<' RightExp3 { AbsGrammar.RightExpLess $1 $3 }
-            | RightExp2 '>=' RightExp3 { AbsGrammar.RightExpGreaterEqual $1 $3 }
-            | RightExp2 '<=' RightExp3 { AbsGrammar.RightExpLessEqual $1 $3 }
-            | RightExp2 '=' RightExp3 { AbsGrammar.RightExpEqual $1 $3 }
+RightExp2   : RightExp3                         { $1 }
+            | RightExp2 '>' RightExp3           { RightExpGreater { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1)} }
+            | RightExp2 '<' RightExp3           { RightExpLess { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
+            | RightExp2 '>=' RightExp3          { RightExpGreaterEqual { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
+            | RightExp2 '<=' RightExp3          { RightExpLessEqual { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
+            | RightExp2 '=' RightExp3           { RightExpEqual { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
 
 RightExp3   :: { RightExp }
-RightExp3   : RightExp4 { $1 }
-            | RightExp3 '+' RightExp4 { AbsGrammar.RightExpPlus $1 $3 }
-            | RightExp3 '-' RightExp4 { AbsGrammar.RightExpMinus $1 $3 }
+RightExp3   : RightExp4                         { $1 }
+            | RightExp3 '+' RightExp4           { RightExpPlus { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
+            | RightExp3 '-' RightExp4           { RightExpMinus { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
 
 RightExp4   :: { RightExp }
-RightExp4   : RightExp5 { $1 }
-            | RightExp4 '*' RightExp5 { AbsGrammar.RightExpTimes $1 $3 }
-            | RightExp4 '/' RightExp5 { AbsGrammar.RightExpDivide $1 $3 }
-            | RightExp4 'mod' RightExp5 { AbsGrammar.RightExpMod $1 $3 }
-            | RightExp4 'div' RightExp5 { AbsGrammar.RightExpDiv $1 $3 }
+RightExp4   : RightExp5                         { $1 }
+            | RightExp4 '*' RightExp5           { RightExpTimes { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
+            | RightExp4 '/' RightExp5           { RightExpDivide { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
+            | RightExp4 'mod' RightExp5         { RightExpMod { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
+            | RightExp4 'div' RightExp5         { RightExpDiv { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
 
 RightExp5   :: { RightExp }
-RightExp5   : RightExp6 { $1 }
-            | RightExp5 '**' RightExp6 { AbsGrammar.RightExpPower $1 $3 }
+RightExp5   : RightExp6                         { $1 }
+            | RightExp5 '**' RightExp6          { RightExpPower { sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) } }
 
 RightExp6   :: { RightExp }
-RightExp6   : RightExp7 { $1 }
-            | 'not' RightExp7 { AbsGrammar.RightExpNot $2 }
-            | '-' RightExp7 { AbsGrammar.RightExpMinusUnary $2 }
-            | '+' RightExp7 { AbsGrammar.RightExpPlusUnary $2 }
+RightExp6   : RightExp7                         { $1 }
+            | 'not' RightExp7                   { RightExpNot { dx = $2, right_exp_pos = (tokenLineCol $1) } }
+            | '-' RightExp7                     { RightExpMinusUnary { dx = $2, right_exp_pos = (tokenLineCol $1) } }
+            | '+' RightExp7                     { RightExpPlusUnary { dx = $2, right_exp_pos = (tokenLineCol $1) } }
 
 RightExp7   :: { RightExp }
-RightExp7   : '(' RightExp ')' { $2 }
-            | Integer { AbsGrammar.RightExpInteger $1 }
-            | Double { AbsGrammar.RightExpReal $1 }
-            | Boolean { AbsGrammar.RightExpBoolean $1 }
-            | Char { AbsGrammar.RightExpChar $1 }
-            | String { AbsGrammar.RightExpString $1 }
-            | FunctionCall { AbsGrammar.RightExpFunctionCall $1 }
-            | LeftExp { AbsGrammar.RightExpCopy $1 }
+RightExp7   : '(' RightExp ')'                  { $2 }
+            | Integer                           { RightExpInteger   {   right_exp_int = (value_int $1),
+                                                                        right_exp_pos = (base_type_pos $1)
+                                                                    }
+                                                }
+            | Double                            { RightExpReal      {   right_exp_double = (value_real $1),
+                                                                        right_exp_pos = (base_type_pos $1)
+                                                                    }
+                                                }
+            | Char                              { RightExpChar      {   right_exp_char = (value_char $1),
+                                                                        right_exp_pos = (base_type_pos $1)
+                                                                    }
+                                                }
+            | Boolean                           { RightExpBoolean   {   right_exp_bool = $1,
+                                                                        right_exp_pos = (0, 0)
+                                                                    }
+                                                }
+            | String                            { RightExpString    {   right_exp_string = (value_string $1),
+                                                                        right_exp_pos = (base_type_pos $1)
+                                                                    }
+                                                }
+            | FunctionCall                      { RightExpFunctionCall  {   call_name_right_exp = call_name $1,
+                                                                            call_params_right_exp = call_params $1,
+                                                                            right_exp_pos = (statement_pos $1) 
+                                                                        }
+                                                }
+            | LeftExp                           { RightExpCopy      {   left_exp_right_exp = $1, 
+                                                                        right_exp_pos = (left_exp_pos $1)
+                                                                    }
+                                                }
 
 LeftExp :: { LeftExp }
-LeftExp : Ident { AbsGrammar.LeftExpIdent $1 }
-        | LeftExp '[' ListRightExp ']' { AbsGrammar.LeftExpArrayAccess $1 $3 }
-        | LeftExp '^' { AbsGrammar.LeftExpPointerValue $1 }
-        | LeftExp '@' { AbsGrammar.LeftExpPointerAddress $1 }
+LeftExp : Ident                                 { LeftExpIdent { left_exp_name = $1, left_exp_pos = (ident_pos $1) } }
+        | LeftExp '[' ListRightExp ']'          { LeftExpArrayAccess { array_name = $1, array_pos = $3, left_exp_pos = (left_exp_pos $1) } }
+        | LeftExp '^'                           { LeftExpPointerValue { pointer_value = $1, left_exp_pos = (left_exp_pos $1) } }
+        | LeftExp '@'                           { LeftExpPointerAddress { pointer_address = $1, left_exp_pos = (left_exp_pos $1) } }
 
-Type    :: { Type }
-Type    : BaseType { AbsGrammar.TypeBaseType $1 }
-        | CompositeType { AbsGrammar.TypeCompositeType $1 }
+Type    :: { Tipi.Type }
+Type    : BaseType                              { $1 }
+        | CompositeType                         { $1 }
 
-BaseType    :: { BaseType }
-BaseType    : 'integer' { AbsGrammar.BaseType_integer }
-            | 'real' { AbsGrammar.BaseType_real }
-            | 'char' { AbsGrammar.BaseType_char }
-            | 'boolean' { AbsGrammar.BaseType_boolean }
-            | 'string' { AbsGrammar.BaseType_string }
+BaseType    :: { Tipi.Type }
+BaseType    : 'integer'                         { Tipi.BooleanType }
+            | 'real'                            { Tipi.RealType }
+            | 'char'                            { Tipi.CharType }
+            | 'boolean'                         { Tipi.RealType }
+            | 'string'                          { Tipi.StringType }
 
-Boolean :: { Boolean }
-Boolean : 'true' { AbsGrammar.Boolean_true }
-        | 'false' { AbsGrammar.Boolean_false }
+Boolean :: { Bool }
+Boolean : 'true' { True }
+        | 'false' { False }
 
-CompositeType   :: { CompositeType }
-CompositeType   : 'array' '[' ListArrayDeclarationDim ']' 'of' BaseType { AbsGrammar.CompTypeArray $3 $6 }
-                | '^' Type { AbsGrammar.CompTypePointer $2 }
+CompositeType   :: { Tipi.Type }
+CompositeType   : 'array' '[' ListArrayDeclarationDim ']' 'of' BaseType     { Tipi.ArrayType { Tipi.aType = $6, Tipi.dimensions = $3 }  }
+                | '^' Type                                                  { Tipi.PointerType { Tipi.pType = $2 } }
 
-ListArrayDeclarationDim :: { [ArrayDeclarationDim] }
-ListArrayDeclarationDim : {- empty -} { [] }
-                        | ArrayDeclarationDim { (:[]) $1 }
-                        | ArrayDeclarationDim ',' ListArrayDeclarationDim { (:) $1 $3 }
+-- SONO QUI
+ListArrayDeclarationDim :: { [(Int, Int)] }
+ListArrayDeclarationDim : {- empty -}                                       { [] }
+                        | ArrayDeclarationDim                               { (:[]) $1 }
+                        | ArrayDeclarationDim ',' ListArrayDeclarationDim   { (:) $1 $3 }
 
-ArrayDeclarationDim :: { ArrayDeclarationDim }
-ArrayDeclarationDim : RightExp '..' RightExp { AbsGrammar.ArrayDeclarationDim $1 $3 }
+ArrayDeclarationDim :: { (Int, Int) }
+ArrayDeclarationDim : Integer '..' Integer    { (value_int $1, value_int $3) }
 
 WritePrimitive :: { WritePrimitive }
-WritePrimitive  : 'writeInt' '(' RightExp ')' { AbsGrammar.WriteInt $3 }
-                | 'writeReal' '(' RightExp ')' { AbsGrammar.WriteReal $3 }
-                | 'writeChar' '(' RightExp ')' { AbsGrammar.WriteChar $3 }
-                | 'writeString' '(' RightExp ')' { AbsGrammar.WriteString $3 }
+WritePrimitive  : 'writeInt' '(' RightExp ')'       { WriteInt  {   write_exp = $3,
+                                                                    write_primitive_pos = (tokenLineCol $1)
+                                                                }
+                                                    }
+                | 'writeReal' '(' RightExp ')'      { WriteReal {   write_exp = $3,
+                                                                    write_primitive_pos = (tokenLineCol $1)
+                                                                }
+                                                    }
+                | 'writeChar' '(' RightExp ')'      { WriteChar {   write_exp = $3,
+                                                                    write_primitive_pos = (tokenLineCol $1)
+                                                                }
+                                                    }
+                | 'writeString' '(' RightExp ')'    { WriteString { write_exp = $3,
+                                                                    write_primitive_pos = (tokenLineCol $1)
+                                                                }
+                                                    }
                 
 ReadPrimitive :: { ReadPrimitive }
-ReadPrimitive   : 'readInt' '(' LeftExp ')' { AbsGrammar.ReadInt $3 }
-                | 'readReal' '(' LeftExp ')' { AbsGrammar.ReadReal $3 }
-                | 'readChar' '(' LeftExp ')' { AbsGrammar.ReadChar $3 }
-                | 'readString' '(' LeftExp ')' { AbsGrammar.ReadString $3 }
+ReadPrimitive   : 'readInt' '(' LeftExp ')'     { ReadInt       {   read_exp = $3,
+                                                                    read_primitive_pos = (tokenLineCol $1)
+                                                                }
+                                                }
+                | 'readReal' '(' LeftExp ')'    { ReadReal      {   read_exp = $3,
+                                                                    read_primitive_pos = (tokenLineCol $1)
+                                                                }
+                                                }
+                | 'readChar' '(' LeftExp ')'    { ReadChar      {   read_exp = $3,
+                                                                    read_primitive_pos = (tokenLineCol $1)
+                                                                }
+                                                }
+                | 'readString' '(' LeftExp ')'  { ReadString    {   read_exp = $3,
+                                                                    read_primitive_pos = (tokenLineCol $1)
+                                                                }
+                                                }
 {
 
 returnM :: a -> Err a

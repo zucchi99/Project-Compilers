@@ -16,7 +16,7 @@ data Type =
     | CharType
     | StringType
     -- TODO handle array multidimensional
-    | ArrayType { aType :: Type, leftPoint :: Int, rightPoint :: Int }
+    | ArrayType { aType :: Type, dimensions :: [(Int,Int)] }
     | PointerType { pType :: Type }
     | ErrorType { messages :: [String] }
 
@@ -28,7 +28,8 @@ instance Eq Type where -- Eq for arrays does not care about checked/notchecked-n
     CharType              == CharType              = True
     StringType            == StringType            = True
     PointerType{pType=p1} == PointerType{pType=p2} = (p1 == p2) --same pointed address
-    ArrayType{aType=t1, leftPoint=l1, rightPoint=r1} == ArrayType{aType=t2, leftPoint=l2, rightPoint=r2} = (t1 == t2) && (r2-l2 == r1-l1) --same type and length
+    -- ArrayType{aType=t1, leftPoint=l1, rightPoint=r1} == ArrayType{aType=t2, leftPoint=l2, rightPoint=r2} = (t1 == t2) && (r2-l2 == r1-l1) --same type and length
+    ArrayType{aType=t1, dimensions=d1} == ArrayType{aType=t2, dimensions=d2} = (t1 == t2) && (d1 == d2) --same type and length
     _                     == _                     = False
 
 instance Show Type where
@@ -37,7 +38,8 @@ instance Show Type where
     show RealType              = "real"
     show CharType              = "char"
     show StringType            = "string"
-    show ArrayType{aType=t, leftPoint=l, rightPoint=r} = "array [" ++ (show l) ++ ".." ++ (show r) ++ "] of " ++ (show t)
+    -- show ArrayType{aType=t, leftPoint=l, rightPoint=r} = "array [" ++ (show l) ++ ".." ++ (show r) ++ "] of " ++ (show t)
+    show ArrayType{aType=t, dimensions=d} = "array " ++ (show d) ++ " of " ++ (show t)
     show PointerType{pType=t} = "^" ++ (show t)
     show ErrorType{messages=m} = listToString m ", "
 
