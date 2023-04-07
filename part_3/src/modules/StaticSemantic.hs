@@ -52,7 +52,7 @@ mkIdDeclErrs id etype ttype = case T.sup etype ttype of
 -- Nota: La stringa è il nome della funzione, la lista di tipi sono i tipi dei parametri e il tipo finale è il tipo di ritorno
 --       Il tutto crea un enviroment con una sola entry (che equivale ad una funzione)
 mkFunEnv :: String -> [T.Type] -> T.Type -> E.Env
-mkFunEnv id types returnType = E.mkSingletonEnv id (T.FunType types returnType)
+mkFunEnv id types returnType = E.mkSingletonEnv id E.FunEntry{E.params=types, E.ret=returnType}
 
 main = do
 
