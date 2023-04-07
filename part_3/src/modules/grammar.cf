@@ -64,8 +64,8 @@ ProcedureDeclaration.           ProcedureDecl   ::= ProcedureSign BlockWithDecl 
 FunctionForward.                FunctionForw    ::= FunctionSign "forward" ";" ;
 ProcedureForward.               ProcedureForw   ::= ProcedureSign "forward" ";" ;
 
-FunctionCall.                   FunctionCall   ::= Ident "(" [RightExp] ")" ;
-ProcedureCall.                  ProcedureCall  ::= Ident "(" [RightExp] ")" ;
+FunctionInvocation.             FunctionCall   ::= Ident "(" [RightExp] ")" ;
+ProcedureInvocation.            ProcedureCall  ::= Ident "(" [RightExp] ")" ;
 separator RightExp "," ;
 
 -- __________ STATEMENTS __________
@@ -141,7 +141,7 @@ CompTypeArray.                  CompositeType   ::= "array" "[" [ArrayDeclaratio
 separator ArrayDeclarationDim "," ;
 -- The declaration with variable length is not allowed in Pascal, but here it's allowed
 -- we need to be sure that the right expression produce an integer
-ArrayDeclarationDim.            ArrayDeclarationDim     ::= RightExp ".." RightExp ;
+ArrayDeclarationDimension.      ArrayDeclarationDim     ::= RightExp ".." RightExp ;
 
 -- Pointer of pointer in Pascal is not allowed, but here is allowed, BECAUSE THIS IS NOT PASCAL
 CompTypePointer.                CompositeType   ::= "^" Type ;
