@@ -6,34 +6,58 @@ import qualified Parser             as Par
 import qualified LexGrammar         as Lex
 -- import Giusti
 
+
+--get_tabs 0 = ""
+--get_tabs n = ' ' : (get_tabs (n-1))
+
+--print_abs text = print_abs_aux text 1
+--    where
+--        print_abs_aux ""       n = ""
+--        print_abs_aux (c:xs) n | (c == '{' || c == '[') = (c : '\n' : (get_tabs (n+1)))    ++ (print_abs_aux xs (n+1))
+--        print_abs_aux (c:xs) n | (c == '}' || c == ']') = ('\n' : (get_tabs (n-1)) ++ "}") ++ (print_abs_aux xs (n-1))
+--        --print_abs_aux (',':xs) n = (",\n" ++ (get_tabs n))           ++ (print_abs_aux xs n)
+--        print_abs_aux (x:xs)   n = (x : (print_abs_aux xs n))
+
 testami test = do
 
     -- Read file
     input <- readFile $ concat ["src/test/test_", test, ".pas"]
-    
+
+    putStrLn "input file:"
+    putStr input
+    putStr "\n\n"
+
     -- Lexing
     let lex = Lex.tokens input
-    putStrLn ""
+    putStrLn "lexer output:"
     putStrLn $ show lex
+    putStrLn ""
 
     -- Parsing
     let par = Par.pProgram lex
-    putStrLn ""
+    putStrLn "parser output:"
+    -- putStr $ print_abs $ PrettyPrinter.printAst par
     putStrLn $ PrettyPrinter.printAst par
+    putStrLn ""
     
     -- PrettyPrinter
     let pretty = PrettyPrinter.prettyprinter par
-    putStrLn ""
+    putStrLn "pretty print of abstract syntax:"
     putStrLn pretty
+    putStrLn ""
+
+    let out_dir = "src/test/temp/"
+    let out_file = out_dir ++ "pretty_print_" ++ test ++ ".pas"
 
     -- PrettyPrinter to file
-    writeFile (concat ["src/test/test_prettytest.pas"]) pretty
+    putStrLn "checking if output of pretty printer is correctly lexed and parser..."
+    writeFile out_file pretty
 
     -- Repeat for test PrettyPrinter
-    input <- readFile $ concat ["src/test/test_prettytest.pas"]
+    input <- readFile out_file
     let output = Par.pProgram $ Lex.tokens input
-    putStrLn $ PrettyPrinter.prettyprinter output
-    putStrLn "OK"
+    -- putStrLn $ PrettyPrinter.prettyprinter output
+    putStrLn "check successful!"
 
 main = do
 

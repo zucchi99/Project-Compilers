@@ -16,12 +16,11 @@ ProgramStart.                   Program      ::= "program" Ident ";" BlockWithDe
 -- __________ BLOCK STRUCTURE __________
 
 -- block structure with declarations
-BlockWithDeclaration.       BlockWithDecl ::= [Declaration] BlockExec ;
+BlockWithDeclaration.       BlockWithDecl ::= [Declaration] "begin" NonMandatoryTerminator [Statement] "end" ;
 separator Declaration "" ;
 
 -- Useful, because inside a begin ... end block there can be a nested block, only without declarations
-BlockOnlyExecution.         BlockExec     ::= "begin" NonMandatoryTerminator [Statement] "end" ;
-separator Statement ";" ;
+--BlockOnlyExecution.         BlockExec     ::= "begin" NonMandatoryTerminator [Statement] "end" ;
 
 rules                            NonMandatoryTerminator ::= {- empty -} | ";" ;
 
@@ -71,7 +70,8 @@ separator RightExp "," ;
 
 -- __________ STATEMENTS __________
 
-StatementBlock.                 Statement       ::= BlockExec ;
+separator Statement ";" ;
+StatementBlock.                 Statement       ::= BlockWithDecl ;
 StatementIf.                    Statement       ::= "if" RightExp "then" Statement ElseBlock ;
 StatementFor.                   Statement       ::= "for" Assign "to" RightExp "do" Statement ;
 StatementWhile.                 Statement       ::= "while" RightExp "do" Statement ;

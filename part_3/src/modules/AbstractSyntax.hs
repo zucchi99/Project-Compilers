@@ -6,7 +6,7 @@
 
 
 module AbstractSyntax where
-import qualified Types as Tipi
+import qualified Types as T
 
 -- ___________ TYPE FOR ABSTRACT SYNTAX  ___________
 
@@ -19,19 +19,16 @@ data Program = ProgramStart                 { program_name :: Ident, program_blo
     deriving (Show)
 
 -- Block structures
-data BlockWithDecl = BlockWithDeclaration   { block_declarations :: [Declaration], block_exec :: BlockExec, block_with_decl_pos :: (Int, Int) }
-    deriving (Show)
-
-data BlockExec = BlockOnlyExecution         { statements :: [Statement], block_exec_pos :: (Int, Int) }
+data BlockWithDecl = BlockWithDeclaration   { block_declarations :: [Declaration], statements :: [Statement], block_with_decl_pos :: (Int, Int) }
     deriving (Show)
 
 -- Declarations
 data Declaration
-    = DeclarationCostant                    { costant_name :: Ident, costant_type_maybe :: Maybe Tipi.Type, costant_value :: RightExp, declaration_pos :: (Int, Int) }
-    | DeclarationVariable                   { variable_name :: Ident, variable_type :: Tipi.Type, variable_value_maybe :: Maybe RightExp, declaration_pos :: (Int, Int) }
+    = DeclarationCostant                    { costant_name :: Ident, costant_type_maybe :: Maybe T.Type, costant_value :: RightExp, declaration_pos :: (Int, Int) }
+    | DeclarationVariable                   { variable_name :: Ident, variable_type :: T.Type, variable_value_maybe :: Maybe RightExp, declaration_pos :: (Int, Int) }
     -- NB v_value in params must be all nothing !               (OR we can acept default values)
     -- NB (f_body == Nothing) <==> is forward
-    | DeclarationFunction                   { declaration_name :: Ident, declaration_params :: [Declaration], function_type :: Tipi.Type, declaration_body_maybe :: Maybe BlockWithDecl, declaration_pos :: (Int, Int) }
+    | DeclarationFunction                   { declaration_name :: Ident, declaration_params :: [Declaration], function_type :: T.Type, declaration_body_maybe :: Maybe BlockWithDecl, declaration_pos :: (Int, Int) }
     -- NB v_value in params must be all nothing !               (OR we can acept default values)
     -- NB (f_body == Nothing) <==> is forward
     | DeclarationProcedure                  { declaration_name :: Ident, declaration_params :: [Declaration], declaration_body_maybe :: Maybe BlockWithDecl, declaration_pos :: (Int, Int) }
@@ -39,7 +36,7 @@ data Declaration
 
 -- Statements
 data Statement
-    = StatementBlock                        { block :: BlockExec, statement_pos :: (Int, Int) }
+    = StatementBlock                        { block :: BlockWithDecl, statement_pos :: (Int, Int) }
     | StatementIf                           { condition :: RightExp, then_body :: Statement, else_body_maybe :: Maybe ElseBlock, statement_pos :: (Int, Int) }
     | StatementFor                          { condition :: RightExp, then_body :: Statement, for_var :: Assign, statement_pos :: (Int, Int) }
     | StatementWhile                        { condition :: RightExp, then_body :: Statement, statement_pos :: (Int, Int) }

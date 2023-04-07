@@ -12,7 +12,8 @@ import Data.Maybe
 -- __________________________ AUXILIAR CLASSES AND FUNCTIONS
 
 -- Extract the value from the monad ErrM.Ok
-fromOk (ErrM.Ok a) = a
+--fromOk (ErrM.Ok a)    = a
+--fromOk (ErrM.Bad err) = err
 
 -- print the block declarations
 -- already = "" -> no var or const was printed before
@@ -66,10 +67,16 @@ class PrettyPrinterClass a where
     prettyprinterAux :: Bool -> Int -> a -> String
 
 -- __________________________ PRINT THE ABSTRACT SINTAX TREE FROM HAPPY
-printAst x = show $ fromOk x
+printAst x = case x of
+    (ErrM.Ok a)    -> show a
+    (ErrM.Bad err) -> err
 
 -- __________________________ PRETTY PRINTER
-prettyprinter x = prettyprinterAux True 0 $ fromOk x
+prettyprinter x = case x of
+    -- parse successful
+    (ErrM.Ok a)    -> prettyprinterAux True 0 a
+    -- parse error
+    (ErrM.Bad err) -> err
 
 -- PROGRAM START (here for debugging)
 instance PrettyPrinterClass Program where
@@ -89,15 +96,19 @@ instance PrettyPrinterClass [Ident] where
         stringPrettyConcat False numtabs idents ", " "separator" newline
 
 instance PrettyPrinterClass BlockWithDecl where
-    prettyprinterAux newline numtabs (BlockWithDeclaration declarations block _) =
+    prettyprinterAux newline numtabs (BlockWithDeclaration declarations statements _) =
         prettyprinterAux newline numtabs declarations                       ++
-        prettyprinterAux newline numtabs block
+        ident True numtabs "begin"                                          ++
+        prettyprinterAux True (numtabs + 1) statements                      ++
+        ident True numtabs "end"
 
+{--
 instance PrettyPrinterClass BlockExec where
     prettyprinterAux newline numtabs (BlockOnlyExecution statements _) =
         ident True numtabs "begin"                                          ++
         prettyprinterAux True (numtabs + 1) statements                      ++
         ident True numtabs "end"
+--}
 
 instance PrettyPrinterClass Declaration where
     prettyprinterAux newline numtabs (DeclarationCostant name _ value _) =

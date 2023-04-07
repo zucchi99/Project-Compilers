@@ -123,23 +123,25 @@ Program : 'program' Ident ';' BlockWithDecl '.' {
 }}
 
 BlockWithDecl   :: { BlockWithDecl }
-BlockWithDecl   : ListDeclaration BlockExec {
+BlockWithDecl   : ListDeclaration 'begin' NonMandatoryTerminator ListStatement 'end' {
     BlockWithDeclaration  {
         block_declarations = (reverse $1),
-        block_exec = $2,
-        block_with_decl_pos = if (null $1) then (block_exec_pos $2) else (declaration_pos (head $1))                                                                
+        statements = $4,
+        block_with_decl_pos = if (null $1) then (tokenLineCol $2) else (declaration_pos (head $1))                                                                
 }}
 
 ListDeclaration :: { [Declaration] }
 ListDeclaration : {- empty -}                 { [] }
                 | ListDeclaration Declaration { $2 ++ $1 }
 
+{--
 BlockExec   :: { BlockExec }
 BlockExec   : 'begin' NonMandatoryTerminator ListStatement 'end' {
     BlockOnlyExecution {
         statements = $3,
         block_exec_pos = (tokenLineCol $1)                                                                                    
 }} 
+--}
 
 ListStatement   :: { [Statement] }
 ListStatement   : {- empty -}                 { [] }
@@ -290,10 +292,10 @@ ListRightExp    : {- empty -}                   { [] }
                 | RightExp ',' ListRightExp     { (:) $1 $3 }
 
 Statement :: { Statement }
-Statement   : BlockExec  {
+Statement   : BlockWithDecl  {
                 StatementBlock {
                     block = $1,
-                    statement_pos = (block_exec_pos $1)                                                                            
+                    statement_pos = (block_with_decl_pos $1)                                                                            
                 }}
             | 'if' RightExp 'then' Statement ElseBlock {
                 StatementIf   {
