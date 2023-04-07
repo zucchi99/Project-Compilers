@@ -9,7 +9,17 @@ import qualified Data.Map as Map
 import qualified ErrorMessage as Err
 import Data.Maybe
 
-data Env = Env { env :: Map.Map String T.Type} deriving (Show)
+{- id = "ciao" -> {"id": T.StringType}
+function ciao(int:a): string -> {"ciao": ([T.IntegerType], T.StringType)} -}
+
+data Env = Env { env :: Map.Map String EnvEntry} deriving (Show)
+
+data EnvEntry 
+    = VarEntry { ty :: T.Type } 
+    | ConstEntry { ty :: T.Type }
+    | FunEntry { params :: [T.Type], ret :: T.Type }
+    | ProcEntry { params :: [T.Type] }
+    deriving (Show)
 
 -- | Create a new empty environment. It should be used as the root environment
 emptyEnv :: Env
