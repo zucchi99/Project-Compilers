@@ -9,9 +9,6 @@ import qualified Data.Map as Map
 import qualified ErrorMessage as Err
 import Data.Maybe
 
-{- id = "ciao" -> {"id": T.StringType}
-function ciao(int:a): string -> {"ciao": ([T.IntegerType], T.StringType)} -}
-
 data Env = Env { env :: Map.Map String EnvEntry} deriving (Show)
 
 data EnvEntry 
@@ -26,17 +23,17 @@ emptyEnv :: Env
 emptyEnv = Env { env = Map.empty }
 
 -- | Create a new environment with only one binding
-mkSingletonEnv :: String -> T.Type -> Env
+mkSingletonEnv :: String -> EnvEntry -> Env
 mkSingletonEnv id ty = Env { env = Map.singleton id ty }
 
 
 -- | Add a new variable to the environment
-addVar :: Env -> String -> T.Type -> Env
+addVar :: Env -> String -> EnvEntry -> Env
 addVar (Env e) id ty = Env { env = Map.insert id ty e }
 
 -- | The function "lookupEnv" returns the value associated with a key in the environment
 -- | If the key is not present, it recursively searches in the parent environment
-lookup :: Env -> String -> Maybe T.Type
+lookup :: Env -> String -> Maybe EnvEntry
 lookup e name = case Map.lookup name (env e) of
     Just t  -> Just t
     Nothing -> Nothing
@@ -47,21 +44,21 @@ lookup e name = case Map.lookup name (env e) of
 merge :: Env -> Env -> Env
 merge (Env e1) (Env e2) = Env { env = Map.union e1 e2 }
 
-main = do
+mainEnv = do
     putStrLn "Test - Env.hs"
 
     putStrLn "Creazione env (empty)"
     let env1 = emptyEnv
 
     putStrLn "Creazione env (singleton)"
-    let env2 = mkSingletonEnv "x" T.RealType
-        env3 = addVar env2 "y" T.IntegerType
-        env4 = addVar env3 "z" T.BooleanType
+    let env2 = mkSingletonEnv "x" VarEntry { ty = T.RealType }
+        env3 = addVar env2 "y"  VarEntry { ty = T.IntegerType }
+        env4 = addVar env3 "z"  VarEntry { ty = T.BooleanType }
     putStrLn $ show env4
 
     putStrLn "Creazione env (singleton)"
-    let env5 = mkSingletonEnv "a" T.RealType
-        env6 = addVar env5 "x" T.IntegerType
+    let env5 = mkSingletonEnv "a"  VarEntry { ty = T.RealType }
+        env6 = addVar env5 "x"  VarEntry { ty = T.IntegerType }
     putStrLn $ show env6
 
     putStrLn "Merge envs"
