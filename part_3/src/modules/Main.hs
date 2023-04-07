@@ -1,6 +1,8 @@
 -- to compile this file
 -- make test-main
 
+module Main where
+
 import qualified PrettyPrinter
 import qualified Parser             as Par
 import qualified LexGrammar         as Lex

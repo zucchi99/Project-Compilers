@@ -8,26 +8,27 @@ d_modules = $(d_src)/modules
 d_test    = $(d_src)/test_files
 
 # source file name without extension
-grammar = grammar
-parser = Parser
-lexer = LexGrammar
-errors = ErrM
-main = Main
+grammar	 = grammar
+parser 	 = Parser
+lexer 	 = LexGrammar
+errors 	 = ErrM
+main 	 = Main
 
 # (s)ource files
-parser_y  			= $(d_modules)/$(parser).y
-grammar_cf    		= $(d_modules)/$(grammar).cf
-src_modules_hs 		= $(wildcard $(d_modules)/*.hs)
+parser_y  		= $(d_modules)/$(parser).y
+grammar_cf    	= $(d_modules)/$(grammar).cf
+main_hs         = $(d_modules)/$(main).hs
+src_modules_hs 	= $(filter-out $(main_hs),$(wildcard $(d_modules)/*.hs))
 # (o)utput files generated
-lexer_x				= $(d_bin)/$(lexer).x
-parser_hs  			= $(d_bin)/$(parser).hs
-parser_info    		= $(d_bin)/$(parser).info
-lexer_hs 			= $(d_bin)/$(lexer).hs
-err_hs     			= $(d_bin)/$(errors).hs
+lexer_x			= $(d_bin)/$(lexer).x
+parser_hs  		= $(d_bin)/$(parser).hs
+parser_info    	= $(d_bin)/$(parser).info
+lexer_hs 		= $(d_bin)/$(lexer).hs
+err_hs     		= $(d_bin)/$(errors).hs
 # all *.hs files to import
-all_modules  		= $(src_modules_hs) $(parser_hs) $(lexer_hs) $(err_hs)
+all_modules  	= $(main_hs) $(src_modules_hs) $(parser_hs) $(lexer_hs) $(err_hs)
 # output main file
-out_main   			= $(d_bin)/$(main)
+out_main   		= $(d_bin)/$(main)
 
 #########################################################
 # make rules
