@@ -21,7 +21,7 @@ import qualified LexGrammar         as Lex
 testami test = do
 
     -- Read file
-    input <- readFile $ concat ["src/test/test_", test, ".pas"]
+    input <- readFile $ concat ["src/test_files/test_", test, ".pas"]
 
     putStrLn "input file:"
     putStr input
@@ -46,7 +46,7 @@ testami test = do
     putStrLn pretty
     putStrLn ""
 
-    let out_dir = "src/test/temp/"
+    let out_dir = "src/test_files/temp/"
     let out_file = out_dir ++ "pretty_print_" ++ test ++ ".pas"
 
     -- PrettyPrinter to file
