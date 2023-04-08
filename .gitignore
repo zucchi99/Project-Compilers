@@ -12,6 +12,7 @@ __build/*
 
 .vscode/*
 
+part_3/src/test_files/temp/**
 part_3/tests/**
 part_3/src/bin/**
 
