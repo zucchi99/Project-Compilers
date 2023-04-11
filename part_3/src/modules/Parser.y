@@ -224,7 +224,7 @@ VariableDeclFunc    : ListIdent ':' Type    {
 
 ListIdent   :: { [Ident] }
 ListIdent   : Ident                 { (:[]) $1 } 
-            | Ident ',' ListIdent   { (:) $1 $3 }
+            | Ident ',' ListIdent   { (++) $3 [$1] }
 
 FunctionSign    :: { Declaration }
 FunctionSign    : 'function' Ident DeclarationFunc ':' Type ';' {

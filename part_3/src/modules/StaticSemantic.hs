@@ -8,43 +8,63 @@ import qualified Env as E
 import qualified Types as T
 import qualified Data.Map as Map
 import qualified ErrorMessage as Err
+import AbstractSyntax
 import Data.Maybe
+import Data.List
+import ErrM
+
+-- __________________________ AUXILIAR CLASSES AND FUNCTIONS
 
 getErrorsFromMaybe :: Maybe T.Type -> [String]
 getErrorsFromMaybe (Just (T.ErrorType m)) = m
 getErrorsFromMaybe maybe                  = []
 
 
+checkPresenceStmt :: String -> E.Env -> (Int, Int) -> [String]
+checkPresenceStmt id env decl pos = case E.lookup env id of
+    Just _  -> []
+    Nothing -> [ Err.errMsgNotDeclared id pos ]
+
+
+checkPresenceDecl :: String -> E.Env -> (Int, Int) -> [String]
+checkPresenceDecl id env decl pos = case E.lookup env id of
+    Just _  -> [ Err.errMsgAlreadyDeclared id pos]
+    Nothing -> []
+
 -- mkArrTy(E1.type, E2.type)
-mkArrTy :: T.Type -> T.Type -> [String]
-mkArrTy (T.ArrayType t _) idx = case T.sup idx T.IntegerType of
+-- Controllo di indice dell'array (deve essere int)
+mkArrTy :: T.Type -> T.Type -> (Int, Int) -> [String]
+mkArrTy (T.ArrayType t _) idx pos = case T.sup idx T.IntegerType of
     T.IntegerType -> []
-    _             -> getErrorsFromMaybe $ T.combineTypeErrors (T.ErrorType [ Err.errMsgUnexpectedType "The index of an array" T.IntegerType idx ]) idx
+    _             -> getErrorsFromMaybe $ T.combineTypeErrors (T.ErrorType [ Err.errMsgUnexpectedType "The index of an array" T.IntegerType idx pos ]) idx
 mkArrTy t _ = [ Err.errMsgTypeNotArray t ]
 
 
 -- mkAssignErrs(E1.type, E2.type)
-mkAssignErrs :: T.Type -> T.Type -> [String]
-mkAssignErrs lhs rhs = 
+-- Controllo durante l'assegnamento
+mkAssignErrs :: T.Type -> T.Type -> (Int, Int) -> [String]
+mkAssignErrs lhs rhs pos =  
     case (T.combineTypeErrors lhs rhs) of       -- lhs or rhs are errors?
         Just (T.ErrorType m) -> m               -- yes ==> return errors
         Nothing -> case T.sup lhs rhs == lhs of -- no  ==> rhs is compatible with lhs?
             True  -> []             -- yes ==> no errors
-            False -> [ Err.errMsgAssign lhs rhs ] -- no ==> return assign error
+            False -> [ Err.errMsgAssign lhs rhs pos ] -- no ==> return assign error
 
 
 -- mkIfErrs(E.type, S1.errs)
-mkIfErrs :: T.Type -> [String]
-mkIfErrs guard = case guard of
+-- Controllo della guardia dell'if
+mkIfErrs :: T.Type -> (Int, Int) -> [String]
+mkIfErrs guard pos = case guard of
     (T.ErrorType m) -> m
     (T.BooleanType) -> []
-    t               -> [ (Err.errMsgUnexpectedType "Guard" T.BooleanType t) ]
+    t               -> [ (Err.errMsgUnexpectedType "Guard" T.BooleanType t pos) ]
 
 
 -- mkIdDeclErrs(id, E.type, T.type)
-mkIdDeclErrs :: String -> T.Type -> T.Type -> [String]
-mkIdDeclErrs id etype ttype = case T.sup etype ttype of
-    (T.ErrorType m) -> getErrorsFromMaybe $ T.combineTypeErrors (T.ErrorType [ Err.errMsgUnexpectedType ("The variable named '" ++ id ++ "'") etype ttype ]) ttype
+-- Controllo durante inizializzazione
+mkIdDeclErrs :: String -> T.Type -> T.Type -> (Int, Int) -> [String]
+mkIdDeclErrs id etype ttype pos = case T.sup etype ttype of
+    (T.ErrorType m) -> getErrorsFromMaybe $ T.combineTypeErrors (T.ErrorType [ Err.errMsgUnexpectedType ("The variable named '" ++ id ++ "'") etype ttype pos ]) ttype
     _               -> []
 
 -- mkFunEnv(id, F.types, T.type)
@@ -57,24 +77,62 @@ mkFunEnv id types returnType = E.mkSingletonEnv id E.FunEntry{E.params=types, E.
 -- D.errs = mkFunErrs(D1.errs, S.errs, F.loc, D1.loc)
 -- D è la dichiarazione della funzione
 
-mkFunErrs :: [String] -> [String] -> E.Env -> E.Env -> [String]
-mkFunErrs d1errs serrs fenv d1env = d1errs ++ serrs ++ E.getClashes fenv d1env
+mkFunErrs :: [String] -> [String] -> E.Env -> E.Env -> (Int, Int) -> [String]
+mkFunErrs d1errs serrs fenv d1env pos = d1errs ++ serrs ++ E.getClashes fenv d1env pos 
 
-mkRet :: T.Type -> E.Env -> [String]
-mkRet t env
-    | compatible t (E.lookup env "return") = []
-    | otherwise = [ Err.errMsgReturnNotCompatible ]
+-- Controllo del tipo di ritorno di una funzione
+mkRet :: T.Type -> E.Env -> (Int, Int) -> [String]
+mkRet t env pos
+    | compatible t (E.lookup env "result") = []
+    | otherwise = [ Err.errMsgReturnNotCompatible t pos ]
 
+-- Compatibilità del tipo di ritorno con il tipo di ritorno dichiarato
 compatible :: T.Type -> Maybe E.EnvEntry -> Bool
 compatible t1 (Just (E.VarEntry t2)) = T.sup t1 t2 == t2
 compatible t1 (Just (E.ConstEntry t2)) = T.sup t1 t2 == t2
 compatible _ _ = False
 
 -- keyword can be "break" or "continue"
-checkLoop :: String -> E.Env -> [String]
+{- checkLoop :: String -> E.Env -> [String]
 checkLoop keyword env
     | E.lookup env keyword == Nothing = []
-    | otherwise = [ Err.errMsgWrongLoopControl keyword]
+    | otherwise = [ Err.errMsgWrongLoopControl keyword] -}
+
+-- __________________________ STATIC SEMANTIC ANAL-ISYS
+staticsemanticcheck x = case x of
+    -- parse successful
+    (ErrM.Ok a)    -> intercalate "\n\n" $ snd $ staticsemanticAux E.emptyEnv a
+    -- parse error
+    (ErrM.Bad err) -> err
+
+-- __________________________ STATIC SEMANTIC CLASSES
+class StaticSemanticClass a where
+    staticsemanticAux :: E.Env -> a -> (E.Env, [String])
+
+instance StaticSemanticClass Program where
+    staticsemanticAux env (ProgramStart name block pos) = staticsemanticAux env block
+
+instance StaticSemanticClass Ident where
+    staticsemanticAux env (Ident _ _) = (env, [])
+
+
+--instance StaticSemanticClass [Ident] where
+  --  staticsemanticAux env idents = (env, [])
+
+instance StaticSemanticClass BlockWithDecl where
+    staticsemanticAux env (BlockWithDeclStart decls block pos) = 
+        let (env1, errs1) = staticsemanticAux E.emptyEnv decls
+            (env2, errs2) = staticsemanticAux (E.merge env1 env) block
+        in (env2, errs1 ++ errs2)
+
+instance StaticSemanticClass Declaration where
+    staticsemanticAux env (DeclarationCostant id type_maybe value pos) = 
+        let err_presence = E.lookupEnv id env
+            err_type = case type_maybe of
+                Nothing -> []
+                Just t  -> mkIdDeclErrs id (T.getType value) t
+        in (E.insert env2 id (E.ConstEntry (T.getType value)), errs1 ++ errs2)
+
 
 main = do
 
