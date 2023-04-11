@@ -45,8 +45,8 @@ merge (Env e1) (Env e2) = Env { env = Map.union e1 e2 }
 
 -- The function gets the clashes in bindings between two environments
 -- It returns a list of strings, each string is an error message
-getClashes :: Env -> Env -> [String]
-getClashes (Env e1) (Env e2) = Map.foldrWithKey (\k v acc -> if Map.member k e2 then (Err.errMsgClash k) : acc else acc) [] e1
+getClashes :: Env -> Env -> (Int, Int) -> [String]
+getClashes (Env e1) (Env e2) pos = Map.foldrWithKey (\k v acc -> if Map.member k e2 then (Err.errMsgClash k pos) : acc else acc) [] e1
 
 mainEnv = do
     putStrLn "Test - Env.hs"

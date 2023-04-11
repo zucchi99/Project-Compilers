@@ -2,32 +2,41 @@
 
 module ErrorMessage where
 
-errMsgAssign :: (Show a1, Show a2) => a2 -> a1 -> [Char]
-errMsgAssign lhs rhs = "Can't assign value of type " ++ (show rhs) ++ " to variable of type " ++ (show lhs)
+errMsgAssign :: (Show a1, Show a2) => a2 -> a1 -> (Int, Int) -> [Char]
+errMsgAssign lhs rhs pos = printPos pos ++ "Can't assign value of type " ++ (show rhs) ++ " to variable of type " ++ (show lhs)
 
-errMsgNotMathType :: Show a => a -> [Char]
-errMsgNotMathType t = (show t) ++ "Not a math type"
+errMsgNotMathType :: Show a => a -> (Int, Int) -> [Char]
+errMsgNotMathType t pos = printPos pos ++ (show t) ++ "Not a math type"
 
-errMsgNotCompatible :: (Show a1, Show a2) => a1 -> a2 -> [Char]
-errMsgNotCompatible t1 t2 = (show t1) ++ " is not compatible with type " ++ (show t2)
+errMsgNotCompatible :: (Show a1, Show a2) => a1 -> a2 -> (Int, Int) -> [Char]
+errMsgNotCompatible t1 t2 pos = printPos pos ++ (show t1) ++ " is not compatible with type " ++ (show t2)
 
-errMsgReturnNotCompatible :: (Show a1, Show a2) => a1 -> a2 -> [Char]
-errMsgReturnNotCompatible t1 t2 = "Return type is not compatible with type " ++ (show t2)
+errMsgReturnNotCompatible :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgReturnNotCompatible t pos = printPos pos ++ "Return type is not compatible with type " ++ (show t)
 
 errMsgInternalErr :: [Char]
 errMsgInternalErr = "Unexpected internal error"
 
+errMsgAlreadyDeclared :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgAlreadyDeclared id pos = printPos pos ++ "The name " ++ (show id) ++ " is already declared in this scope"
+
+errMsgNotDeclared :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgNotDeclared id pos = printPos pos ++ "The name " ++ (show id) ++ " is not declared in this scope"
+
 --errMsgArrIdxNotInt t = errMsgUnexpectedType "Array indexes" T.IntegerType t
-
 --errMsgGuardNotBool t = errMsgUnexpectedType "Guard" T.BooleanType t
-errMsgUnexpectedType :: (Show a1, Show a2) => [Char] -> a1 -> a2 -> [Char]
-errMsgUnexpectedType obj t_exp t_found = obj ++ " must be of type " ++ (show t_exp)  ++ " but type " ++ (show t_found) ++ " is given"
 
-errMsgTypeNotArray :: Show a => a -> [Char]
-errMsgTypeNotArray t_found = "Expected an array but type " ++ (show t_found) ++ " is given"
+errMsgUnexpectedType :: (Show a1, Show a2) => [Char] -> a1 -> a2 -> (Int, Int) -> [Char]
+errMsgUnexpectedType obj t_exp t_found pos = printPos pos ++ obj ++ " must be of type " ++ (show t_exp)  ++ " but type " ++ (show t_found) ++ " is given"
 
-errMsgClash :: (Show a1) => a1 -> [Char]
-errMsgClash varname = "The name " ++ (show varname) ++ " is already declared in this scope"
+errMsgTypeNotArray :: Show a => a -> (Int, Int) -> [Char]
+errMsgTypeNotArray t_found pos = printPos pos ++ "Expected an array but type " ++ (show t_found) ++ " is given"
 
-errMsgWrongLoopControl :: (Show a1) => a1 -> [Char]
-errMsgWrongLoopControl t1 = (show t1) ++ " is used outside a loop"
+errMsgClash :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgClash varname pos = printPos pos ++ "The name " ++ (show varname) ++ " is already declared in this scope"
+
+errMsgWrongLoopControl :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgWrongLoopControl t pos = printPos pos ++ (show t) ++ " is used outside a loop"
+
+printPos :: (Int, Int) -> [Char]
+printPos (l, c) = "At line " ++ (show l) ++ ", column " ++ (show c) ++ ": \n\t"
