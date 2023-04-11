@@ -11,6 +11,9 @@ errMsgNotMathType t = (show t) ++ "Not a math type"
 errMsgNotCompatible :: (Show a1, Show a2) => a1 -> a2 -> [Char]
 errMsgNotCompatible t1 t2 = (show t1) ++ " is not compatible with type " ++ (show t2)
 
+errMsgReturnNotCompatible :: (Show a1, Show a2) => a1 -> a2 -> [Char]
+errMsgReturnNotCompatible t1 t2 = "Return type is not compatible with type " ++ (show t2)
+
 errMsgInternalErr :: [Char]
 errMsgInternalErr = "Unexpected internal error"
 
@@ -23,3 +26,8 @@ errMsgUnexpectedType obj t_exp t_found = obj ++ " must be of type " ++ (show t_e
 errMsgTypeNotArray :: Show a => a -> [Char]
 errMsgTypeNotArray t_found = "Expected an array but type " ++ (show t_found) ++ " is given"
 
+errMsgClash :: (Show a1) => a1 -> [Char]
+errMsgClash varname = "The name " ++ (show varname) ++ " is already declared in this scope"
+
+errMsgWrongLoopControl :: (Show a1) => a1 -> [Char]
+errMsgWrongLoopControl t1 = (show t1) ++ " is used outside a loop"

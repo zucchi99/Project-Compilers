@@ -54,6 +54,28 @@ mkIdDeclErrs id etype ttype = case T.sup etype ttype of
 mkFunEnv :: String -> [T.Type] -> T.Type -> E.Env
 mkFunEnv id types returnType = E.mkSingletonEnv id E.FunEntry{E.params=types, E.ret=returnType}
 
+-- D.errs = mkFunErrs(D1.errs, S.errs, F.loc, D1.loc)
+-- D è la dichiarazione della funzione
+
+mkFunErrs :: [String] -> [String] -> E.Env -> E.Env -> [String]
+mkFunErrs d1errs serrs fenv d1env = d1errs ++ serrs ++ E.getClashes fenv d1env
+
+mkRet :: T.Type -> E.Env -> [String]
+mkRet t env
+    | compatible t (E.lookup env "return") = []
+    | otherwise = [ Err.errMsgReturnNotCompatible ]
+
+compatible :: T.Type -> Maybe E.EnvEntry -> Bool
+compatible t1 (Just (E.VarEntry t2)) = T.sup t1 t2 == t2
+compatible t1 (Just (E.ConstEntry t2)) = T.sup t1 t2 == t2
+compatible _ _ = False
+
+-- keyword can be "break" or "continue"
+checkLoop :: String -> E.Env -> [String]
+checkLoop keyword env
+    | E.lookup env keyword == Nothing = []
+    | otherwise = [ Err.errMsgWrongLoopControl keyword]
+
 main = do
 
     let arrayT = T.ArrayType T.RealType [(1, 3)]
@@ -100,4 +122,12 @@ main = do
 
     putStrLn "mkIdDeclErrs \"x\" T.StringType T.IntegerType"
     putStrLn $ show $ mkIdDeclErrs "x" T.StringType T.IntegerType
+    putStrLn ""
+
+    putStrLn "mkFunEnv \"f\" [T.IntegerType, T.RealType] T.StringType"
+    putStrLn $ show $ mkFunEnv "f" [T.IntegerType, T.RealType] T.StringType
+    putStrLn ""
+
+    putStrLn "mkFunErrs [] [] (mkFunEnv \"f\" [T.IntegerType, T.RealType] T.StringType) (mkFunEnv \"f\" [T.IntegerType, T.RealType] T.StringType)"
+    putStrLn $ show $ mkFunErrs [] [] (mkFunEnv "f" [T.IntegerType, T.RealType] T.StringType) (mkFunEnv "f" [T.IntegerType, T.RealType] T.StringType)
     putStrLn ""
