@@ -141,6 +141,7 @@ CompTypeArray.                  CompositeType   ::= "array" "[" [ArrayDeclaratio
 separator ArrayDeclarationDim "," ;
 -- The declaration with variable length is not allowed in Pascal, but here it's allowed
 -- we need to be sure that the right expression produce an integer
+-- NB actually simplified in the parser.y to Integer..Integer
 ArrayDeclarationDimension.      ArrayDeclarationDim     ::= RightExp ".." RightExp ;
 
 -- Pointer of pointer in Pascal is not allowed, but here is allowed, BECAUSE THIS IS NOT PASCAL
