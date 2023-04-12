@@ -1,5 +1,5 @@
 
--- ghci -outputdir src/bin src/modules/TAC.hs src/modules/Types.hs src/modules/ErrorMessage.hs
+-- ghci -outputdir src/bin src/modules/TAC.hs src/modules/Types.hs src/modules/ErrorMessage.hs src/modules/AbstractSyntax.hs
 
 module TAC where
 
@@ -124,13 +124,18 @@ data Block = Block {
     code        :: [ Instruction ]
 } deriving (Show)
 
+data TAC = TAC {
+    tac :: [ Block ]
+} deriving (Show)
+
 data State = State { 
-    tac                 :: [ Block ],
+    tac_super           :: TAC,
     temp_idx, block_idx :: Integer
 } deriving (Show)
 
 -- ___________ FUNCTIONS ___________
 
+{-
 initialize_state :: State
 initialize_state = (State [] 0 0)
 
@@ -153,12 +158,6 @@ lookup (State (x:xs) tmp_i bck_i) b_name =
         else TAC.lookup (State xs tmp_i bck_i) b_name
 lookup _ _ = Nothing
 
--- add instruction to block, create new block if block was not present
-add_instruction_to_block :: State -> String -> Instruction -> (Bool, Block)
-add_instruction_to_block s b_name instr = case (TAC.lookup s b_name) of
-    Nothing          -> (True,  (Block b_name [ instr ])) -- create new block ==> is new block? true
-    Just (Block n c) -> (False, (Block n (instr:c)))      -- add goto block   ==> is new block? false
-
 -- add instruction to tac inside given block
 out :: State -> String -> Instruction -> State
 out s b_name instr = 
@@ -166,20 +165,40 @@ out s b_name instr =
         (True,  b) -> add_block b s
         (False, b) -> substitute_block s b b_name
 
+-- add instruction to block, create new block if block was not present
+add_instruction_to_block :: State -> String -> Instruction -> (Bool, Block)
+add_instruction_to_block s b_name instr = case (TAC.lookup s b_name) of
+    Nothing          -> (True,  (Block b_name [ instr ])) -- create new block ==> is new block? true
+    Just (Block n c) -> (False, (Block n (instr:c)))      -- add goto block   ==> is new block? false
+
 -- add a block to tac (increase block counter)
 add_block :: Block -> State -> State
 add_block b (State t tmp_i bck_i) = (State (b:t) tmp_i (bck_i+1))
 
 -- update a block inside tac, inefficient: O(|blocks|)
 substitute_block :: State -> Block -> String -> State
-substitute_block (State t tmp_i bck_i) b b_name = (State (substitute_block_aux t b b_name) tmp_i bck_i)
-    where
-        substitute_block_aux (x:xs) b b_name = 
-            let (Block cur_name _) = x in
-                if cur_name == b_name
-                then b : xs -- block found ==> add new block and rest of tac
-                else x : (substitute_block_aux xs b b_name) --block not found ==> keep searching
-        substitute_block_aux _ _ b_name = [ (Block ("Internal error: block " ++ b_name ++ " not found") []) ]
+substitute_block (State t tmp_i bck_i) b b_name = (State (substitute_block_aux t b b_name) tmp_i bck_i) where
+    substitute_block_aux []     _ b_name = [ (Block ("Internal error: block " ++ b_name ++ " not found") []) ]
+    substitute_block_aux (x:xs) b b_name = 
+        let (Block cur_name _) = x in
+            if cur_name == b_name
+            then b : xs                                 -- block found    ==> add new block and rest of tac
+            else x : (substitute_block_aux xs b b_name) --block not found ==> keep searching
+
+--generate_tac :: AS.Program -> TAC
+--generate_tac
+
+----------------------------------------------------------------------------------------------------------------------------
+
+pretty_printer_tac :: State -> String
+pretty_printer_tac (State t _ _ ) = "#TAC START\n" ++ pretty_printer_tac_aux t where
+    pretty_printer_tac_aux []     = "#TAC END\n"
+    pretty_printer_tac_aux (x:xs) = (pretty_printer_block x) ++ (pretty_printer_tac_aux xs)
+
+pretty_printer_block :: Block -> String
+pretty_printer_block (Block b_name b_code) = b_name ++ ":\n" ++ (pretty_printer_block_aux b_code) where
+    pretty_printer_block_aux []     = "\n"
+    pretty_printer_block_aux (x:xs) = "   " ++ (show x) ++ "\n" ++ (pretty_printer_block_aux xs)
 
 ----------------------------------------------------------------------------------------------------------------------------
 
@@ -188,19 +207,22 @@ main = do
     let b0_name = "ciao"
     let b0 = (Block b0_name [])
     let t0 = (State [b0] 0 0)
-    putStrLn $ show $ TAC.lookup t0 b0_name
-    putStrLn $ show $ TAC.lookup t0 "rand"
+    --putStrLn $ show $ TAC.lookup t0 b0_name
+    --putStrLn $ show $ TAC.lookup t0 "rand"
 
     let b1_name = "bella"
     let b1 = (Block b1_name [])
     let t1 = add_block b1 t0
-    putStrLn $ show $ t1
+    putStr $ pretty_printer_tac t1
 
     let t2 = out t1 b0_name (Jump "cp")
     let t3 = out t2 b0_name (Jump "rm")
     let t4 = out t3 b1_name (Jump "x")
     let t5 = out t4 b1_name (Jump "y")
-    putStrLn $ show $ t5
+    putStr $ pretty_printer_tac t5
 
     let tn = reverse_TAC t5
-    putStrLn $ show $ tn
+
+    putStr $ pretty_printer_tac tn
+
+-}
