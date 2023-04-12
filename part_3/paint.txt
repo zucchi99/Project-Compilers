@@ -1,0 +1,15 @@
+
+
+- gestione posizione errori
+     - error type senza messaggio
+- precedenze happy
+- coercion nuova rightexp
+- abs aggiungiamo campi
+     - type
+     - env
+     - messaggi errore
+
+
+- (NOT) todo:
+     - combinazione puntatori e Array
+     - break e continue
