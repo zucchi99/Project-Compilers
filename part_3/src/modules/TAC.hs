@@ -4,7 +4,7 @@
 module TAC where
 
 --import qualified AbstractSyntax as AS
-import qualified Types as T
+--import qualified Types as T
 
 -- ___________ PRIMITIVE TYPE ___________
 
@@ -34,7 +34,7 @@ newtype AddrTempVar = AddrTempVar String
 -- primitive types of TAC
 data Address = 
     AddressInt Int
-    -- | AddressReal Real
+    | AddressReal Float
     | AddressChar Char
     | AddressBool Bool
     deriving (Show)
@@ -117,65 +117,77 @@ data RelationalOp =
     | NotEqual      { relation_type :: PrimType }
     deriving (Show)
 
--- ___________ TAC TYPE ___________
+-- ___________ TAC CODE TYPE ___________
 
 data Block = Block {
-    b_name :: String,
-    code :: [ Instruction ]
+    block_name  :: String,
+    code        :: [ Instruction ]
 } deriving (Show)
 
-data TAC = TAC { tac :: [ Block ] } 
-    deriving (Show)
+data State = State { 
+    tac                 :: [ Block ],
+    temp_idx, block_idx :: Integer
+} deriving (Show)
 
 -- ___________ FUNCTIONS ___________
 
-to_primitive_type T.BooleanType = TypeBool
-to_primitive_type T.IntegerType = TypeInt
-to_primitive_type T.RealType    = TypeReal
-to_primitive_type T.CharType    = TypeChar
-to_primitive_type _             = TypeAddr
+initialize_state :: State
+initialize_state = (State [] 0 0)
+
+--to_primitive_type T.BooleanType = TypeBool
+--to_primitive_type T.IntegerType = TypeInt
+--to_primitive_type T.RealType    = TypeReal
+--to_primitive_type T.CharType    = TypeChar
+--to_primitive_type _             = TypeAddr
 
 -- reverse list of blocks and reverse each block list of instructions
-reverse_TAC :: TAC -> TAC
-reverse_TAC (TAC t) = (TAC $ reverse $ map (\ (Block n c) -> (Block n (reverse c))) t)
+reverse_TAC :: State -> State
+reverse_TAC (State t tmp_i bck_i) = (State (reverse $ map (\ (Block n c) -> (Block n (reverse c))) t) tmp_i bck_i)
 
-lookup :: TAC -> String -> Maybe Block
-lookup (TAC (x:xs)) b_name = 
+-- check if block is already present in TAC
+lookup :: State -> String -> Maybe Block
+lookup (State (x:xs) tmp_i bck_i) b_name = 
     let (Block cur_name _) = x in
         if cur_name == b_name
         then Just x
-        else TAC.lookup (TAC xs) b_name
-lookup (TAC []) _ = Nothing
+        else TAC.lookup (State xs tmp_i bck_i) b_name
+lookup _ _ = Nothing
 
-add_instruction_to_block :: TAC -> String -> Instruction -> (Bool, Block)
-add_instruction_to_block t b_name instr = case (TAC.lookup t b_name) of
+-- add instruction to block, create new block if block was not present
+add_instruction_to_block :: State -> String -> Instruction -> (Bool, Block)
+add_instruction_to_block s b_name instr = case (TAC.lookup s b_name) of
     Nothing          -> (True,  (Block b_name [ instr ])) -- create new block ==> is new block? true
-    Just (Block n c) -> (False, (Block n (instr:c)))      -- add goto block     ==> is new block? false
+    Just (Block n c) -> (False, (Block n (instr:c)))      -- add goto block   ==> is new block? false
 
-out :: TAC -> String -> Instruction -> TAC
-out t b_name instr = 
-    case (add_instruction_to_block t b_name instr) of
-        (True,  b) -> add_block b t
-        (False, b) -> substitute_block t b b_name
+-- add instruction to tac inside given block
+out :: State -> String -> Instruction -> State
+out s b_name instr = 
+    case (add_instruction_to_block s b_name instr) of
+        (True,  b) -> add_block b s
+        (False, b) -> substitute_block s b b_name
 
-add_block :: Block -> TAC -> TAC
-add_block b (TAC t) = (TAC $ b:t)
+-- add a block to tac (increase block counter)
+add_block :: Block -> State -> State
+add_block b (State t tmp_i bck_i) = (State (b:t) tmp_i (bck_i+1))
 
-substitute_block :: TAC -> Block -> String -> TAC
-substitute_block t b b_name = (TAC $ substitute_block_aux t b b_name)
+-- update a block inside tac, inefficient: O(|blocks|)
+substitute_block :: State -> Block -> String -> State
+substitute_block (State t tmp_i bck_i) b b_name = (State (substitute_block_aux t b b_name) tmp_i bck_i)
     where
-        substitute_block_aux (TAC (x:xs)) b b_name = 
+        substitute_block_aux (x:xs) b b_name = 
             let (Block cur_name _) = x in
                 if cur_name == b_name
                 then b : xs -- block found ==> add new block and rest of tac
-                else x : (substitute_block_aux (TAC xs) b b_name) --block not found ==> keep searching
+                else x : (substitute_block_aux xs b b_name) --block not found ==> keep searching
         substitute_block_aux _ _ b_name = [ (Block ("Internal error: block " ++ b_name ++ " not found") []) ]
+
+----------------------------------------------------------------------------------------------------------------------------
 
 main :: IO ()
 main = do
     let b0_name = "ciao"
     let b0 = (Block b0_name [])
-    let t0 = (TAC [b0])
+    let t0 = (State [b0] 0 0)
     putStrLn $ show $ TAC.lookup t0 b0_name
     putStrLn $ show $ TAC.lookup t0 "rand"
 
