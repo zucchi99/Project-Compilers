@@ -18,7 +18,7 @@ main 	 = Main
 parser_y  		= $(d_modules)/$(parser).y
 grammar_cf    	= $(d_modules)/$(grammar).cf
 main_hs         = $(d_modules)/$(main).hs
-src_modules_hs 	= $(filter-out $(main_hs),$(wildcard $(d_modules)/*.hs))
+src_modules_hs 	= $(filter-out $(main_hs), $(wildcard $(d_modules)/*.hs))
 # (o)utput files generated
 lexer_x			= $(d_bin)/$(lexer).x
 parser_hs  		= $(d_bin)/$(parser).hs
@@ -33,21 +33,34 @@ out_main   		= $(d_bin)/$(main)
 #########################################################
 # make rules
 
-grammar:
-	bnfc -m --outputdir=$(d_bin) $(grammar_cf)
+ghci: $(lexer_hs) $(parser_hs)
+	ghci $(all_modules)
 
-lexer: grammar
-	alex $(lexer_x)
-
-parser:
-	happy --info=$(parser_info) --outfile=$(parser_hs) $(parser_y)
-
-ghc: lexer parser
+ghc: $(lexer_hs) $(parser_hs)
 	ghc -outputdir $(d_bin) -o $(out_main) $(all_modules)
 	echo "binary file:" $(out_main)
 
-ghci: lexer parser
-	ghci $(all_modules)
+# for testing, put desidered module as def loaded by ghci
+# m is a parameter, for example:
+# make module m=TAC 
+module: $(lexer_hs) $(parser_hs)
+	$(eval m_path = $(d_modules)/$(m).hs)
+	ghci $(m_path) $(filter-out $(m_path), $(all_modules))
+
+lexer: 
+	make $(lexer_hs)
+
+parser:
+	make $(parser_hs)
+
+$(lexer_hs): $(lexer_x)
+	alex $(lexer_x)
+
+$(lexer_x):
+	bnfc -m --outputdir=$(d_bin) $(grammar_cf)
+
+$(parser_hs):
+	happy --info=$(parser_info) --outfile=$(parser_hs) $(parser_y)
 
 clean:
 	rm -r $(d_bin)/*
