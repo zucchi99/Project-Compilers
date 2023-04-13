@@ -7,10 +7,9 @@ module Parser where
 
 import ErrM
 import LexGrammar
--- import qualified AbstractSyntax as AbsSyn
 import AbstractSyntax
 import qualified Types as Tipi
--- import AbsGrammar
+import qualified Env as E
 
 }
 
@@ -45,41 +44,43 @@ import qualified Types as Tipi
     'array' { PT _ (TS _ 24) }
     'begin' { PT _ (TS _ 25) }
     'boolean' { PT _ (TS _ 26) }
-    'char' { PT _ (TS _ 27) }
-    'const' { PT _ (TS _ 28) }
-    'div' { PT _ (TS _ 29) }
-    'do' { PT _ (TS _ 30) }
-    'else' { PT _ (TS _ 31) }
-    'end' { PT _ (TS _ 32) }
-    'false' { PT _ (TS _ 33) }
-    'for' { PT _ (TS _ 34) }
-    'forward' { PT _ (TS _ 35) }
-    'function' { PT _ (TS _ 36) }
-    'if' { PT _ (TS _ 37) }
-    'integer' { PT _ (TS _ 38) }
-    'mod' { PT _ (TS _ 39) }
-    'not' { PT _ (TS _ 40) }
-    'of' { PT _ (TS _ 41) }
-    'or' { PT _ (TS _ 42) }
-    'procedure' { PT _ (TS _ 43) }
-    'program' { PT _ (TS _ 44) }
-    'readChar' { PT _ (TS _ 45) }
-    'readInt' { PT _ (TS _ 46) }
-    'readReal' { PT _ (TS _ 47) }
-    'readString' { PT _ (TS _ 48) }
-    'real' { PT _ (TS _ 49) }
-    'repeat' { PT _ (TS _ 50) }
-    'string' { PT _ (TS _ 51) }
-    'then' { PT _ (TS _ 52) }
-    'to' { PT _ (TS _ 53) }
-    'true' { PT _ (TS _ 54) }
-    'until' { PT _ (TS _ 55) }
-    'var' { PT _ (TS _ 56) }
-    'while' { PT _ (TS _ 57) }
-    'writeChar' { PT _ (TS _ 58) }
-    'writeInt' { PT _ (TS _ 59) }
-    'writeReal' { PT _ (TS _ 60) }
-    'writeString' { PT _ (TS _ 61) }
+    'break' { PT _ (TS _ 27) }
+    'char' { PT _ (TS _ 28) }
+    'const' { PT _ (TS _ 29) }
+    'continue' { PT _ (TS _ 30) }
+    'div' { PT _ (TS _ 31) }
+    'do' { PT _ (TS _ 32) }
+    'else' { PT _ (TS _ 33) }
+    'end' { PT _ (TS _ 34) }
+    'false' { PT _ (TS _ 35) }
+    'for' { PT _ (TS _ 36) }
+    'forward' { PT _ (TS _ 37) }
+    'function' { PT _ (TS _ 38) }
+    'if' { PT _ (TS _ 39) }
+    'integer' { PT _ (TS _ 40) }
+    'mod' { PT _ (TS _ 41) }
+    'not' { PT _ (TS _ 42) }
+    'of' { PT _ (TS _ 43) }
+    'or' { PT _ (TS _ 44) }
+    'procedure' { PT _ (TS _ 45) }
+    'program' { PT _ (TS _ 46) }
+    'readChar' { PT _ (TS _ 47) }
+    'readInt' { PT _ (TS _ 48) }
+    'readReal' { PT _ (TS _ 49) }
+    'readString' { PT _ (TS _ 50) }
+    'real' { PT _ (TS _ 51) }
+    'repeat' { PT _ (TS _ 52) }
+    'string' { PT _ (TS _ 53) }
+    'then' { PT _ (TS _ 54) }
+    'to' { PT _ (TS _ 55) }
+    'true' { PT _ (TS _ 56) }
+    'until' { PT _ (TS _ 57) }
+    'var' { PT _ (TS _ 58) }
+    'while' { PT _ (TS _ 59) }
+    'writeChar' { PT _ (TS _ 60) }
+    'writeInt' { PT _ (TS _ 61) }
+    'writeReal' { PT _ (TS _ 62) }
+    'writeString' { PT _ (TS _ 63) }
     L_ident  { PT _ (TV _) }
     L_integ  { PT _ (TI _) }
     L_doubl  { PT _ (TD _) }
@@ -94,7 +95,9 @@ Ident   :: { Ident }
 Ident   : L_ident {
     Ident {
         id_name = (prToken $1),
-        ident_pos = (tokenLineCol $1)
+        ident_pos = (tokenLineCol $1),
+        ident_env = E.emptyEnv, 
+        ident_errors = []
     }                 
 }
 
@@ -115,38 +118,24 @@ Boolean : 'true'        { (True, tokenLineCol $1) }
         | 'false'       { (False, tokenLineCol $1) }
 
 Program :: { Program }
-Program : 'program' Ident ';' BlockWithDecl '.' {
+Program : 'program' Ident ';' Block '.' {
     ProgramStart  {
         program_name = $2,
-        program_block_decl = $4,
+        program_block = $4,
         program_pos = (tokenLineCol $1)                                                   
 }}
 
-BlockWithDecl   :: { BlockWithDecl }
-BlockWithDecl   : ListDeclaration 'begin' NonMandatoryTerminator ListStatement 'end' {
-    BlockWithDeclaration  {
+Block   :: { Block }
+Block   : ListDeclaration 'begin' NonMandatoryTerminator ListStatement 'end' {
+    Block  {
         block_declarations = (reverse $1),
         statements = $4,
-        block_with_decl_pos = if (null $1) then (tokenLineCol $2) else (declaration_pos (head $1))                                                                
+        block_pos = if (null $1) then (tokenLineCol $2) else (declaration_pos (head $1))                                                                
 }}
 
 ListDeclaration :: { [Declaration] }
 ListDeclaration : {- empty -}                 { [] }
                 | ListDeclaration Declaration { $2 ++ $1 }
-
-{--
-BlockExec   :: { BlockExec }
-BlockExec   : 'begin' NonMandatoryTerminator ListStatement 'end' {
-    BlockOnlyExecution {
-        statements = $3,
-        block_exec_pos = (tokenLineCol $1)                                                                                    
-}} 
---}
-
-ListStatement   :: { [Statement] }
-ListStatement   : {- empty -}                 { [] }
-                | Statement                   { (:[]) $1 }
-                | Statement ';' ListStatement { (:) $1 $3 }
 
 NonMandatoryTerminator  :: {}
 NonMandatoryTerminator  : {- empty -} {}
@@ -205,6 +194,11 @@ InitAssign  :: { Maybe (RightExp) }
 InitAssign  : {- empty -}       { Nothing }
             | '=' RightExp      { Just $2 }
 
+ListStatement   :: { [Statement] }
+ListStatement   : {- empty -}                 { [] }
+                | Statement                   { (:[]) $1 }
+                | Statement ';' ListStatement { (:) $1 $3 }
+                
 DeclarationFunc :: { [Declaration] }
 DeclarationFunc : {- empty -}                   { [] }
                 | '(' ListVariableDeclFunc ')'  { $2 }
@@ -246,7 +240,7 @@ ProcedureSign   : 'procedure' Ident DeclarationFunc ';' {
 }}
 
 FunctionDecl    :: { Declaration }
-FunctionDecl    : FunctionSign BlockWithDecl ';'    {
+FunctionDecl    : FunctionSign Block ';'    {
     DeclarationFunction   {
         declaration_name = declaration_name $1,
         declaration_params = declaration_params $1,
@@ -256,7 +250,7 @@ FunctionDecl    : FunctionSign BlockWithDecl ';'    {
 }}
 
 ProcedureDecl   :: { Declaration }
-ProcedureDecl   : ProcedureSign BlockWithDecl ';'   {
+ProcedureDecl   : ProcedureSign Block ';'   {
     DeclarationProcedure  {
         declaration_name = declaration_name $1,
         declaration_params = declaration_params $1,
@@ -270,17 +264,9 @@ FunctionForw    : FunctionSign 'forward' ';'    { $1 }
 ProcedureForw   :: { Declaration }
 ProcedureForw   : ProcedureSign 'forward' ';'   { $1 }
 
-FunctionCall    :: { Statement }
-FunctionCall    : Ident '(' ListRightExp ')'    {
-    StatementFunctionCall {
-        call_name = $1,
-        call_params = $3,
-        statement_pos = (ident_pos $1)                                                                        
-}}
-
-ProcedureCall   :: { Statement }
-ProcedureCall   : Ident '(' ListRightExp ')'  {
-    StatementProcedureCall    {
+FuncProcCall    :: { Statement }
+FuncProcCall    : Ident '(' ListRightExp ')'    {
+    StatementFuncProcCall {
         call_name = $1,
         call_params = $3,
         statement_pos = (ident_pos $1)                                                                        
@@ -292,10 +278,10 @@ ListRightExp    : {- empty -}                   { [] }
                 | RightExp ',' ListRightExp     { (:) $1 $3 }
 
 Statement :: { Statement }
-Statement   : BlockWithDecl  {
+Statement   : Block  {
                 StatementBlock {
                     block = $1,
-                    statement_pos = (block_with_decl_pos $1)                                                                            
+                    statement_pos = (block_pos $1)                                                                            
                 }}
             | 'if' RightExp 'then' Statement ElseBlock {
                 StatementIf   {
@@ -328,8 +314,7 @@ Statement   : BlockWithDecl  {
                     assign = $1,
                     statement_pos = (assign_pos $1)
                 }}
-            | FunctionCall  { $1 }
-            | ProcedureCall { $1 }
+            | FuncProcCall { $1 }
             | WritePrimitive {
                 StatementWrite {
                     write_primitive = $1,
@@ -339,6 +324,18 @@ Statement   : BlockWithDecl  {
                 StatementRead {
                     read_primitive = $1,
                     statement_pos = (read_primitive_pos $1)
+                }}
+          | 'break' { 
+                StatementBreak {
+                    statement_pos = (tokenLineCol $1),
+                    statement_env = E.emptyEnv, 
+                    statement_errors = []
+                }}
+          | 'continue' { 
+                StatementContinue {
+                    statement_pos = (tokenLineCol $1),
+                    statement_env = E.emptyEnv, 
+                    statement_errors = []
                 }}
 
 ElseBlock   :: { Maybe ElseBlock }
@@ -473,8 +470,8 @@ RightExp7   : '(' RightExp ')' { $2 }
                     right_exp_string = fst $1,
                     right_exp_pos = snd $1                                                
                 }}
-            | FunctionCall {
-                RightExpFunctionCall  {
+            | FuncProcCall {
+                RightExpFuncProcCall  {
                     call_name_right_exp = call_name $1,
                     call_params_right_exp = call_params $1,
                     right_exp_pos = (statement_pos $1) 
@@ -514,7 +511,7 @@ BaseType    : 'integer' { Tipi.IntegerType }
             | 'string'  { Tipi.StringType }
 
 CompositeType   :: { Tipi.Type }
-CompositeType   : 'array' '[' ListArrayDeclarationDim ']' 'of' BaseType {
+CompositeType   : 'array' '[' ListArrayDeclarationDim ']' 'of' Type {
                     Tipi.ArrayType { Tipi.aType = $6, Tipi.dimensions = $3 }}
                 | '^' Type {
                     Tipi.PointerType { Tipi.pType = $2 }}
