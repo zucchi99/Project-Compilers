@@ -18,15 +18,17 @@ data Type =
     -- TODO handle array multidimensional
     | ArrayType { aType :: Type, dimensions :: [(Int,Int)] }
     | PointerType { pType :: Type }
-    | ErrorType { messages :: [String] }
+    | ErrorType
+    | TBDType -- to be defined (assigned as dummy type to any obj in the abs generated from the parser)
 
 instance Eq Type where -- Eq for arrays does not care about checked/notchecked-ness
-    ErrorType{}           == ErrorType{}           = True
+    ErrorType             == ErrorType             = True
     BooleanType           == BooleanType           = True
     IntegerType           == IntegerType           = True
     RealType              == RealType              = True
     CharType              == CharType              = True
     StringType            == StringType            = True
+    TBDType               == TBDType               = True
     PointerType{pType=p1} == PointerType{pType=p2} = (p1 == p2) --same pointed address
     -- ArrayType{aType=t1, leftPoint=l1, rightPoint=r1} == ArrayType{aType=t2, leftPoint=l2, rightPoint=r2} = (t1 == t2) && (r2-l2 == r1-l1) --same type and length
     ArrayType{aType=t1, dimensions=d1} == ArrayType{aType=t2, dimensions=d2} = (t1 == t2) && (d1 == d2) --same type and length
@@ -40,8 +42,9 @@ instance Show Type where
     show StringType            = "string"
     -- show ArrayType{aType=t, leftPoint=l, rightPoint=r} = "array [" ++ (show l) ++ ".." ++ (show r) ++ "] of " ++ (show t)
     show ArrayType{aType=t, dimensions=d} = "array " ++ (show d) ++ " of " ++ (show t)
-    show PointerType{pType=t} = "^" ++ (show t)
-    show ErrorType{messages=m} = listToString m ", "
+    show PointerType{pType=t}  = "^" ++ (show t)
+    show ErrorType             = "error"
+    show TBDType               = "TBD"
 
 listToString :: Foldable t => t [Char] -> [Char] -> [Char]
 listToString xs sep = foldr (\a b -> a ++ if b == "" then b else sep ++ b) "" xs
@@ -53,7 +56,7 @@ listToString xs sep = foldr (\a b -> a ++ if b == "" then b else sep ++ b) "" xs
 mathType :: Type -> Type
 mathType IntegerType = IntegerType
 mathType RealType    = RealType
-mathType t           = ErrorType { messages = [Err.errMsgNotMathType t] }
+mathType t           = ErrorType -- { messages = [Err.errMsgNotMathType t] }
 
 -- "sup" is used to make inference of binary expressions
 -- TODO:
@@ -66,20 +69,19 @@ sup IntegerType RealType = RealType
 sup RealType IntegerType = RealType
 sup t1 t2 = case t1 == t2 of
     True  -> t1 -- ok
-    False -> ErrorType { messages = [Err.errMsgNotCompatible t1 t2] } -- error
+    False -> ErrorType -- { messages = [Err.errMsgNotCompatible t1 t2] } -- error
 
-combineTypeErrors :: Type -> Type -> Maybe Type
-combineTypeErrors (ErrorType m1) (ErrorType m2) = Just $ ErrorType (m1 ++ m2)
-combineTypeErrors (ErrorType m1) _              = Just $ ErrorType m1
-combineTypeErrors _ (ErrorType m2)              = Just $ ErrorType m2
-combineTypeErrors _ _                           = Nothing
+
+areErrors t1 t2 = (t1 == ErrorType || t2 == ErrorType)
+
 
 -- Function that handles the comparison of two types
 rel :: Type -> Type -> Type
 rel t1 t2 = case sup t1 t2 of
-    ErrorType{messages=m} -> ErrorType { messages = (("Relation operation not permitted"):m) } -- error
-    _ -> BooleanType -- ok
+    ErrorType -> ErrorType -- { messages = (("Relation operation not permitted"):m) } -- error
+    _         -> BooleanType -- ok
 
+{-
 ----------------- test
 main :: IO ()
 main = do
@@ -119,4 +121,4 @@ main = do
     putStrLn $ show $ combineTypeErrors sup_err1 sup_err2
 
 
-    
+-}

@@ -15,57 +15,62 @@ import ErrM
 
 -- __________________________ AUXILIAR CLASSES AND FUNCTIONS
 
+{-
 getErrorsFromMaybe :: Maybe T.Type -> [String]
 getErrorsFromMaybe (Just (T.ErrorType m)) = m
 getErrorsFromMaybe maybe                  = []
+-}
+
+checkPresenceStmt id env decl pos = 
+    case E.lookup env id of
+        Just _  -> []
+        Nothing -> [ Err.errMsgNotDeclared id pos ]
 
 
-checkPresenceStmt :: String -> E.Env -> (Int, Int) -> [String]
-checkPresenceStmt id env decl pos = case E.lookup env id of
-    Just _  -> []
-    Nothing -> [ Err.errMsgNotDeclared id pos ]
-
-
-checkPresenceDecl :: String -> E.Env -> (Int, Int) -> [String]
-checkPresenceDecl id env decl pos = case E.lookup env id of
-    Just _  -> [ Err.errMsgAlreadyDeclared id pos]
-    Nothing -> []
+checkPresenceDecl id env decl pos = 
+    case E.lookup env id of
+        Just _  -> [ Err.errMsgAlreadyDeclared id pos]
+        Nothing -> []
 
 -- mkArrTy(E1.type, E2.type)
 -- Controllo di indice dell'array (deve essere int)
 mkArrTy :: T.Type -> T.Type -> (Int, Int) -> [String]
-mkArrTy (T.ArrayType t _) idx pos = case T.sup idx T.IntegerType of
-    T.IntegerType -> []
-    _             -> getErrorsFromMaybe $ T.combineTypeErrors (T.ErrorType [ Err.errMsgUnexpectedType "The index of an array" T.IntegerType idx pos ]) idx
-mkArrTy t _ = [ Err.errMsgTypeNotArray t ]
+mkArrTy (T.ArrayType t _) idx pos = 
+    case T.sup idx T.IntegerType of
+        T.IntegerType -> []
+        _             -> [ Err.errMsgUnexpectedType "The index of an array" T.IntegerType idx pos ]
+mkArrTy t _ pos = [ Err.errMsgTypeNotArray t pos ]
 
 
 -- mkAssignErrs(E1.type, E2.type)
 -- Controllo durante l'assegnamento
 mkAssignErrs :: T.Type -> T.Type -> (Int, Int) -> [String]
 mkAssignErrs lhs rhs pos =  
-    case (T.combineTypeErrors lhs rhs) of       -- lhs or rhs are errors?
-        Just (T.ErrorType m) -> m               -- yes ==> return errors
-        Nothing -> case T.sup lhs rhs == lhs of -- no  ==> rhs is compatible with lhs?
-            True  -> []             -- yes ==> no errors
-            False -> [ Err.errMsgAssign lhs rhs pos ] -- no ==> return assign error
+    case (T.areErrors lhs rhs) of                    -- lhs or rhs are errors?
+        True  -> []                                -- yes ==> error already found before, do not add new errors
+        False -> case (T.sup lhs rhs) == lhs of    -- no  ==> check if rhs is compatible with lhs
+            True  -> []                               -- yes ==> no errors
+            False -> [ Err.errMsgAssign lhs rhs pos ] -- no ==> return assign error for incompatible types
 
 
 -- mkIfErrs(E.type, S1.errs)
 -- Controllo della guardia dell'if
 mkIfErrs :: T.Type -> (Int, Int) -> [String]
-mkIfErrs guard pos = case guard of
-    (T.ErrorType m) -> m
-    (T.BooleanType) -> []
-    t               -> [ (Err.errMsgUnexpectedType "Guard" T.BooleanType t pos) ]
-
+mkIfErrs guard pos = 
+    case guard of
+        (T.ErrorType)   -> [] -- error already found before, do not add new errors
+        (T.BooleanType) -> []
+        t               -> [ (Err.errMsgUnexpectedType "Guard" T.BooleanType t pos) ]
 
 -- mkIdDeclErrs(id, E.type, T.type)
 -- Controllo durante inizializzazione
 mkIdDeclErrs :: String -> T.Type -> T.Type -> (Int, Int) -> [String]
-mkIdDeclErrs id etype ttype pos = case T.sup etype ttype of
-    (T.ErrorType m) -> getErrorsFromMaybe $ T.combineTypeErrors (T.ErrorType [ Err.errMsgUnexpectedType ("The variable named '" ++ id ++ "'") etype ttype pos ]) ttype
-    _               -> []
+mkIdDeclErrs id etype ttype pos = 
+    case (T.areErrors etype ttype) of             -- etype or ttype are errors?
+        True  -> []                             -- error already found before, do not add new errors
+        False -> case (T.sup etype ttype) == T.ErrorType of    -- no  ==> check if is compatible
+            True  -> [ Err.errMsgUnexpectedType ("The variable named '" ++ id ++ "'") etype ttype pos ]
+            False -> []
 
 -- mkFunEnv(id, F.types, T.type)
 -- mkFunEnv(id, τ1 × . . . × τn, τ ) = {id : τ1 × . . . × τn → τ}
@@ -84,13 +89,14 @@ mkFunErrs d1errs serrs fenv d1env pos = d1errs ++ serrs ++ E.getClashes fenv d1e
 mkRet :: T.Type -> E.Env -> (Int, Int) -> [String]
 mkRet t env pos
     | compatible t (E.lookup env "result") = []
-    | otherwise = [ Err.errMsgReturnNotCompatible t pos ]
+    | otherwise                            = [ Err.errMsgReturnNotCompatible t pos ]
 
 -- Compatibilità del tipo di ritorno con il tipo di ritorno dichiarato
 compatible :: T.Type -> Maybe E.EnvEntry -> Bool
-compatible t1 (Just (E.VarEntry t2)) = T.sup t1 t2 == t2
+compatible t1 (Just (E.VarEntry t2))   = T.sup t1 t2 == t2
 compatible t1 (Just (E.ConstEntry t2)) = T.sup t1 t2 == t2
-compatible _ _ = False
+compatible _  _                        = False
+
 
 -- keyword can be "break" or "continue"
 {- checkLoop :: String -> E.Env -> [String]
@@ -98,12 +104,15 @@ checkLoop keyword env
     | E.lookup env keyword == Nothing = []
     | otherwise = [ Err.errMsgWrongLoopControl keyword] -}
 
+{-
+
 -- __________________________ STATIC SEMANTIC ANAL-ISYS
 staticsemanticcheck x = case x of
     -- parse successful
     (ErrM.Ok a)    -> intercalate "\n\n" $ snd $ staticsemanticAux E.emptyEnv a
     -- parse error
     (ErrM.Bad err) -> err
+
 
 -- __________________________ STATIC SEMANTIC CLASSES
 class StaticSemanticClass a where
@@ -118,6 +127,7 @@ instance StaticSemanticClass Ident where
 
 --instance StaticSemanticClass [Ident] where
   --  staticsemanticAux env idents = (env, [])
+
 
 instance StaticSemanticClass BlockWithDecl where
     staticsemanticAux env (BlockWithDeclStart decls block pos) = 
@@ -189,3 +199,5 @@ main = do
     putStrLn "mkFunErrs [] [] (mkFunEnv \"f\" [T.IntegerType, T.RealType] T.StringType) (mkFunEnv \"f\" [T.IntegerType, T.RealType] T.StringType)"
     putStrLn $ show $ mkFunErrs [] [] (mkFunEnv "f" [T.IntegerType, T.RealType] T.StringType) (mkFunEnv "f" [T.IntegerType, T.RealType] T.StringType)
     putStrLn ""
+
+-}
