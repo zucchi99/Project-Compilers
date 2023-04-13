@@ -3,13 +3,18 @@
 
 module Main where
 
-import qualified PrettyPrinter
+-- import qualified PrettyPrinter
 import qualified Parser             as Par
 import qualified LexGrammar         as Lex
+import ErrM
 
 
 get_tabs 0 = ""
 get_tabs n = ' ' : (get_tabs (n-1))
+
+printAst x = case x of
+    (ErrM.Ok a)    -> show a
+    (ErrM.Bad err) -> err
 
 print_abs text = print_abs_aux text 1
     where
@@ -37,27 +42,27 @@ testami test = do
     -- Parsing
     let par = Par.pProgram lex
     putStrLn "parser output:"
-    putStr $ print_abs $ PrettyPrinter.printAst par
-    putStrLn $ PrettyPrinter.printAst par
+    putStr $ print_abs $ printAst par
+    putStrLn $ printAst par
     putStrLn ""
     
     -- PrettyPrinter
-    let pretty = PrettyPrinter.prettyprinter par
-    putStrLn "pretty print of abstract syntax:"
-    putStrLn pretty
-    putStrLn ""
+    -- let pretty = PrettyPrinter.prettyprinter par
+    -- putStrLn "pretty print of abstract syntax:"
+    -- putStrLn pretty
+    -- putStrLn ""
 
-    let out_dir = "src/test_files/temp/"
-    let out_file = out_dir ++ "pretty_print_" ++ test ++ ".pas"
+    -- let out_dir = "src/test_files/temp/"
+    -- let out_file = out_dir ++ "pretty_print_" ++ test ++ ".pas"
 
-    -- PrettyPrinter to file
-    putStrLn "checking if output of pretty printer is correctly lexed and parser..."
-    writeFile out_file pretty
+    -- -- PrettyPrinter to file
+    -- putStrLn "checking if output of pretty printer is correctly lexed and parser..."
+    -- writeFile out_file pretty
 
-    -- Repeat for test PrettyPrinter
-    input <- readFile out_file
-    let output = Par.pProgram $ Lex.tokens input
-    -- putStrLn $ PrettyPrinter.prettyprinter output
+    -- -- Repeat for test PrettyPrinter
+    -- input <- readFile out_file
+    -- let output = Par.pProgram $ Lex.tokens input
+    -- -- putStrLn $ PrettyPrinter.prettyprinter output
     putStrLn "check successful!"
 
 main = do

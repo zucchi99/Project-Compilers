@@ -8,7 +8,7 @@ module Parser where
 import ErrM
 import LexGrammar
 import AbstractSyntax
-import qualified Types as Tipi
+import qualified Types as T
 import qualified Env as E
 
 }
@@ -122,7 +122,9 @@ Program : 'program' Ident ';' Block '.' {
     ProgramStart  {
         program_name = $2,
         program_block = $4,
-        program_pos = (tokenLineCol $1)                                                   
+        program_pos = (tokenLineCol $1),
+        program_env = E.emptyEnv, 
+        program_errors = []
 }}
 
 Block   :: { Block }
@@ -130,7 +132,9 @@ Block   : ListDeclaration 'begin' NonMandatoryTerminator ListStatement 'end' {
     Block  {
         block_declarations = (reverse $1),
         statements = $4,
-        block_pos = if (null $1) then (tokenLineCol $2) else (declaration_pos (head $1))                                                                
+        block_pos = if (null $1) then (tokenLineCol $2) else (declaration_pos (head $1)),
+        block_env = E.emptyEnv,
+        block_errors = []
 }}
 
 ListDeclaration :: { [Declaration] }
@@ -162,7 +166,9 @@ ConstantDecl    : Ident '=' RightExp {
         costant_name = $1,
         costant_type_maybe = Nothing,
         costant_value = $3,
-        declaration_pos = (ident_pos $1)                                                            
+        declaration_pos = (ident_pos $1),
+        declaration_env = E.emptyEnv,
+        declaration_errors = []
 }}
 
 VariablesBlock  :: { [Declaration] }
@@ -185,7 +191,9 @@ VariableDeclBlock : ListIdent ':' Type InitAssign   {
             variable_name = ident,
             variable_type = $3,
             variable_value_maybe = $4,
-            declaration_pos = (ident_pos ident)                                                                
+            declaration_pos = (ident_pos ident),
+            declaration_env = E.emptyEnv,
+            declaration_errors = []
     } 
     in map (createDeclarationVariable) $1
 }
@@ -211,7 +219,9 @@ VariableDeclFunc    : ListIdent ':' Type    {
             variable_name = ident,
             variable_type = $3,
             variable_value_maybe = Nothing,
-            declaration_pos = (ident_pos ident)                                                            
+            declaration_pos = (ident_pos ident),
+            declaration_env = E.emptyEnv,
+            declaration_errors = []
     } 
     in map (createDeclarationVariable) $1   
 }
@@ -227,7 +237,9 @@ FunctionSign    : 'function' Ident DeclarationFunc ':' Type ';' {
         declaration_params = $3,
         function_type = $5,
         declaration_body_maybe = Nothing,
-        declaration_pos = (tokenLineCol $1)                                                                                
+        declaration_pos = (tokenLineCol $1),
+        declaration_env = E.emptyEnv,
+        declaration_errors = []
 }}
 
 ProcedureSign   :: { Declaration }
@@ -236,7 +248,9 @@ ProcedureSign   : 'procedure' Ident DeclarationFunc ';' {
         declaration_name = $2,
         declaration_params = $3,
         declaration_body_maybe = Nothing,
-        declaration_pos = (tokenLineCol $1)                                                                               
+        declaration_pos = (tokenLineCol $1),
+        declaration_env = E.emptyEnv,
+        declaration_errors = []
 }}
 
 FunctionDecl    :: { Declaration }
@@ -246,7 +260,9 @@ FunctionDecl    : FunctionSign Block ';'    {
         declaration_params = declaration_params $1,
         function_type = function_type $1,
         declaration_body_maybe = Just $2,
-        declaration_pos = (declaration_pos $1)                                                                            
+        declaration_pos = (declaration_pos $1),
+        declaration_env = E.emptyEnv,
+        declaration_errors = []
 }}
 
 ProcedureDecl   :: { Declaration }
@@ -255,7 +271,9 @@ ProcedureDecl   : ProcedureSign Block ';'   {
         declaration_name = declaration_name $1,
         declaration_params = declaration_params $1,
         declaration_body_maybe = Just $2,
-        declaration_pos = (declaration_pos $1)                                                                        
+        declaration_pos = (declaration_pos $1),
+        declaration_env = E.emptyEnv,
+        declaration_errors = []
 }}
 
 FunctionForw    :: { Declaration }
@@ -269,7 +287,9 @@ FuncProcCall    : Ident '(' ListRightExp ')'    {
     StatementFuncProcCall {
         call_name = $1,
         call_params = $3,
-        statement_pos = (ident_pos $1)                                                                        
+        statement_pos = (ident_pos $1),
+        statement_env = E.emptyEnv,
+        statement_errors = []
 }}
 
 ListRightExp    :: { [RightExp] }
@@ -281,49 +301,65 @@ Statement :: { Statement }
 Statement   : Block  {
                 StatementBlock {
                     block = $1,
-                    statement_pos = (block_pos $1)                                                                            
+                    statement_pos = (block_pos $1),
+                    statement_env = E.emptyEnv,
+                    statement_errors = []
                 }}
             | 'if' RightExp 'then' Statement ElseBlock {
                 StatementIf   {
                     condition = $2,
                     then_body = $4,
                     else_body_maybe = $5,
-                    statement_pos = (tokenLineCol $1)                                                                           
+                    statement_pos = (tokenLineCol $1),
+                    statement_env = E.emptyEnv,
+                    statement_errors = []
                 }}
             | 'for' Assign 'to' RightExp 'do' Statement {
                 StatementFor  {
                     condition = $4,
                     then_body = $6,
                     for_var = $2,
-                    statement_pos = (tokenLineCol $1)
+                    statement_pos = (tokenLineCol $1),
+                    statement_env = E.emptyEnv,
+                    statement_errors = []
                 }}
             | 'while' RightExp 'do' Statement {
                 StatementWhile    {
                     condition = $2,
                     then_body = $4,
-                    statement_pos = (tokenLineCol $1)
+                    statement_pos = (tokenLineCol $1),
+                    statement_env = E.emptyEnv,
+                    statement_errors = []
                 }}
             | 'repeat' Statement 'until' RightExp {
                 StatementRepeatUntil  {
                     condition = $4,
                     then_body = $2,
-                    statement_pos = (tokenLineCol $1)
+                    statement_pos = (tokenLineCol $1),
+                    statement_env = E.emptyEnv,
+                    statement_errors = []
                 }}
             | Assign {
                 StatementAssign   {
                     assign = $1,
-                    statement_pos = (assign_pos $1)
+                    statement_pos = (assign_pos $1),
+                    statement_env = E.emptyEnv,
+                    statement_errors = []
                 }}
             | FuncProcCall { $1 }
             | WritePrimitive {
                 StatementWrite {
                     write_primitive = $1,
-                    statement_pos = (write_primitive_pos $1)
+                    statement_pos = (write_primitive_pos $1),
+                    statement_env = E.emptyEnv,
+                    statement_errors = []
                 }}
             | ReadPrimitive {
                 StatementRead {
                     read_primitive = $1,
-                    statement_pos = (read_primitive_pos $1)
+                    statement_pos = (read_primitive_pos $1),
+                    statement_env = E.emptyEnv,
+                    statement_errors = []
                 }}
           | 'break' { 
                 StatementBreak {
@@ -343,7 +379,9 @@ ElseBlock   : {- empty -} { Nothing }
             | 'else' Statement {
                 Just ElseBlock    {
                     else_body = $2,
-                    else_block_pos = (tokenLineCol $1)
+                    else_block_pos = (tokenLineCol $1),
+                    else_block_env = E.emptyEnv,
+                    else_block_errors = []
                 }}
 
 Assign      :: { Assign }
@@ -351,7 +389,9 @@ Assign      : LeftExp ':=' RightExp {
     VariableAssignment    {
         left_exp_assignment = $1,
         right_exp_assignment = $3,
-        assign_pos = (left_exp_pos $1)
+        assign_pos = (left_exp_pos $1),
+        assign_env = E.emptyEnv,
+        assign_errors = []
 }}
 
 RightExp    :: { RightExp }
@@ -360,7 +400,10 @@ RightExp    : RightExp1   { $1 }
                 RightExpOr    {
                     sx = $1,
                     dx = $3,
-                    right_exp_pos = (right_exp_pos $1)                                                                
+                    right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = []
 }}
 
 RightExp1   :: { RightExp }
@@ -369,152 +412,233 @@ RightExp1   : RightExp2  { $1 }
                 RightExpAnd {
                     sx = $1,
                     dx = $3, 
-                    right_exp_pos = (right_exp_pos $1) 
+                    right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = []
 }}
 
 RightExp2   :: { RightExp }
 RightExp2   : RightExp3   { $1 }
             | RightExp2 '>' RightExp3 {
                 RightExpGreater {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1)
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = []
                 }}
             | RightExp2 '<' RightExp3 {
                 RightExpLess {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = []
                 }}
             | RightExp2 '>=' RightExp3 {
                 RightExpGreaterEqual {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = []
                 }}
             | RightExp2 '<=' RightExp3 {
                 RightExpLessEqual {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | RightExp2 '=' RightExp3 {
                 RightExpEqual {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
 
 RightExp3   :: { RightExp }
 RightExp3   : RightExp4 { $1 }
             | RightExp3 '+' RightExp4 {
                 RightExpPlus {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | RightExp3 '-' RightExp4 {
                 RightExpMinus {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
 
 RightExp4   :: { RightExp }
 RightExp4   : RightExp5 { $1 }
             | RightExp4 '*' RightExp5 {
                 RightExpTimes {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | RightExp4 '/' RightExp5 {
                 RightExpDivide {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | RightExp4 'mod' RightExp5 {
                 RightExpMod {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | RightExp4 'div' RightExp5 {
                 RightExpDiv {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
 
 RightExp5   :: { RightExp }
 RightExp5   : RightExp6 { $1 }
             | RightExp5 '**' RightExp6 {
                 RightExpPower {
-                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1) 
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
 
 RightExp6   :: { RightExp }
 RightExp6   : RightExp7  { $1 }
             | 'not' RightExp7  {
                 RightExpNot {
-                    dx = $2, right_exp_pos = (tokenLineCol $1) 
+                    dx = $2, right_exp_pos = (tokenLineCol $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | '-' RightExp7 {
                 RightExpMinusUnary {
-                    dx = $2, right_exp_pos = (tokenLineCol $1) 
+                    dx = $2, right_exp_pos = (tokenLineCol $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | '+' RightExp7 {
                 RightExpPlusUnary {
-                    dx = $2, right_exp_pos = (tokenLineCol $1) 
+                    dx = $2, right_exp_pos = (tokenLineCol $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
 
 RightExp7   :: { RightExp }
 RightExp7   : '(' RightExp ')' { $2 }
             | Integer {
                 RightExpInteger   {
-                    right_exp_int = fst $1, right_exp_pos = snd $1
+                    right_exp_int = fst $1, right_exp_pos = snd $1,
+                    right_exp_type = T.IntegerType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | Double {
                 RightExpReal {
-                    right_exp_double = fst $1, right_exp_pos = snd $1
+                    right_exp_double = fst $1, right_exp_pos = snd $1,
+                    right_exp_type = T.RealType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | Char {
                 RightExpChar      {
-                    right_exp_char = fst $1, right_exp_pos = snd $1
+                    right_exp_char = fst $1, right_exp_pos = snd $1,
+                    right_exp_type = T.CharType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | Boolean {
                 RightExpBoolean   {
-                    right_exp_bool = fst $1, right_exp_pos = snd $1
+                    right_exp_bool = fst $1, right_exp_pos = snd $1,
+                    right_exp_type = T.BooleanType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
             | String {
                 RightExpString    {
                     right_exp_string = fst $1,
-                    right_exp_pos = snd $1                                                
+                    right_exp_pos = snd $1,
+                    right_exp_type = T.StringType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = []                                                 
                 }}
             | FuncProcCall {
                 RightExpFuncProcCall  {
                     call_name_right_exp = call_name $1,
                     call_params_right_exp = call_params $1,
-                    right_exp_pos = (statement_pos $1) 
+                    right_exp_pos = (statement_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = []  
                 }}
             | LeftExp {
                 RightExpCopy {
-                    left_exp_right_exp = $1, right_exp_pos = (left_exp_pos $1)
+                    left_exp_right_exp = $1, right_exp_pos = (left_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
                 }}
 
 LeftExp :: { LeftExp }
 LeftExp : Ident {
             LeftExpIdent {
-                left_exp_name = $1, left_exp_pos = (ident_pos $1) 
+                left_exp_name = $1, left_exp_pos = (ident_pos $1),
+                left_exp_type = T.TBDType,
+                left_exp_env = E.emptyEnv,
+                left_exp_errors = [] 
             }}
         | LeftExp '[' ListRightExp ']' {
             LeftExpArrayAccess {
-                array_name = $1, array_pos = $3, left_exp_pos = (left_exp_pos $1)
+                array_name = $1, array_pos = $3, left_exp_pos = (left_exp_pos $1),
+                left_exp_type = T.TBDType,
+                left_exp_env = E.emptyEnv,
+                left_exp_errors = [] 
             }}
         | LeftExp '^' {
             LeftExpPointerValue {
-                pointer_value = $1, left_exp_pos = (left_exp_pos $1)
+                pointer_value = $1, left_exp_pos = (left_exp_pos $1),
+                left_exp_type = T.TBDType,
+                left_exp_env = E.emptyEnv,
+                left_exp_errors = [] 
             }}
         | LeftExp '@' {
             LeftExpPointerAddress {
-                pointer_address = $1, left_exp_pos = (left_exp_pos $1) 
+                pointer_address = $1, left_exp_pos = (left_exp_pos $1),
+                left_exp_type = T.TBDType,
+                left_exp_env = E.emptyEnv,
+                left_exp_errors = []  
             }}
 
-Type    :: { Tipi.Type }
+Type    :: { T.Type }
 Type    : BaseType { $1 }
         | CompositeType { $1 }
 
-BaseType    :: { Tipi.Type }
-BaseType    : 'integer' { Tipi.IntegerType }
-            | 'real'    { Tipi.RealType }
-            | 'char'    { Tipi.CharType }
-            | 'boolean' { Tipi.BooleanType }
-            | 'string'  { Tipi.StringType }
+BaseType    :: { T.Type }
+BaseType    : 'integer' { T.IntegerType }
+            | 'real'    { T.RealType }
+            | 'char'    { T.CharType }
+            | 'boolean' { T.BooleanType }
+            | 'string'  { T.StringType }
 
-CompositeType   :: { Tipi.Type }
+CompositeType   :: { T.Type }
 CompositeType   : 'array' '[' ListArrayDeclarationDim ']' 'of' Type {
-                    Tipi.ArrayType { Tipi.aType = $6, Tipi.dimensions = $3 }}
+                    T.ArrayType { T.aType = $6, T.dimensions = $3 }}
                 | '^' Type {
-                    Tipi.PointerType { Tipi.pType = $2 }}
+                    T.PointerType { T.pType = $2 }}
 
 ListArrayDeclarationDim :: { [(Int, Int)] }
 ListArrayDeclarationDim : {- empty -}                                     { [] }
@@ -527,37 +651,53 @@ ArrayDeclarationDim : Integer '..' Integer { (fst $1, fst $3) }
 WritePrimitive :: { WritePrimitive }
 WritePrimitive  : 'writeInt' '(' RightExp ')' {
                     WriteInt  {
-                        write_exp = $3, write_primitive_pos = (tokenLineCol $1)
+                        write_exp = $3, write_primitive_pos = (tokenLineCol $1),
+                        write_primitive_env = E.emptyEnv,
+                        write_primitive_errors = []
                     }}
                 | 'writeReal' '(' RightExp ')' {
                     WriteReal {
-                        write_exp = $3, write_primitive_pos = (tokenLineCol $1) 
+                        write_exp = $3, write_primitive_pos = (tokenLineCol $1),
+                        write_primitive_env = E.emptyEnv,
+                        write_primitive_errors = [] 
                     }}
                 | 'writeChar' '(' RightExp ')' {
                     WriteChar {
-                        write_exp = $3, write_primitive_pos = (tokenLineCol $1) 
+                        write_exp = $3, write_primitive_pos = (tokenLineCol $1),
+                        write_primitive_env = E.emptyEnv,
+                        write_primitive_errors = []
                     }}
                 | 'writeString' '(' RightExp ')' {
                     WriteString {
-                        write_exp = $3, write_primitive_pos = (tokenLineCol $1)
+                        write_exp = $3, write_primitive_pos = (tokenLineCol $1),
+                        write_primitive_env = E.emptyEnv,
+                        write_primitive_errors = []
                     }}
                 
 ReadPrimitive :: { ReadPrimitive }
 ReadPrimitive   : 'readInt' '(' LeftExp ')'     {
                     ReadInt {
-                        read_exp = $3, read_primitive_pos = (tokenLineCol $1)
+                        read_exp = $3, read_primitive_pos = (tokenLineCol $1),
+                        read_primitive_env = E.emptyEnv,
+                        read_primitive_errors = []
                     }}
                 | 'readReal' '(' LeftExp ')'    {
                     ReadReal {
-                        read_exp = $3, read_primitive_pos = (tokenLineCol $1)
+                        read_exp = $3, read_primitive_pos = (tokenLineCol $1),
+                        read_primitive_env = E.emptyEnv,
+                        read_primitive_errors = []
                     }}
                 | 'readChar' '(' LeftExp ')'    {
                     ReadChar      {
-                        read_exp = $3, read_primitive_pos = (tokenLineCol $1)
+                        read_exp = $3, read_primitive_pos = (tokenLineCol $1),
+                        read_primitive_env = E.emptyEnv,
+                        read_primitive_errors = []
                     }}
                 | 'readString' '(' LeftExp ')'  {
                     ReadString    {
-                        read_exp = $3, read_primitive_pos = (tokenLineCol $1)
+                        read_exp = $3, read_primitive_pos = (tokenLineCol $1),
+                        read_primitive_env = E.emptyEnv,
+                        read_primitive_errors = []
                     }}
 
 --------------------------------------------------------------------------------------------------------------------------------------

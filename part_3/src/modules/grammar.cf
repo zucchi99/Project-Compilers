@@ -11,18 +11,18 @@ entrypoints Program;
 -- __________ PASCAL KEYWORDS __________
 
 -- program definition
-ProgramStart.                   Program      ::= "program" Ident ";" BlockWithDecl "." ;
+ProgramStart.                   Program      ::= "program" Ident ";" Block "." ;
 
 -- __________ BLOCK STRUCTURE __________
 
 -- block structure with declarations
-BlockWithDeclaration.       BlockWithDecl ::= [Declaration] "begin" NonMandatoryTerminator [Statement] "end" ;
+BlockWithDeclaration.           Block ::= [Declaration] "begin" NonMandatoryTerminator [Statement] "end" ;
 separator Declaration "" ;
 
 -- Useful, because inside a begin ... end block there can be a nested block, only without declarations
 --BlockOnlyExecution.         BlockExec     ::= "begin" NonMandatoryTerminator [Statement] "end" ;
 
-rules                            NonMandatoryTerminator ::= {- empty -} | ";" ;
+rules                           NonMandatoryTerminator ::= {- empty -} | ";" ;
 
 -- variables, functions, procedures
 rules                           Declaration   ::= CostantsBlock | VariablesBlock | FunctionForw | ProcedureForw | FunctionDecl | ProcedureDecl ; --Declaration
@@ -59,28 +59,28 @@ separator nonempty Ident "," ;
 -- function and procedure declaration
 FunctionSignature.              FunctionSign    ::= "function" Ident DeclarationFunc ":" Type ";" ;
 ProcedureSignature.             ProcedureSign   ::= "procedure" Ident DeclarationFunc ";" ;
-FunctionDeclaration.            FunctionDecl    ::= FunctionSign BlockWithDecl ";" ;
-ProcedureDeclaration.           ProcedureDecl   ::= ProcedureSign BlockWithDecl ";" ;
+FunctionDeclaration.            FunctionDecl    ::= FunctionSign Block ";" ;
+ProcedureDeclaration.           ProcedureDecl   ::= ProcedureSign Block ";" ;
 FunctionForward.                FunctionForw    ::= FunctionSign "forward" ";" ;
 ProcedureForward.               ProcedureForw   ::= ProcedureSign "forward" ";" ;
 
-FunctionInvocation.             FunctionCall   ::= Ident "(" [RightExp] ")" ;
-ProcedureInvocation.            ProcedureCall  ::= Ident "(" [RightExp] ")" ;
+FunctionInvocation.             FuncProcCall   ::= Ident "(" [RightExp] ")" ;
 separator RightExp "," ;
 
 -- __________ STATEMENTS __________
 
 separator Statement ";" ;
-StatementBlock.                 Statement       ::= BlockWithDecl ;
+StatementBlock.                 Statement       ::= Block ;
 StatementIf.                    Statement       ::= "if" RightExp "then" Statement ElseBlock ;
 StatementFor.                   Statement       ::= "for" Assign "to" RightExp "do" Statement ;
 StatementWhile.                 Statement       ::= "while" RightExp "do" Statement ;
 StatementRepeatUntil.           Statement       ::= "repeat" Statement "until" RightExp ;
 StatementAssign.                Statement       ::= Assign ;
-StatementFunctionCall.          Statement       ::= FunctionCall ;
-StatementProcedureCall.         Statement       ::= ProcedureCall ;
+StatementFunctionCall.          Statement       ::= FuncProcCall ;
 StatementWrite.                 Statement       ::= WritePrimitive ;
 StatementRead.                  Statement       ::= ReadPrimitive ;
+StatementBreak.                 Statement       ::= "break" ;
+StatementContinue.              Statement       ::= "continue" ;
 
 rules                           ElseBlock       ::= {- empty -} | "else" Statement ; --ElseDefinition
 
@@ -118,7 +118,7 @@ RightExpReal.                   RightExp7       ::= Double ;
 RightExpBoolean.                RightExp7       ::= Boolean ;
 RightExpChar.                   RightExp7       ::= Char ;
 RightExpString.                 RightExp7       ::= String ;
-RightExpFunctionCall.           RightExp7       ::= FunctionCall ;
+RightExpFunctionCall.           RightExp7       ::= FuncProcCall ;
 RightExpCopy.                   RightExp7       ::= LeftExp ;
 
 -- __________ LEFT EXPRESSIONS __________
@@ -137,12 +137,11 @@ rules                           Boolean         ::= "true" | "false" ;
 
 -- complex types definition
 -- actually for arrays should be: array [0..5, 1..6] if multi-dimensional
-CompTypeArray.                  CompositeType   ::= "array" "[" [ArrayDeclarationDim] "]" "of" BaseType ;
+CompTypeArray.                  CompositeType   ::= "array" "[" [ArrayDeclarationDim] "]" "of" Type ;
 separator ArrayDeclarationDim "," ;
 -- The declaration with variable length is not allowed in Pascal, but here it's allowed
 -- we need to be sure that the right expression produce an integer
--- NB actually simplified in the parser.y to Integer..Integer
-ArrayDeclarationDimension.      ArrayDeclarationDim     ::= RightExp ".." RightExp ;
+ArrayDeclarationDimension.      ArrayDeclarationDim     ::= Integer ".." Integer ;
 
 -- Pointer of pointer in Pascal is not allowed, but here is allowed, BECAUSE THIS IS NOT PASCAL
 CompTypePointer.                CompositeType   ::= "^" Type ;

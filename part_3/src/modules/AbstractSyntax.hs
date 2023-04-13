@@ -43,7 +43,7 @@ data Statement
     | StatementWhile                        { condition :: RightExp, then_body :: Statement, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementRepeatUntil                  { condition :: RightExp, then_body :: Statement, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementAssign                       { assign :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
-    | StatementFuncProc                     { call_name :: Ident, call_params :: [RightExp], statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    | StatementFuncProcCall                 { call_name :: Ident, call_params :: [RightExp], statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementWrite                        { write_primitive :: WritePrimitive, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementBreak                        { statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementContinue                     { statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
@@ -76,7 +76,7 @@ data RightExp
     | RightExpBoolean                       { right_exp_bool :: Bool, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpChar                          { right_exp_char :: Char, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpString                        { right_exp_string :: String, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-    | RightExpFuncProcCall                  { call_name_right_exp :: Ident, call_params_right_exp :: [RightExp], right_exp_pos :: (Int, Int), right_exp_env :: E.Env }
+    | RightExpFuncProcCall                  { call_name_right_exp :: Ident, call_params_right_exp :: [RightExp], right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpCopy                          { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpCoercion                      { right_exp_coercion :: RightExp, right_exp_from_type :: T.Type, right_exp_to_type :: T.Type, right_exp_pos :: (Int, Int), right_exp_env :: E.Env, right_exp_errors :: [String] }
     deriving (Show)
