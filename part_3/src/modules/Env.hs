@@ -14,9 +14,16 @@ data Env = Env { env :: Map.Map String EnvEntry} deriving (Show)
 data EnvEntry 
     = VarEntry { ty :: T.Type } 
     | ConstEntry { ty :: T.Type }
-    | FunEntry { params :: [T.Type], ret :: T.Type }
-    | ProcEntry { params :: [T.Type] }
+    | FunEntry { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool }
+    | ProcEntry { params :: [(String, T.Type)], forward :: Bool  }
     deriving (Show)
+
+instance Eq EnvEntry where
+    VarEntry { ty = t1 }                == VarEntry { ty = t2 }                 = t1 == t2
+    ConstEntry { ty = t1 }              == ConstEntry { ty = t2 }               = t1 == t2
+    FunEntry { params = p1, ret = r1 }  == FunEntry { params = p2, ret = r2 }   = p1 == p2 && r1 == r2
+    ProcEntry { params = p1 }           == ProcEntry { params = p2 }            = p1 == p2
+    _                                   == _                                    = False
 
 -- | Create a new empty environment. It should be used as the root environment
 emptyEnv :: Env
@@ -28,6 +35,7 @@ mkSingletonEnv id ty = Env { env = Map.singleton id ty }
 
 
 -- | Add a new variable to the environment
+-- | If the variable is already present, it is overwritten
 addVar :: Env -> String -> EnvEntry -> Env
 addVar (Env e) id ty = Env { env = Map.insert id ty e }
 
@@ -47,6 +55,13 @@ merge (Env e1) (Env e2) = Env { env = Map.union e1 e2 }
 -- It returns a list of strings, each string is an error message
 getClashes :: Env -> Env -> (Int, Int) -> [String]
 getClashes (Env e1) (Env e2) pos = Map.foldrWithKey (\k v acc -> if Map.member k e2 then (Err.errMsgClash k pos) : acc else acc) [] e1
+
+-- Function that checks if there are FunEntry or ProcEntry with forward = True and if there are returns their key
+getForward :: Env -> [String]
+getForward (Env e) = Map.foldrWithKey (\k v acc -> if (isForward v) then k : acc else acc) [] e where
+    isForward (FunEntry { forward = True }) = True
+    isForward (ProcEntry { forward = True }) = True
+    isForward _ = False
 
 mainEnv = do
     putStrLn "Test - Env.hs"
