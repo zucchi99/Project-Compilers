@@ -44,5 +44,14 @@ errMsgClash varname pos = printPos pos ++ "The name " ++ (show varname) ++ " is 
 errMsgWrongLoopControl :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgWrongLoopControl t pos = printPos pos ++ (show t) ++ " is used outside a loop"
 
+errAssignToLeftExpr :: (Show a) => a -> (Int, Int) -> [Char]
+errAssignToLeftExpr t pos = printPos pos ++ "Can't assign value to expression of type " ++ (show t)
+
+errMsgWrongWritePrimitiveType :: (Show a1, Show a2) => a1 -> a2 -> (Int, Int) -> [Char]
+errMsgWrongWritePrimitiveType t pos = printPos pos ++ "A 'Write' primitive of " ++ (show t1) ++ " type is used, but type " ++ (show t2) ++ " is given"
+
+errMsgWrongReadPrimitiveType :: (Show a1, Show a2) => a1 -> a2 -> (Int, Int) -> [Char]
+errMsgWrongReadPrimitiveType t pos = printPos pos ++ "A 'Read' primitive of " ++ (show t1) ++ " type is used, but it's trying to assign a " ++ (show t2) ++ " type"
+
 printPos :: (Int, Int) -> [Char]
 printPos (l, c) = "At line " ++ (show l) ++ ", column " ++ (show c) ++ ": \n\t"
