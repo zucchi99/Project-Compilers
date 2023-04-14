@@ -3,8 +3,9 @@
 
 module TAC where
 
---import qualified AbstractSyntax as AS
---import qualified Types as T
+import qualified AbstractSyntax as AS
+import qualified Types as T
+import qualified Env as E
 
 -- ___________ PRIMITIVE TYPE ___________
 
@@ -23,6 +24,10 @@ data PrimType =
 --            AddrLeft                                        Address
 -- AddrProgramVar  AddrTempVar              AddressInt AddressReal AddressChar AddressBool
 
+{-
+
+-- works but shitty
+
 -- variable defined in source code
 newtype AddrProgramVar = AddrProgramVar String
     deriving (Show)
@@ -34,7 +39,7 @@ newtype AddrTempVar = AddrTempVar String
 -- primitive types of TAC
 data Address = 
     AddressInt Int
-    | AddressReal Float
+    | AddressReal Double
     | AddressChar Char
     | AddressBool Bool
     deriving (Show)
@@ -50,8 +55,6 @@ data AddrRight =
     AddrLeftSuper  AddrLeft
     | AddressSuper Address
     deriving (Show)
-
--- ___________ SET OF INSTRUCTIONS ___________
 
 data Instruction = 
     -- l = r1 bin_op r2
@@ -90,80 +93,166 @@ data Instruction =
     | RetVal                { value :: AddrRight, return_type :: PrimType }
     deriving (Show)
 
+-}
+
+data Address = 
+    AddressInt          Int
+    | AddressReal       Double
+    | AddressChar       Char
+    | AddressBool       Bool
+    | AddressProgramVar String
+    | AddressTempVar    String
+    deriving (Show)
+
+instance Eq Address where
+    AddressInt        _   == AddressInt        _   = True
+    AddressReal       _   == AddressReal       _   = True
+    AddressChar       _   == AddressChar       _   = True
+    AddressBool       _   == AddressBool       _   = True
+    AddressProgramVar _   == AddressProgramVar _   = True
+    AddressTempVar    _   == AddressTempVar    _   = True
+    _                     == _                     = False
+
+is_address_left :: Address -> Bool
+is_address_left addr = ((addr == (AddressProgramVar "")) || (addr == (AddressTempVar "")))
+
+is_address_program :: Address -> Bool
+is_address_program addr = (addr == (AddressProgramVar ""))
+
+
+-- ___________ SET OF INSTRUCTIONS ___________
+
+-- NB:
+-- l, l1, l2      ==> is_address_left
+-- array, pointer ==> is_address_program
+
+data Instruction = 
+    -- l = r1 bin_op r2
+    BinaryAssignment        { l :: Address, r1,r2 :: Address, assign_type :: PrimType, bin_op :: BinaryOp }
+    -- l = un_op r
+    | UnaryAssignment       { l :: Address,     r :: Address, assign_type :: PrimType, un_op :: UnaryOp }
+    -- l = r
+    | NullAssignment        { l :: Address,     r :: Address, assign_type :: PrimType }
+    -- goto label
+    | Jump                  { goto :: String }
+    -- if r goto label
+    | JumpIfTrue            { goto :: String, cond :: Address }
+    -- ifFalse r goto label
+    | JumpIfFalse           { goto :: String, cond :: Address }
+    -- if r1 rel r2 goto label
+    | JumpConditional       { goto :: String, r1,r2 :: Address, rel_op :: RelationalOp }
+    -- l = array[i]
+    | ReadFromArray         { array :: Address, i,r :: Address, assign_type :: PrimType }
+    -- array[i] = r
+    | WriteToArray          { array :: Address, i,r :: Address, assign_type :: PrimType }
+    -- l = @id (&id in C)
+    | ReadPointerAddress    { l      :: Address, pointer :: Address }
+    -- l = ^l (*id in C)
+    | ReadPointerValue      { l1, l2 :: Address }
+    -- ^l = r (*id in C)
+    | WritePointerValue     { l      :: Address, r :: Address }
+    -- param r
+    | Parameter             { param :: Address, param_type :: PrimType }
+    -- pcall id, num_params
+    | ProcCall              { p_name :: String, num_params :: Int }
+    -- l = fcall id, num_params
+    | FunCall               { f_name :: String, num_params :: Int, l :: Address,  assign_type :: PrimType }
+    -- return (for procedures)
+    | Return
+    -- return r (for functions)
+    | RetVal                { value :: Address, return_type :: PrimType }
+    deriving (Show)
+
 -- ___________ SET OF OPERATIONS ___________
 
 data UnaryOp =
-    Coerce          { type_from, type_to :: PrimType }
-    | Negate        { negation_type      :: PrimType }
+    Coerce          { type_from, type_to    :: PrimType }
+    | Negate        { negation_type         :: PrimType }
     | Not 
     deriving (Show)
 
 data BinaryOp = 
-    Sum             { binary_type :: PrimType }
-    | Subtract      { binary_type :: PrimType }
-    | Multiply      { binary_type :: PrimType }
-    | Divide        { binary_type :: PrimType }
-    | Remainder     { binary_type :: PrimType }
-    | Power         { binary_type :: PrimType }
+    Sum             { binary_type           :: PrimType }
+    | Subtract      { binary_type           :: PrimType }
+    | Multiply      { binary_type           :: PrimType }
+    | Divide        { binary_type           :: PrimType }
+    | Remainder     { binary_type           :: PrimType }
+    | Power         { binary_type           :: PrimType }
     | AddressSum
     deriving (Show)
 
 data RelationalOp = 
-    GreaterThan     { relation_type :: PrimType }
-    | GreaterEqual  { relation_type :: PrimType }
-    | LessThan      { relation_type :: PrimType }
-    | LessEqual     { relation_type :: PrimType }
-    | Equal         { relation_type :: PrimType }
-    | NotEqual      { relation_type :: PrimType }
+    GreaterThan 
+    | GreaterEqual
+    | LessThan    
+    | LessEqual   
+    | Equal       
+    | NotEqual    
     deriving (Show)
 
 -- ___________ TAC CODE TYPE ___________
+
+data BlockType = 
+    StartBlockType                                                              -- start computation (invoke main)
+    | MainBlockType { pos :: (Int, Int), is_start :: Bool }                     -- block for main code declaration
+    | FuncBlockType { pos :: (Int, Int), is_start :: Bool, fun_name :: String } -- block for function declaration
+    | ProcBlockType { pos :: (Int, Int), is_start :: Bool, prc_name :: String } -- block for procedure declaration
+    | TempBlockType { b_idx :: Int }                                            -- block defined by compiler
+    | StringBlockType { b_idx :: Int }                                          -- block for storage a string literal
 
 data Block = Block {
     block_name  :: String,
     code        :: [ Instruction ]
 } deriving (Show)
 
-data TAC = TAC {
-    tac :: [ Block ]
-} deriving (Show)
-
 data State = State { 
-    tac_super           :: TAC,
-    temp_idx, block_idx :: Integer
+    tac                          :: [ Block ],
+    strings                      :: [ String ],
+    temp_idx, block_idx, str_idx :: Int
 } deriving (Show)
 
 -- ___________ FUNCTIONS ___________
 
-{-
-initialize_state :: State
-initialize_state = (State [] 0 0)
+opposite_relational_operator :: RelationalOp -> RelationalOp
+opposite_relational_operator GreaterThan  = LessEqual
+opposite_relational_operator LessEqual    = GreaterThan
+opposite_relational_operator GreaterEqual = LessThan 
+opposite_relational_operator LessThan     = GreaterEqual    
+opposite_relational_operator Equal        = NotEqual 
+opposite_relational_operator NotEqual     = Equal    
 
---to_primitive_type T.BooleanType = TypeBool
---to_primitive_type T.IntegerType = TypeInt
---to_primitive_type T.RealType    = TypeReal
---to_primitive_type T.CharType    = TypeChar
---to_primitive_type _             = TypeAddr
+empty_block :: Block
+empty_block = (Block "" [])
+
+initialize_state :: State
+initialize_state = (State [] [] 0 0 0)
+
+to_primitive_type :: T.Type -> PrimType
+to_primitive_type T.BooleanType = TypeBool
+to_primitive_type T.IntegerType = TypeInt
+to_primitive_type T.RealType    = TypeReal
+to_primitive_type T.CharType    = TypeChar
+to_primitive_type _             = TypeAddr
 
 -- reverse list of blocks and reverse each block list of instructions
 reverse_TAC :: State -> State
-reverse_TAC (State t tmp_i bck_i) = (State (reverse $ map (\ (Block n c) -> (Block n (reverse c))) t) tmp_i bck_i)
+reverse_TAC (State t str tmp_i bck_i str_i) = (State (reverse $ map (\ (Block n c) -> (Block n (reverse c))) t) (reverse str) tmp_i bck_i str_i)
 
 -- check if block is already present in TAC
 lookup :: State -> String -> Maybe Block
-lookup (State (x:xs) tmp_i bck_i) b_name = 
+lookup (State [] _ _ _ _) _ = Nothing
+lookup (State (x:xs) str tmp_i bck_i str_i) b_name = 
     let (Block cur_name _) = x in
         if cur_name == b_name
         then Just x
-        else TAC.lookup (State xs tmp_i bck_i) b_name
-lookup _ _ = Nothing
+        else TAC.lookup (State xs str tmp_i bck_i str_i) b_name
 
--- add instruction to tac inside given block
+-- add instruction to tac inside given block, create new temp block if block was not present
 out :: State -> String -> Instruction -> State
 out s b_name instr = 
     case (add_instruction_to_block s b_name instr) of
-        (True,  b) -> add_block b s
-        (False, b) -> substitute_block s b b_name
+        (True,  b) -> add_block s (TempBlockType (block_idx s)) [instr] -- by default is tempblock
+        (False, b) -> update_block s b b_name
 
 -- add instruction to block, create new block if block was not present
 add_instruction_to_block :: State -> String -> Instruction -> (Bool, Block)
@@ -171,39 +260,247 @@ add_instruction_to_block s b_name instr = case (TAC.lookup s b_name) of
     Nothing          -> (True,  (Block b_name [ instr ])) -- create new block ==> is new block? true
     Just (Block n c) -> (False, (Block n (instr:c)))      -- add goto block   ==> is new block? false
 
--- add a block to tac (increase block counter)
-add_block :: Block -> State -> State
-add_block b (State t tmp_i bck_i) = (State (b:t) tmp_i (bck_i+1))
+-- add a new block to tac (increase block counter)
+add_block :: State -> BlockType -> [Instruction] -> State
+add_block state b_type b_code =
+    let tac'   = (make_new_block b_type b_code) : (tac state)
+        bck_i' = (block_idx state) + 1
+    in state { tac = tac', block_idx = bck_i' }
 
 -- update a block inside tac, inefficient: O(|blocks|)
-substitute_block :: State -> Block -> String -> State
-substitute_block (State t tmp_i bck_i) b b_name = (State (substitute_block_aux t b b_name) tmp_i bck_i) where
-    substitute_block_aux []     _ b_name = [ (Block ("Internal error: block " ++ b_name ++ " not found") []) ]
-    substitute_block_aux (x:xs) b b_name = 
+update_block :: State -> Block -> String -> State
+update_block (State t str tmp_i bck_i str_i) b b_name = (State (update_block_aux t b b_name) str tmp_i bck_i str_i) where
+    update_block_aux []     _ b_name = [ (Block ("Internal error: block " ++ b_name ++ " not found") []) ]
+    update_block_aux (x:xs) b b_name = 
         let (Block cur_name _) = x in
             if cur_name == b_name
             then b : xs                                 -- block found    ==> add new block and rest of tac
-            else x : (substitute_block_aux xs b b_name) --block not found ==> keep searching
+            else x : (update_block_aux xs b b_name) --block not found ==> keep searching
+
+
+add_string :: State -> String -> State
+add_string state str = 
+    let strings' = (str:(strings state))
+        str_idx' = ((str_idx state)+1)
+    in state { strings = strings', str_idx = str_idx' }
+
+make_new_block :: BlockType -> [Instruction] -> Block
+make_new_block b_type b_code = (Block (make_block_label b_type) b_code)
+
+make_block_label :: BlockType -> String
+make_block_label StartBlockType                      = "start->program"
+make_block_label (MainBlockType pos is_start)        = (make_start_end_label is_start)           ++ "->" ++ "main" ++ "?" ++ (print_row_col pos)
+make_block_label (FuncBlockType pos is_start f_name) = (make_start_end_label is_start) ++ "_fun" ++ "->" ++ f_name ++ "?" ++ (print_row_col pos)
+make_block_label (ProcBlockType pos is_start p_name) = (make_start_end_label is_start) ++ "_prc" ++ "->" ++ p_name ++ "?" ++ (print_row_col pos)
+make_block_label (TempBlockType   idx)               = "block?"  ++ (show idx)
+make_block_label (StringBlockType idx)               = "string?" ++ (show idx) -- actually not used to create a block but only by the pretty printer
+
+print_row_col ::(Int, Int) -> String
+print_row_col (r,c) = (show r) ++ "_" ++ (show c)
+
+make_start_end_label :: Bool -> String
+make_start_end_label is_start = if (is_start) then "start" else "end"
+
+---------------------------------------------------------------------------------------------------------------------------
+
+-- ____________________________ TAC GENERATOR ________________________________________
 
 --generate_tac :: AS.Program -> TAC
 --generate_tac
 
+--________________________________ Statement __________________________________________
+
+-- Statement wrapper
+gen_tac_of_Statement :: State -> String -> AS.Statement -> State
+gen_tac_of_Statement state cur_block_name stmt = gen_tac_fun state cur_block_name stmt
+    where gen_tac_fun = case stmt of
+            (AS.StatementBlock {})          -> gen_tac_of_StatementBlock
+            (AS.StatementIf {})             -> gen_tac_of_StatementIf
+            (AS.StatementFor {})            -> gen_tac_of_StatementFor
+            (AS.StatementWhile {})          -> gen_tac_of_StatementWhile
+            (AS.StatementRepeatUntil {})    -> gen_tac_of_StatementRepeatUntil
+            (AS.StatementFuncProcCall {})   -> gen_tac_of_StatementFuncProcCall
+            (AS.StatementWrite {})          -> gen_tac_of_StatementWrite
+            (AS.StatementBreak {})          -> gen_tac_of_StatementBreak
+            (AS.StatementContinue {})       -> gen_tac_of_StatementContinue
+            (AS.StatementRead {})           -> gen_tac_of_StatementRead
+
+gen_tac_of_StatementBlock :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementBlock state  cur_block_name stmt = state
+
+-- StatementIf { condition :: RightExp, then_body :: Statement, else_body_maybe :: Maybe ElseBlock, statement_pos :: (Int, Int), statement_ :: , statement_errors :: [String] }
+gen_tac_of_StatementIf :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementIf state  cur_block_name stmt =
+    case (AS.else_body_maybe stmt) of
+        -- if-then
+        Nothing ->  let (s1, cond_addr) = gen_tac_of_RightExp  state cur_block_name (AS.condition stmt)
+                        s2              = gen_tac_of_Statement s1    cur_block_name (AS.then_body stmt)
+                    in  s2
+        -- if-then-else
+        Just else_body -> state
+
+gen_tac_of_StatementFor :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementFor state cur_block_name stmt = state
+
+gen_tac_of_StatementWhile :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementWhile state cur_block_name stmt = state
+
+gen_tac_of_StatementRepeatUntil :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementRepeatUntil state cur_block_name stmt = state
+
+gen_tac_of_StatementAssign :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementAssign state cur_block_name stmt = state
+
+gen_tac_of_StatementFuncProcCall :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementFuncProcCall state cur_block_name stmt = state
+
+gen_tac_of_StatementWrite :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementWrite state cur_block_name stmt = state
+
+gen_tac_of_StatementBreak :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementBreak state cur_block_name stmt = state
+
+gen_tac_of_StatementContinue :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementContinue state cur_block_name stmt = state
+
+gen_tac_of_StatementRead :: State -> String -> AS.Statement -> State
+gen_tac_of_StatementRead state cur_block_name stmt = state
+
+--________________________________ Right Expression __________________________________________
+
+-- Right Expression wrapper
+gen_tac_of_RightExp :: State -> String -> AS.RightExp -> (State, Maybe Address)
+gen_tac_of_RightExp state cur_block_name r_exp =
+    case r_exp of
+        -- base case : literals
+        (AS.RightExpInteger {}) -> (state, Just $ AddressInt  $ AS.right_exp_int    r_exp)
+        (AS.RightExpReal {})    -> (state, Just $ AddressReal $ AS.right_exp_double r_exp)
+        (AS.RightExpBoolean {}) -> (state, Just $ AddressBool $ AS.right_exp_bool   r_exp)
+        (AS.RightExpChar {})    -> (state, Just $ AddressChar $ AS.right_exp_char   r_exp)
+        (AS.RightExpString {} ) -> ((add_string state (AS.right_exp_string r_exp)), Just $ AddressTempVar $ make_block_label $ StringBlockType (str_idx state))
+        -- boolean operators
+        --{ sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+        (AS.RightExpOr {})      -> gen_tac_of_RightExpOr state cur_block_name (AS.sx r_exp) (AS.dx r_exp) 
+
+gen_tac_of_RightExpOr :: State -> String -> AS.RightExp -> AS.RightExp -> (State, Maybe Address)
+gen_tac_of_RightExpOr state cur_block_name sx dx =
+    let (s1, Just addr_sx)  = gen_tac_of_RightExp state cur_block_name sx
+        left_instr          = JumpIfTrue { goto = "dummy_if_true", cond = addr_sx }
+        s2                  = out s1 cur_block_name left_instr
+        (s3, Just addr_dx)  = gen_tac_of_RightExp s2 cur_block_name dx
+        rght_instr          = JumpIfFalse { goto = "dummy_if_false", cond = addr_dx }
+        s4                  = out s3 cur_block_name rght_instr
+    in (s4, Nothing)
+
+
+
+
 ----------------------------------------------------------------------------------------------------------------------------
 
 pretty_printer_tac :: State -> String
-pretty_printer_tac (State t _ _ ) = "#TAC START\n" ++ pretty_printer_tac_aux t where
-    pretty_printer_tac_aux []     = "#TAC END\n"
-    pretty_printer_tac_aux (x:xs) = (pretty_printer_block x) ++ (pretty_printer_tac_aux xs)
+pretty_printer_tac (State t str _ _ _) = "# TAC START\n" ++ "# FUNCTIONS AND PROCEDURE\n" ++ (pretty_printer_tac_aux t str) ++ "#TAC END\n" where
+    pretty_printer_tac_aux []     str = "# STRINGS\n" ++ pretty_printer_string str
+    pretty_printer_tac_aux (x:xs) str = (pretty_printer_block x) ++ (pretty_printer_tac_aux xs str)
 
 pretty_printer_block :: Block -> String
 pretty_printer_block (Block b_name b_code) = b_name ++ ":\n" ++ (pretty_printer_block_aux b_code) where
     pretty_printer_block_aux []     = "\n"
     pretty_printer_block_aux (x:xs) = "   " ++ (show x) ++ "\n" ++ (pretty_printer_block_aux xs)
+    
+pretty_printer_string :: [ String ] -> String
+pretty_printer_string str = (pretty_printer_string_aux str 0) where
+    pretty_printer_string_aux []     _ = "\n"
+    pretty_printer_string_aux (x:xs) i = (make_block_label $ StringBlockType i) ++ ":\n   " ++ (show x) ++ "\n" ++ (pretty_printer_string_aux xs (i+1))
 
 ----------------------------------------------------------------------------------------------------------------------------
 
+get_tabs 0 = ""
+get_tabs n = ' ' : (get_tabs (n-1))
+
+print_abs text = print_abs_aux text 1
+    where
+        print_abs_aux ""       n = ""
+        print_abs_aux (c:xs) n | (c == '{') = (c : '\n' : (get_tabs (n+1)))    ++ (print_abs_aux xs (n+1))
+        print_abs_aux (c:xs) n | (c == '}') = ('\n' : (get_tabs (n-1)) ++ [c]) ++ (print_abs_aux xs (n-1))
+        --print_abs_aux (',':xs) n = (",\n" ++ (get_tabs n))           ++ (print_abs_aux xs n)
+        print_abs_aux (x:xs)   n = (x : (print_abs_aux xs n))
+
+
 main :: IO ()
 main = do
+
+    let or_stmt = AS.RightExpOr { 
+        AS.sx = AS.RightExpBoolean {
+            AS.right_exp_bool = True,
+            AS.right_exp_pos  = (0, 0),
+            AS.right_exp_type = T.BooleanType,
+            AS.right_exp_env  = E.emptyEnv,
+            AS.right_exp_errors = []
+        },
+        AS.dx = AS.RightExpBoolean {
+            AS.right_exp_bool = True,
+            AS.right_exp_pos  = (1, 1),
+            AS.right_exp_type = T.BooleanType,
+            AS.right_exp_env  = E.emptyEnv,
+            AS.right_exp_errors = []
+        },
+        AS.right_exp_pos = (1,1), 
+        AS.right_exp_type = T.BooleanType, 
+        AS.right_exp_env = E.emptyEnv, 
+        AS.right_exp_errors = [] 
+    }
+
+    let (s, a) = gen_tac_of_RightExp initialize_state "main" or_stmt
+    putStrLn $ print_abs $ show s
+
+    {-
+    let if_stmt = AS.StatementIf {
+        AS.condition = AS.RightExpBoolean {
+            AS.right_exp_bool = True,
+            AS.right_exp_pos  = (0, 0),
+            AS.right_exp_type = T.BooleanType,
+            AS.right_exp_env  = E.emptyEnv,
+            AS.right_exp_errors = []
+        },
+        AS.then_body = AS.StatementWrite {
+            --{write_primitive  :: WritePrimitive, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+            AS.write_primitive = AS.WriteInt {
+                --AS.write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String]
+                AS.write_exp = AS.RightExpInteger {
+                    -- { right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+                    AS.right_exp_int = 2,
+                    AS.right_exp_pos = (1,1),
+                    AS.right_exp_type = T.IntegerType,
+                    AS.right_exp_env = E.emptyEnv,
+                    AS.right_exp_errors = []
+                },
+                AS.write_primitive_pos = (0,0),
+                AS.write_primitive_env = E.emptyEnv,
+                AS.write_primitive_errors = []
+            },
+            AS.statement_pos = (2,2),
+            AS.statement_env = E.emptyEnv,
+            AS.statement_errors = []                  
+        },
+        AS.else_body_maybe = Nothing,
+        AS.statement_pos = (3,3),
+        AS.statement_env = E.emptyEnv,
+        AS.statement_errors = []
+    }
+    
+    putStrLn ""
+    
+    putStrLn $ show if_stmt
+    --putStrLn $ print_abs $ show if_stmt
+    
+    putStrLn ""
+
+    let t = gen_tac_of_StatementIf (initialize_state) "" if_stmt
+    putStrLn $ show t
+    
+    putStrLn ""
+    -}
+    {-
     let b0_name = "ciao"
     let b0 = (Block b0_name [])
     let t0 = (State [b0] 0 0)
@@ -224,5 +521,4 @@ main = do
     let tn = reverse_TAC t5
 
     putStr $ pretty_printer_tac tn
-
--}
+    -}
