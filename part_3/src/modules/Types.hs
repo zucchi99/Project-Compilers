@@ -81,6 +81,11 @@ rel t1 t2 = case sup t1 t2 of
     ErrorType -> ErrorType -- { messages = (("Relation operation not permitted"):m) } -- error
     _         -> BooleanType -- ok
 
+-- Helper function to compare all the types in a list and return true if they are all the same type
+all_same_type :: [Type] -> Bool
+all_same_type [] = False
+all_same_type (x:xs) = all (==x) xs
+
 {-
 ----------------- test
 main :: IO ()

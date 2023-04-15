@@ -53,5 +53,12 @@ errMsgWrongWritePrimitiveType t1 t2 pos = printPos pos ++ "A 'Write' primitive o
 errMsgWrongReadPrimitiveType :: (Show a1, Show a2) => a1 -> a2 -> (Int, Int) -> [Char]
 errMsgWrongReadPrimitiveType t1 t2 pos = printPos pos ++ "A 'Read' primitive of " ++ (show t1) ++ " type is used, but it's trying to assign a " ++ (show t2) ++ " type"
 
+errMsgRelationNotBool :: (Show a1, Show a2) => a1 -> a2 -> (Int, Int) -> [Char]
+errMsgRelationNotBool t1 t2 pos = printPos pos ++ "A relation operation must be between booleans, but types " ++ (show t1) ++" and " ++ (show t1) ++ " are given"
+
+errMsgOperationNotPermitted :: (Show a1, Show a2) => a1 -> a2 -> String -> (Int, Int) -> [Char]
+errMsgOperationNotPermitted t1 t2 op pos = printPos pos ++ "A " ++ (show op) ++ " operation must be between compatible types, but types " ++ (show t1) ++" and " ++ (show t1) ++ " are given"
+
+
 printPos :: (Int, Int) -> [Char]
 printPos (l, c) = "At line " ++ (show l) ++ ", column " ++ (show c) ++ ": \n\t"
