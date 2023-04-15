@@ -394,7 +394,6 @@ gen_tac_of_RightExpOr state cur_block_name sx dx =
 
 
 
-
 ----------------------------------------------------------------------------------------------------------------------------
 
 pretty_printer_tac :: State -> String
@@ -417,13 +416,13 @@ pretty_printer_string str = (pretty_printer_string_aux str 0) where
 get_tabs 0 = ""
 get_tabs n = ' ' : (get_tabs (n-1))
 
-print_abs text = print_abs_aux text 1
+pretty_print_any_text text = pretty_print_any_text_aux text 1
     where
-        print_abs_aux ""       n = ""
-        print_abs_aux (c:xs) n | (c == '{') = (c : '\n' : (get_tabs (n+1)))    ++ (print_abs_aux xs (n+1))
-        print_abs_aux (c:xs) n | (c == '}') = ('\n' : (get_tabs (n-1)) ++ [c]) ++ (print_abs_aux xs (n-1))
-        --print_abs_aux (',':xs) n = (",\n" ++ (get_tabs n))           ++ (print_abs_aux xs n)
-        print_abs_aux (x:xs)   n = (x : (print_abs_aux xs n))
+        pretty_print_any_text_aux ""       n = ""
+        pretty_print_any_text_aux (c:xs) n | (c == '{') = (c : '\n' : (get_tabs (n+1)))    ++ (pretty_print_any_text_aux xs (n+1))
+        pretty_print_any_text_aux (c:xs) n | (c == '}') = ('\n' : (get_tabs (n-1)) ++ [c]) ++ (pretty_print_any_text_aux xs (n-1))
+        --pretty_print_any_text_aux (',':xs) n = (",\n" ++ (get_tabs n))           ++ (pretty_print_any_text_aux xs n)
+        pretty_print_any_text_aux (x:xs)   n = (x : (pretty_print_any_text_aux xs n))
 
 
 main :: IO ()
@@ -444,14 +443,22 @@ main = do
             AS.right_exp_env  = E.emptyEnv,
             AS.right_exp_errors = []
         },
-        AS.right_exp_pos = (1,1), 
+        AS.right_exp_pos = (2,2), 
         AS.right_exp_type = T.BooleanType, 
         AS.right_exp_env = E.emptyEnv, 
         AS.right_exp_errors = [] 
     }
 
     let (s, a) = gen_tac_of_RightExp initialize_state "main" or_stmt
-    putStrLn $ print_abs $ show s
+    putStr "\n\n---------------\n"
+    putStrLn "Program Abstract syntax"
+    putStr $ pretty_print_any_text $ show or_stmt
+    putStr "\n\n---------------\n"
+    putStrLn "TAC data structure"
+    putStr $ pretty_print_any_text $ show s
+    putStr "\n\n---------------\n"
+    putStrLn "TAC output"
+    putStr $ pretty_printer_tac s
 
     {-
     let if_stmt = AS.StatementIf {
@@ -491,7 +498,7 @@ main = do
     putStrLn ""
     
     putStrLn $ show if_stmt
-    --putStrLn $ print_abs $ show if_stmt
+    --putStrLn $ pretty_print_any_text $ show if_stmt
     
     putStrLn ""
 
