@@ -213,6 +213,7 @@ data State = State {
 
 -- ___________ FUNCTIONS ___________
 
+{-
 opposite_relational_operator :: RelationalOp -> RelationalOp
 opposite_relational_operator GreaterThan  = LessEqual
 opposite_relational_operator LessEqual    = GreaterThan
@@ -220,12 +221,42 @@ opposite_relational_operator GreaterEqual = LessThan
 opposite_relational_operator LessThan     = GreaterEqual    
 opposite_relational_operator Equal        = NotEqual 
 opposite_relational_operator NotEqual     = Equal    
+-}
 
 empty_block :: Block
 empty_block = (Block "" [])
 
-initialize_state :: State
-initialize_state = (State [] [] 0 0 0)
+empty_state :: State
+empty_state = (State [] [] 0 0 0)
+
+initialize_state :: (Int, Int) -> (String, State)
+initialize_state main_pos = 
+    let start_name = make_block_label StartBlockType
+        main_type  = (MainBlockType main_pos True)
+        main_name  = make_block_label main_type
+        s          = add_block (State [] [] 0 0 0) StartBlockType []
+        s1         = add_block s main_type []
+        s2         = out s1 start_name (Jump main_name)
+    in  (main_name, s2)
+   
+to_primitive_relational_operator :: AS.RightExp -> RelationalOp
+to_primitive_relational_operator (AS.RightExpLess {}) = LessThan
+to_primitive_relational_operator (AS.RightExpGreater {}) = GreaterThan
+to_primitive_relational_operator (AS.RightExpLessEqual {}) = LessEqual
+to_primitive_relational_operator (AS.RightExpGreaterEqual {}) = GreaterEqual
+to_primitive_relational_operator (AS.RightExpEqual {}) = Equal
+-- to_primitive_relational_operator (AS.RightExpNotEqual {}) = NotEqual
+
+to_primitive_math_binary_operator :: AS.RightExp -> BinaryOp
+to_primitive_math_binary_operator r_exp = 
+    let t = to_primitive_type (AS.right_exp_type r_exp)
+    in  case r_exp of
+        (AS.RightExpPlus   {}) -> Sum t
+        (AS.RightExpMinus  {}) -> Subtract t
+        (AS.RightExpTimes  {}) -> Multiply t
+        (AS.RightExpDivide {}) -> Divide t
+        (AS.RightExpMod    {}) -> Remainder t
+        (AS.RightExpPower  {}) -> Power t
 
 to_primitive_type :: T.Type -> PrimType
 to_primitive_type T.BooleanType = TypeBool
@@ -251,7 +282,7 @@ lookup (State (x:xs) str tmp_i bck_i str_i) b_name =
 out :: State -> String -> Instruction -> State
 out s b_name instr = 
     case (add_instruction_to_block s b_name instr) of
-        (True,  b) -> add_block s (TempBlockType (block_idx s)) [instr] -- by default is tempblock
+        (True,  b) -> add_temp_block s [instr] -- by default we create a tempblock
         (False, b) -> update_block s b b_name
 
 -- add instruction to block, create new block if block was not present
@@ -260,12 +291,32 @@ add_instruction_to_block s b_name instr = case (TAC.lookup s b_name) of
     Nothing          -> (True,  (Block b_name [ instr ])) -- create new block ==> is new block? true
     Just (Block n c) -> (False, (Block n (instr:c)))      -- add goto block   ==> is new block? false
 
+add_new_temp_var :: State -> (String, State)
+add_new_temp_var state = 
+    let name      = make_temp_var_label (temp_idx state)
+        temp_idx' = (temp_idx state) + 1
+        s'         = state { temp_idx = temp_idx' }
+    in (name, s')
+
+-- add temp block to state
+add_temp_block :: State -> [Instruction] -> State
+add_temp_block state b_code = add_block state (TempBlockType (block_idx state)) b_code
+
 -- add a new block to tac (increase block counter)
 add_block :: State -> BlockType -> [Instruction] -> State
 add_block state b_type b_code =
     let tac'   = (make_new_block b_type b_code) : (tac state)
         bck_i' = (block_idx state) + 1
     in state { tac = tac', block_idx = bck_i' }
+
+make_new_block :: BlockType -> [Instruction] -> Block
+make_new_block b_type b_code = (Block (make_block_label b_type) b_code)
+
+get_name_of_last_temp_block :: State -> String
+get_name_of_last_temp_block state = get_name_of_last_ith_temp_block state 0
+
+get_name_of_last_ith_temp_block :: State -> Int -> String
+get_name_of_last_ith_temp_block state i = make_block_label (TempBlockType ((block_idx state)-i-1))
 
 -- update a block inside tac, inefficient: O(|blocks|)
 update_block :: State -> Block -> String -> State
@@ -277,15 +328,14 @@ update_block (State t str tmp_i bck_i str_i) b b_name = (State (update_block_aux
             then b : xs                                 -- block found    ==> add new block and rest of tac
             else x : (update_block_aux xs b b_name) --block not found ==> keep searching
 
-
 add_string :: State -> String -> State
 add_string state str = 
     let strings' = (str:(strings state))
         str_idx' = ((str_idx state)+1)
     in state { strings = strings', str_idx = str_idx' }
 
-make_new_block :: BlockType -> [Instruction] -> Block
-make_new_block b_type b_code = (Block (make_block_label b_type) b_code)
+make_temp_var_label :: Int -> String
+make_temp_var_label i = "tmp?" ++ (show i)
 
 make_block_label :: BlockType -> String
 make_block_label StartBlockType                      = "start->program"
@@ -305,8 +355,13 @@ make_start_end_label is_start = if (is_start) then "start" else "end"
 
 -- ____________________________ TAC GENERATOR ________________________________________
 
---generate_tac :: AS.Program -> TAC
---generate_tac
+generate_tac :: AS.Program -> State
+generate_tac (AS.ProgramStart _ code pos _ _) = 
+    let (main_name, state) = initialize_state pos 
+    in gen_tac_of_Block state main_name code
+
+--{ block_declarations :: [Declaration], statements :: [Statement], block_pos :: (Int, Int), block_env :: E.Env, block_errors :: [String] }
+gen_tac_of_Block state cur_block_name (AS.Block decls stmts pos _ _) = state --todo
 
 --________________________________ Statement __________________________________________
 
@@ -326,7 +381,7 @@ gen_tac_of_Statement state cur_block_name stmt = gen_tac_fun state cur_block_nam
             (AS.StatementRead {})           -> gen_tac_of_StatementRead
 
 gen_tac_of_StatementBlock :: State -> String -> AS.Statement -> State
-gen_tac_of_StatementBlock state  cur_block_name stmt = state
+gen_tac_of_StatementBlock state cur_block_name stmt = state
 
 -- StatementIf { condition :: RightExp, then_body :: Statement, else_body_maybe :: Maybe ElseBlock, statement_pos :: (Int, Int), statement_ :: , statement_errors :: [String] }
 gen_tac_of_StatementIf :: State -> String -> AS.Statement -> State
@@ -379,16 +434,34 @@ gen_tac_of_RightExp state cur_block_name r_exp =
         (AS.RightExpChar {})    -> (state, Just $ AddressChar $ AS.right_exp_char   r_exp)
         (AS.RightExpString {} ) -> ((add_string state (AS.right_exp_string r_exp)), Just $ AddressTempVar $ make_block_label $ StringBlockType (str_idx state))
         -- boolean operators
-        --{ sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-        (AS.RightExpOr {})      -> gen_tac_of_RightExpOr state cur_block_name (AS.sx r_exp) (AS.dx r_exp) 
+        (AS.RightExpOr {})      -> 
+            let s1 = add_temp_block (add_temp_block state []) [] -- add temp blocks: block-if-true, block-if-false
+            in  gen_tac_of_RightExpOr s1 cur_block_name (AS.sx r_exp) (AS.dx r_exp) 
+        -- binary math operators   
+        -- RightExpPlus { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+        (AS.RightExpLess {})    -> gen_tac_of_binary_math_operators state cur_block_name r_exp
+
+gen_tac_of_binary_math_operators :: State -> String -> AS.RightExp -> (State, Maybe Address)
+gen_tac_of_binary_math_operators state cur_block_name op = 
+    let (s1, Just r1) = gen_tac_of_RightExp state cur_block_name (AS.sx op)
+        (s2, Just r2) = gen_tac_of_RightExp s1 cur_block_name (AS.dx op)
+        (tmp_name, s3) = add_new_temp_var s2
+        tmp_var = (AddressTempVar tmp_name)
+        ass_type = to_primitive_type (AS.right_exp_type op)
+        bin_op = to_primitive_math_binary_operator op
+        instr = (BinaryAssignment tmp_var r1 r2 ass_type bin_op)
+        s4 = out s3 cur_block_name instr
+    in (s4, Nothing)
 
 gen_tac_of_RightExpOr :: State -> String -> AS.RightExp -> AS.RightExp -> (State, Maybe Address)
 gen_tac_of_RightExpOr state cur_block_name sx dx =
-    let (s1, Just addr_sx)  = gen_tac_of_RightExp state cur_block_name sx
-        left_instr          = JumpIfTrue { goto = "dummy_if_true", cond = addr_sx }
+    let block_if_true       = get_name_of_last_ith_temp_block state 1
+        block_if_false      = get_name_of_last_ith_temp_block state 0        
+        (s1, Just addr_sx)  = gen_tac_of_RightExp state cur_block_name sx
+        left_instr          = JumpIfTrue { goto = block_if_true, cond = addr_sx }
         s2                  = out s1 cur_block_name left_instr
         (s3, Just addr_dx)  = gen_tac_of_RightExp s2 cur_block_name dx
-        rght_instr          = JumpIfFalse { goto = "dummy_if_false", cond = addr_dx }
+        rght_instr          = JumpIfFalse { goto = block_if_false, cond = addr_dx }
         s4                  = out s3 cur_block_name rght_instr
     in (s4, Nothing)
 
@@ -449,7 +522,8 @@ main = do
         AS.right_exp_errors = [] 
     }
 
-    let (s, a) = gen_tac_of_RightExp initialize_state "main" or_stmt
+    let (name, s0) = initialize_state (0,0)
+    let (s, a) = gen_tac_of_RightExp s0 name or_stmt
     putStr "\n\n---------------\n"
     putStrLn "Program Abstract syntax"
     putStr $ pretty_print_any_text $ show or_stmt
@@ -458,8 +532,7 @@ main = do
     putStr $ pretty_print_any_text $ show s
     putStr "\n\n---------------\n"
     putStrLn "TAC output"
-    putStr $ pretty_printer_tac s
-
+    putStr $ pretty_printer_tac $ reverse_TAC s
     {-
     let if_stmt = AS.StatementIf {
         AS.condition = AS.RightExpBoolean {
