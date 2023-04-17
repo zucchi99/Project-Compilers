@@ -322,7 +322,7 @@ instance StaticSemanticClass RightExp where
         
         in case sup sx_type dx_type of
             -- Something's wrong. We have to return an ErrorType, because we can't understand where the mistake actaully is
-            T.ErrorType -> RightExpEqual sx_checked dx_checked pos T.ErrorType parent_env (errors ++ merged_errors ++ [Err.errMsgOperationNotPermitted sx_type dx_type "plus" pos])
+            T.ErrorType -> RightExpPlus sx_checked dx_checked pos T.ErrorType parent_env (errors ++ merged_errors ++ [Err.errMsgOperationNotPermitted sx_type dx_type "plus" pos])
                         -- Se sono tutti dello stesso tipo, allora si può semplicemente ritornare il nodo
             sup_type    |  (all_same_type [sup_type, dx_type, sx_type]) -> RightExpPlus sx_checked dx_checked pos sup_type parent_env (errors ++ merged_errors)
                         -- Altrimenti, bisogna fare il cast del nodo con il tipo "non sup"
@@ -331,38 +331,173 @@ instance StaticSemanticClass RightExp where
                         |  otherwise           -> RightExpPlus (apply_coercion sup_type sx_checked) dx_checked pos sup_type parent_env (errors ++ merged_errors)
 
     staticsemanticAux (RightExpMinus sx dx pos ty parent_env errors) =
-        -- Controllo che sx e dx siano mathtype
+        -- Checking if both sx and dx are compatibile for a math operation
+        let (sx_checked, dx_checked, merged_errors) = get_sx_dx_errors_right_exp sx dx parent_env
+            sx_type = right_exp_type sx_checked
+            dx_type = right_exp_type dx_checked
+        
+        in case sup sx_type dx_type of
+            -- Something's wrong. We have to return an ErrorType, because we can't understand where the mistake actaully is
+            T.ErrorType -> RightExpMinus sx_checked dx_checked pos T.ErrorType parent_env (errors ++ merged_errors ++ [Err.errMsgOperationNotPermitted sx_type dx_type "minus" pos])
+                        -- Se sono tutti dello stesso tipo, allora si può semplicemente ritornare il nodo
+            sup_type    |  (all_same_type [sup_type, dx_type, sx_type]) -> RightExpMinus sx_checked dx_checked pos sup_type parent_env (errors ++ merged_errors)
+                        -- Altrimenti, bisogna fare il cast del nodo con il tipo "non sup"
+                        -- In questo caso il nodo dx è quello che deve essere castato
+                        |  sup_type \= sx_type -> RightExpMinus sx_checked (apply_coercion sup_type dx_checked) pos sup_type parent_env (errors ++ merged_errors)
+                        |  otherwise           -> RightExpMinus (apply_coercion sup_type sx_checked) dx_checked pos sup_type parent_env (errors ++ merged_errors)
+
     staticsemanticAux (RightExpTimes sx dx pos ty parent_env errors) =
-        -- Controllo che sx e dx siano mathtype
+        -- Checking if both sx and dx are compatibile for a math operation
+        let (sx_checked, dx_checked, merged_errors) = get_sx_dx_errors_right_exp sx dx parent_env
+            sx_type = right_exp_type sx_checked
+            dx_type = right_exp_type dx_checked
+        
+        in case sup sx_type dx_type of
+            -- Something's wrong. We have to return an ErrorType, because we can't understand where the mistake actaully is
+            T.ErrorType -> RightExpTimes sx_checked dx_checked pos T.ErrorType parent_env (errors ++ merged_errors ++ [Err.errMsgOperationNotPermitted sx_type dx_type "minus" pos])
+                        -- Se sono tutti dello stesso tipo, allora si può semplicemente ritornare il nodo
+            sup_type    |  (all_same_type [sup_type, dx_type, sx_type]) -> RightExpTimes sx_checked dx_checked pos sup_type parent_env (errors ++ merged_errors)
+                        -- Altrimenti, bisogna fare il cast del nodo con il tipo "non sup"
+                        -- In questo caso il nodo dx è quello che deve essere castato
+                        |  sup_type \= sx_type -> RightExpTimes sx_checked (apply_coercion sup_type dx_checked) pos sup_type parent_env (errors ++ merged_errors)
+                        |  otherwise           -> RightExpTimes (apply_coercion sup_type sx_checked) dx_checked pos sup_type parent_env (errors ++ merged_errors)
+
     staticsemanticAux (RightExpDivide sx dx pos ty parent_env errors) =
-        -- Controllo che sx e dx siano mathtype
+        -- Checking if both sx and dx are compatibile for a math operation
+        let (sx_checked, dx_checked, merged_errors) = get_sx_dx_errors_right_exp sx dx parent_env
+            sx_type = right_exp_type sx_checked
+            dx_type = right_exp_type dx_checked
+        
+        in case sup sx_type dx_type of
+            -- Something's wrong. We have to return an ErrorType, because we can't understand where the mistake actaully is
+            T.ErrorType -> RightExpDivide sx_checked dx_checked pos T.ErrorType parent_env (errors ++ merged_errors ++ [Err.errMsgOperationNotPermitted sx_type dx_type "minus" pos])
+                        -- Se sono tutti dello stesso tipo, allora si può semplicemente ritornare il nodo
+            sup_type    |  (all_same_type [sup_type, dx_type, sx_type]) -> RightExpDivide sx_checked dx_checked pos sup_type parent_env (errors ++ merged_errors)
+                        -- Altrimenti, bisogna fare il cast del nodo con il tipo "non sup"
+                        -- In questo caso il nodo dx è quello che deve essere castato
+                        |  sup_type \= sx_type -> RightExpDivide sx_checked (apply_coercion sup_type dx_checked) pos sup_type parent_env (errors ++ merged_errors)
+                        |  otherwise           -> RightExpDivide (apply_coercion sup_type sx_checked) dx_checked pos sup_type parent_env (errors ++ merged_errors)
+
     staticsemanticAux (RightExpMod sx dx pos ty parent_env errors) =
-        -- Controllo che sx e dx siano mathtype
+        -- Checking if both sx and dx are compatibile for a math operation
+        let (sx_checked, dx_checked, merged_errors) = get_sx_dx_errors_right_exp sx dx parent_env
+            sx_type = right_exp_type sx_checked
+            dx_type = right_exp_type dx_checked
+        
+        in case sup sx_type dx_type of
+            -- Something's wrong. We have to return an ErrorType, because we can't understand where the mistake actaully is
+            T.ErrorType -> RightExpDivide sx_checked dx_checked pos T.ErrorType parent_env (errors ++ merged_errors ++ [Err.errMsgOperationNotPermitted sx_type dx_type "minus" pos])
+                        -- Se sono tutti dello stesso tipo, allora si può semplicemente ritornare il nodo
+            sup_type    |  (all_same_type [sup_type, dx_type, sx_type]) -> RightExpDivide sx_checked dx_checked pos sup_type parent_env (errors ++ merged_errors)
+                        -- Altrimenti, bisogna fare il cast del nodo con il tipo "non sup"
+                        -- In questo caso il nodo dx è quello che deve essere castato
+                        |  sup_type \= sx_type -> RightExpDivide sx_checked (apply_coercion sup_type dx_checked) pos sup_type parent_env (errors ++ merged_errors)
+                        |  otherwise           -> RightExpDivide (apply_coercion sup_type sx_checked) dx_checked pos sup_type parent_env (errors ++ merged_errors)
+
     staticsemanticAux (RightExpDiv sx dx pos ty parent_env errors) =
-        -- Controllo che sx e dx siano mathtype
+        -- Checking if both sx and dx are compatibile for a math operation
+        let (sx_checked, dx_checked, merged_errors) = get_sx_dx_errors_right_exp sx dx parent_env
+            sx_type = right_exp_type sx_checked
+            dx_type = right_exp_type dx_checked
+        
+        in case sup sx_type dx_type of
+            -- Something's wrong. We have to return an ErrorType, because we can't understand where the mistake actaully is
+            T.ErrorType -> RightExpDivide sx_checked dx_checked pos T.ErrorType parent_env (errors ++ merged_errors ++ [Err.errMsgOperationNotPermitted sx_type dx_type "minus" pos])
+                        -- Se sono tutti dello stesso tipo, allora si può semplicemente ritornare il nodo
+            sup_type    |  (all_same_type [sup_type, dx_type, sx_type]) -> RightExpDivide sx_checked dx_checked pos sup_type parent_env (errors ++ merged_errors)
+                        -- Altrimenti, bisogna fare il cast del nodo con il tipo "non sup"
+                        -- In questo caso il nodo dx è quello che deve essere castato
+                        |  sup_type \= sx_type -> RightExpDivide sx_checked (apply_coercion sup_type dx_checked) pos sup_type parent_env (errors ++ merged_errors)
+                        |  otherwise           -> RightExpDivide (apply_coercion sup_type sx_checked) dx_checked pos sup_type parent_env (errors ++ merged_errors)
+
     staticsemanticAux (RightExpPower sx dx pos ty parent_env errors) =
-        -- Controllo che sx e dx siano mathtype
+        -- Checking if both sx and dx are compatibile for a math operation
+        let (sx_checked, dx_checked, merged_errors) = get_sx_dx_errors_right_exp sx dx parent_env
+            sx_type = right_exp_type sx_checked
+            dx_type = right_exp_type dx_checked
+        
+        in case sup sx_type dx_type of
+            -- Something's wrong. We have to return an ErrorType, because we can't understand where the mistake actaully is
+            T.ErrorType -> RightExpPower sx_checked dx_checked pos T.ErrorType parent_env (errors ++ merged_errors ++ [Err.errMsgOperationNotPermitted sx_type dx_type "minus" pos])
+                        -- Se sono tutti dello stesso tipo, allora si può semplicemente ritornare il nodo
+            sup_type    |  (all_same_type [sup_type, dx_type, sx_type]) -> RightExpPower sx_checked dx_checked pos sup_type parent_env (errors ++ merged_errors)
+                        -- Altrimenti, bisogna fare il cast del nodo con il tipo "non sup"
+                        -- In questo caso il nodo dx è quello che deve essere castato
+                        |  sup_type \= sx_type -> RightExpPower sx_checked (apply_coercion sup_type dx_checked) pos sup_type parent_env (errors ++ merged_errors)
+                        |  otherwise           -> RightExpPower (apply_coercion sup_type sx_checked) dx_checked pos sup_type parent_env (errors ++ merged_errors)
+
     staticsemanticAux (RightExpNot dx pos ty parent_env errors) =
         -- Controllo che dx sia booleano
+        let dx_checked = staticsemanticAux (sx {env = parent_env})
+        in case right_exp_type dx_checked of
+            T.Boolean -> RightExpNot dx_checked pos T.BooleanType parent_env (errors ++ [(right_exp_errors dx_checked)])
+            _         -> RightExpNot dx_checked pos T.BooleanType parent_env (errors ++ [(right_exp_errors dx_checked), Err.errMsgUnaryOperationNotPermitted (right_exp_type dx_checked) [T.Boolean] "not" pos])
+
     staticsemanticAux (RightExpMinusUnary dx pos ty parent_env errors) =
-        -- Controllo che dx sia mathtype
+        -- Controllo che dx sia un math type permesso
+        let dx_checked = staticsemanticAux (sx {env = parent_env})
+        in case T.mathtype (right_exp_type dx_checked) of
+            T.ErrorType -> RightExpMinusUnary dx_checked pos T.ErrorType parent_env (errors ++ [(right_exp_errors dx_checked), Err.errMsgUnaryOperationNotPermitted (right_exp_type dx_checked) [T.IntegerType, T.RealType] "minus" pos])
+            res_type    -> RightExpMinusUnary dx_checked pos res_type parent_env (errors ++ [(right_exp_errors dx_checked)])
+
     staticsemanticAux (RightExpPlusUnary dx pos ty parent_env errors) =
-        -- Controllo che dx sia mathtype
+        -- Controllo che dx sia un math type permesso
+        let dx_checked = staticsemanticAux (sx {env = parent_env})
+        in case T.mathtype (right_exp_type dx_checked) of
+            T.ErrorType -> RightExpMinusUnary dx_checked pos T.ErrorType parent_env (errors ++ [(right_exp_errors dx_checked), Err.errMsgUnaryOperationNotPermitted (right_exp_type dx_checked) [T.IntegerType, T.RealType] "plus" pos])
+            res_type    -> RightExpMinusUnary dx_checked pos res_type parent_env (errors ++ [(right_exp_errors dx_checked)])
+
     staticsemanticAux (RightExpInteger dx pos ty parent_env errors) =
-        -- Controllo che dx sia mathtype
+        -- Tutto viene già inizializzato da Parser.y (valore, tipo, env, ...)
+        -- Basta ritornare lo stesso valore
+        (RightExpInteger dx pos ty parent_env errors)
+
     staticsemanticAux (RightExpReal dx pos ty parent_env errors) =
-        -- Controllo che dx sia mathtype
+        -- Tutto viene già inizializzato da Parser.y (valore, tipo, env, ...)
+        -- Basta ritornare lo stesso valore
+        (RightExpReal dx pos ty parent_env errors)
+
     staticsemanticAux (RightExpBoolean dx pos ty parent_env errors) =
-        -- Controllo che dx sia mathtype
+        -- Tutto viene già inizializzato da Parser.y (valore, tipo, env, ...)
+        -- Basta ritornare lo stesso valore
+        (RightExpBoolean dx pos ty parent_env errors)
+
     staticsemanticAux (RightExpChar dx pos ty parent_env errors) =
-        -- Controllo che dx sia mathtype
+        -- Tutto viene già inizializzato da Parser.y (valore, tipo, env, ...)
+        -- Basta ritornare lo stesso valore
+        (RightExpChar dx pos ty parent_env errors)
+
     staticsemanticAux (RightExpString dx pos ty parent_env errors) =
-        -- Controllo che dx sia mathtype
-    staticsemanticAux (RightExpFunctionCall id params pos ty parent_env errors) =
-        -- Controllo che la funzione sia presente nell'env
-        -- Controllo che i parametri corrispondano al tipo dei parametri voluti della funzione
+       -- Tutto viene già inizializzato da Parser.y (valore, tipo, env, ...)
+        -- Basta ritornare lo stesso valore
+        (RightExpString dx pos ty parent_env errors)
+
+    staticsemanticAux (RightExpFuncProcCall id params pos ty parent_env errors) =
+        -- Controllo che la funzione sia presente nell'env, visto che deve essere già stata dichiarata
+        -- Nel caso ci si accorga che la funzione in realtà è una procedura, allora si ritorna un errore:
+        --     non avrebbe senso assegnare il valore di ritorno di una procedura, visto che non esiste
+        let function_name = id_name id
+            params_checked = map (\(param) -> staticsemanticAux (param {env = parent_env})) params
+        
+        in case E.lookupEnv parent_env function_name of
+            Nothing -> RightExpFuncProcCall id params pos T.ErrorType parent_env (errors ++ [Err.errMsgNotDeclared function_name pos])
+            -- Tutto ok, la funzione è stata dichiarata
+            
+            Just (FunEntry entry_params ty_ret _) |   map snd entry_params == map right_exp_type params_checked -> RightExpFuncProcCall id params_checked pos ty_ret parent_env errors
+            -- La funzione è dichiarata nell'enviroment, ma i parametri non corrispondono 
+            -- TODO: si potrebbero mandare messaggi più significativi, tipo se manca un parametro o se c'è un parametro in più, se i tipi sono sbagliati, ...
+                                                  |   otherwise -> RightExpFuncProcCall id params pos ty_ret parent_env (errors ++ [Err.errMsgWrongParams function_name pos]) -- TODO: se abbiamo tempo si potrebbe 
+            -- La funzione è dichiarata nell'enviroment, ma è una procedura
+           
+            Just _ -> RightExpFuncProcCall id params pos T.ErrorType parent_env (errors ++ [Err.errMsgAssignToProc function_name pos])
+            
     staticsemanticAux (RightExpCopy left_exp pos ty parent_env errors) =
         -- Controllo che left_exp sia corretto
+        let left_exp_checked = staticsemanticAux (left_exp {env = parent_env})
+        in case left_exp_type left_exp_checked of
+            T.ErrorType     -> RightExpCopy left_exp_checked pos T.ErrorType parent_env (errors ++ [(left_exp_errors left_exp_checked)])
+            lft_expr_type   -> RightExpCopy left_exp_checked pos (left_exp_type left_exp_checked) parent_env (errors ++ [(left_exp_errors left_exp_checked)])
+
 
     -- staticsemanticAux (RightExpCoercion main_re from_type to_type pos ty parent_env errors) =
         -- La funzione non viene implementata in questo caso, visto che naturalmente non esisterà mai 

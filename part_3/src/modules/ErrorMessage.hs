@@ -59,6 +59,15 @@ errMsgRelationNotBool t1 t2 pos = printPos pos ++ "A relation operation must be 
 errMsgOperationNotPermitted :: (Show a1, Show a2) => a1 -> a2 -> String -> (Int, Int) -> [Char]
 errMsgOperationNotPermitted t1 t2 op pos = printPos pos ++ "A " ++ (show op) ++ " operation must be between compatible types, but types " ++ (show t1) ++" and " ++ (show t1) ++ " are given"
 
+errMsgUnaryOperationNotPermitted :: (Show a) => a -> [a] -> String -> (Int, Int) -> [Char]
+errMsgUnaryOperationNotPermitted t possible_types op pos = printPos pos ++ "A unary" ++ (show op) ++ " operation must be applied only to allowd types (" ++ allowd_types ++ "), but type " ++ (show t) ++ " is given" 
+    where allowd_types = intercalate ", " (map show possible_types)
+
+errMsgAssignToProc :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgAssignToProc t pos = printPos pos ++ "Procedure " ++ (show t) ++ " can't assign values"
+
+errMsgWrongParams :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgWrongParams t pos = printPos pos ++ "Wrong parameters for function " ++ (show t)
 
 printPos :: (Int, Int) -> [Char]
 printPos (l, c) = "At line " ++ (show l) ++ ", column " ++ (show c) ++ ": \n\t"
