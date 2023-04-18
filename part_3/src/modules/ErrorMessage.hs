@@ -2,6 +2,8 @@
 
 module ErrorMessage where
 
+import Data.List
+
 errMsgNotImplemented :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgNotImplemented s pos = "In the block " ++ printPos pos ++ (show s) ++ " is forward declared but not implemented"
 
