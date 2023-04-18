@@ -439,8 +439,12 @@ gen_tac_of_RightExp state cur_block_name r_exp =
             in  gen_tac_of_RightExpOr s1 cur_block_name (AS.sx r_exp) (AS.dx r_exp) 
         -- binary math operators   
         -- RightExpPlus { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-        (AS.RightExpLess {})    -> gen_tac_of_binary_math_operators state cur_block_name r_exp
+        (AS.RightExpPlus {})    -> gen_tac_of_binary_math_operators state cur_block_name r_exp
 
+-- binary conditional operators: <, <=, >, >=, =, !=
+gen_tac_of_binary_conditional_operators = "todo"
+    
+-- binary math operators: +, -, *, /, //, %, ^
 gen_tac_of_binary_math_operators :: State -> String -> AS.RightExp -> (State, Maybe Address)
 gen_tac_of_binary_math_operators state cur_block_name op = 
     let (s1, Just r1) = gen_tac_of_RightExp state cur_block_name (AS.sx op)
@@ -451,7 +455,7 @@ gen_tac_of_binary_math_operators state cur_block_name op =
         bin_op = to_primitive_math_binary_operator op
         instr = (BinaryAssignment tmp_var r1 r2 ass_type bin_op)
         s4 = out s3 cur_block_name instr
-    in (s4, Nothing)
+    in (s4, Just tmp_var)
 
 gen_tac_of_RightExpOr :: State -> String -> AS.RightExp -> AS.RightExp -> (State, Maybe Address)
 gen_tac_of_RightExpOr state cur_block_name sx dx =
@@ -464,7 +468,6 @@ gen_tac_of_RightExpOr state cur_block_name sx dx =
         rght_instr          = JumpIfFalse { goto = block_if_false, cond = addr_dx }
         s4                  = out s3 cur_block_name rght_instr
     in (s4, Nothing)
-
 
 
 ----------------------------------------------------------------------------------------------------------------------------
@@ -501,10 +504,41 @@ pretty_print_any_text text = pretty_print_any_text_aux text 1
 main :: IO ()
 main = do
 
+    {-
     let or_stmt = AS.RightExpOr { 
-        AS.sx = AS.RightExpBoolean {
-            AS.right_exp_bool = True,
-            AS.right_exp_pos  = (0, 0),
+        AS.sx = AS.RightExpLess {
+            -- { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+            AS.sx = AS.RightExpInteger {
+                -- right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+                AS.right_exp_int = 0,
+                AS.right_exp_pos = (1,1),
+                AS.right_exp_type = T.IntegerType,
+                AS.right_exp_env  = E.emptyEnv,
+                AS.right_exp_errors = []
+            },
+            AS.dx = AS.RightExpPlus {
+                AS.sx = AS.RightExpInteger {
+                    -- right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+                    AS.right_exp_int = 1,
+                    AS.right_exp_pos = (2,2),
+                    AS.right_exp_type = T.IntegerType,
+                    AS.right_exp_env  = E.emptyEnv,
+                    AS.right_exp_errors = []
+                }, 
+                AS.dx = AS.RightExpInteger {
+                    -- right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+                    AS.right_exp_int = 2,
+                    AS.right_exp_pos = (2,2),
+                    AS.right_exp_type = T.IntegerType,
+                    AS.right_exp_env  = E.emptyEnv,
+                    AS.right_exp_errors = []
+                }, 
+                AS.right_exp_pos = (2,2),
+                AS.right_exp_type = T.IntegerType,
+                AS.right_exp_env  = E.emptyEnv,
+                AS.right_exp_errors = []
+            },
+            AS.right_exp_pos = (2,2),
             AS.right_exp_type = T.BooleanType,
             AS.right_exp_env  = E.emptyEnv,
             AS.right_exp_errors = []
@@ -521,7 +555,31 @@ main = do
         AS.right_exp_env = E.emptyEnv, 
         AS.right_exp_errors = [] 
     }
+    -}
 
+    let or_stmt = AS.RightExpPlus {
+        AS.sx = AS.RightExpInteger {
+            -- right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+            AS.right_exp_int = 1,
+            AS.right_exp_pos = (2,2),
+            AS.right_exp_type = T.IntegerType,
+            AS.right_exp_env  = E.emptyEnv,
+            AS.right_exp_errors = []
+        }, 
+        AS.dx = AS.RightExpInteger {
+            -- right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+            AS.right_exp_int = 2,
+            AS.right_exp_pos = (2,2),
+            AS.right_exp_type = T.IntegerType,
+            AS.right_exp_env  = E.emptyEnv,
+            AS.right_exp_errors = []
+        }, 
+        AS.right_exp_pos = (2,2),
+        AS.right_exp_type = T.IntegerType,
+        AS.right_exp_env  = E.emptyEnv,
+        AS.right_exp_errors = []
+    }
+    
     let (name, s0) = initialize_state (0,0)
     let (s, a) = gen_tac_of_RightExp s0 name or_stmt
     putStr "\n\n---------------\n"
