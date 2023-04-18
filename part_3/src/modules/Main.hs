@@ -7,22 +7,29 @@ module Main where
 import qualified Parser             as Par
 import qualified LexGrammar         as Lex
 import ErrM
+import TAC
 
-
-get_tabs 0 = ""
-get_tabs n = ' ' : (get_tabs (n-1))
-
+printAst :: Show a => Err a -> String
 printAst x = case x of
     (ErrM.Ok a)    -> show a
     (ErrM.Bad err) -> err
 
-print_abs text = print_abs_aux text 1
+getAst x = case x of
+    (ErrM.Ok  a)   -> Just a
+    (ErrM.Bad err) -> Nothing
+
+get_tabs :: Int -> String
+get_tabs 0 = ""
+get_tabs n = ' ' : (get_tabs (n-1))
+
+pretty_printer_dummy :: String -> String
+pretty_printer_dummy text = pretty_printer_dummy_aux text 1
     where
-        print_abs_aux ""       n = ""
-        print_abs_aux (c:xs) n | (c == '{' || c == '[') = (c : '\n' : (get_tabs (n+1)))    ++ (print_abs_aux xs (n+1))
-        print_abs_aux (c:xs) n | (c == '}' || c == ']') = ('\n' : (get_tabs (n-1)) ++ [c]) ++ (print_abs_aux xs (n-1))
-        --print_abs_aux (',':xs) n = (",\n" ++ (get_tabs n))           ++ (print_abs_aux xs n)
-        print_abs_aux (x:xs)   n = (x : (print_abs_aux xs n))
+        pretty_printer_dummy_aux ""       n = ""
+        pretty_printer_dummy_aux (c:xs) n | (c == '{' || c == '[') = (c : '\n' : (get_tabs (n+1)))    ++ (pretty_printer_dummy_aux xs (n+1))
+        pretty_printer_dummy_aux (c:xs) n | (c == '}' || c == ']') = ('\n' : (get_tabs (n-1)) ++ [c]) ++ (pretty_printer_dummy_aux xs (n-1))
+        --pretty_printer_dummy_aux (',':xs) n = (",\n" ++ (get_tabs n))           ++ (pretty_printer_dummy_aux xs n)
+        pretty_printer_dummy_aux (x:xs)   n = (x : (pretty_printer_dummy_aux xs n))
 
 testami test = do
 
@@ -42,7 +49,7 @@ testami test = do
     -- Parsing
     let par = Par.pProgram lex
     putStrLn "parser output:"
-    putStr $ print_abs $ printAst par
+    --putStr $ pretty_printer_dummy $ printAst par
     putStrLn $ printAst par
     putStrLn ""
     
@@ -63,6 +70,11 @@ testami test = do
     -- input <- readFile out_file
     -- let output = Par.pProgram $ Lex.tokens input
     -- -- putStrLn $ PrettyPrinter.prettyprinter output
+
+    -- TAC Generation
+    let tac = TAC.generate_tac $ (\ (Just x) -> x) (getAst par)
+    putStr $ TAC.pretty_printer_tac tac
+
     putStrLn "check successful!"
 
 main = do

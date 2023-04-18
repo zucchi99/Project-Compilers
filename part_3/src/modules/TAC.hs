@@ -358,7 +358,7 @@ make_start_end_label is_start = if (is_start) then "start" else "end"
 generate_tac :: AS.Program -> State
 generate_tac (AS.ProgramStart _ code pos _ _) = 
     let (main_name, state) = initialize_state pos 
-    in gen_tac_of_Block state main_name code
+    in reverse_TAC $ gen_tac_of_Block state main_name code
 
 --{ block_declarations :: [Declaration], statements :: [Statement], block_pos :: (Int, Int), block_env :: E.Env, block_errors :: [String] }
 gen_tac_of_Block state cur_block_name (AS.Block decls stmts pos _ _) = state --todo
@@ -488,6 +488,7 @@ pretty_printer_string str = (pretty_printer_string_aux str 0) where
     pretty_printer_string_aux (x:xs) i = (make_block_label $ StringBlockType i) ++ ":\n   " ++ (show x) ++ "\n" ++ (pretty_printer_string_aux xs (i+1))
 
 ----------------------------------------------------------------------------------------------------------------------------
+{-
 
 get_tabs 0 = ""
 get_tabs n = ' ' : (get_tabs (n-1))
@@ -500,86 +501,9 @@ pretty_print_any_text text = pretty_print_any_text_aux text 1
         --pretty_print_any_text_aux (',':xs) n = (",\n" ++ (get_tabs n))           ++ (pretty_print_any_text_aux xs n)
         pretty_print_any_text_aux (x:xs)   n = (x : (pretty_print_any_text_aux xs n))
 
-
 main :: IO ()
 main = do
 
-    {-
-    let or_stmt = AS.RightExpOr { 
-        AS.sx = AS.RightExpLess {
-            -- { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-            AS.sx = AS.RightExpInteger {
-                -- right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-                AS.right_exp_int = 0,
-                AS.right_exp_pos = (1,1),
-                AS.right_exp_type = T.IntegerType,
-                AS.right_exp_env  = E.emptyEnv,
-                AS.right_exp_errors = []
-            },
-            AS.dx = AS.RightExpPlus {
-                AS.sx = AS.RightExpInteger {
-                    -- right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-                    AS.right_exp_int = 1,
-                    AS.right_exp_pos = (2,2),
-                    AS.right_exp_type = T.IntegerType,
-                    AS.right_exp_env  = E.emptyEnv,
-                    AS.right_exp_errors = []
-                }, 
-                AS.dx = AS.RightExpInteger {
-                    -- right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-                    AS.right_exp_int = 2,
-                    AS.right_exp_pos = (2,2),
-                    AS.right_exp_type = T.IntegerType,
-                    AS.right_exp_env  = E.emptyEnv,
-                    AS.right_exp_errors = []
-                }, 
-                AS.right_exp_pos = (2,2),
-                AS.right_exp_type = T.IntegerType,
-                AS.right_exp_env  = E.emptyEnv,
-                AS.right_exp_errors = []
-            },
-            AS.right_exp_pos = (2,2),
-            AS.right_exp_type = T.BooleanType,
-            AS.right_exp_env  = E.emptyEnv,
-            AS.right_exp_errors = []
-        },
-        AS.dx = AS.RightExpBoolean {
-            AS.right_exp_bool = True,
-            AS.right_exp_pos  = (1, 1),
-            AS.right_exp_type = T.BooleanType,
-            AS.right_exp_env  = E.emptyEnv,
-            AS.right_exp_errors = []
-        },
-        AS.right_exp_pos = (2,2), 
-        AS.right_exp_type = T.BooleanType, 
-        AS.right_exp_env = E.emptyEnv, 
-        AS.right_exp_errors = [] 
-    }
-    -}
-
-    let or_stmt = AS.RightExpPlus {
-        AS.sx = AS.RightExpInteger {
-            -- right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-            AS.right_exp_int = 1,
-            AS.right_exp_pos = (2,2),
-            AS.right_exp_type = T.IntegerType,
-            AS.right_exp_env  = E.emptyEnv,
-            AS.right_exp_errors = []
-        }, 
-        AS.dx = AS.RightExpInteger {
-            -- right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-            AS.right_exp_int = 2,
-            AS.right_exp_pos = (2,2),
-            AS.right_exp_type = T.IntegerType,
-            AS.right_exp_env  = E.emptyEnv,
-            AS.right_exp_errors = []
-        }, 
-        AS.right_exp_pos = (2,2),
-        AS.right_exp_type = T.IntegerType,
-        AS.right_exp_env  = E.emptyEnv,
-        AS.right_exp_errors = []
-    }
-    
     let (name, s0) = initialize_state (0,0)
     let (s, a) = gen_tac_of_RightExp s0 name or_stmt
     putStr "\n\n---------------\n"
@@ -591,72 +515,5 @@ main = do
     putStr "\n\n---------------\n"
     putStrLn "TAC output"
     putStr $ pretty_printer_tac $ reverse_TAC s
-    {-
-    let if_stmt = AS.StatementIf {
-        AS.condition = AS.RightExpBoolean {
-            AS.right_exp_bool = True,
-            AS.right_exp_pos  = (0, 0),
-            AS.right_exp_type = T.BooleanType,
-            AS.right_exp_env  = E.emptyEnv,
-            AS.right_exp_errors = []
-        },
-        AS.then_body = AS.StatementWrite {
-            --{write_primitive  :: WritePrimitive, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
-            AS.write_primitive = AS.WriteInt {
-                --AS.write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String]
-                AS.write_exp = AS.RightExpInteger {
-                    -- { right_exp_int :: Int, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-                    AS.right_exp_int = 2,
-                    AS.right_exp_pos = (1,1),
-                    AS.right_exp_type = T.IntegerType,
-                    AS.right_exp_env = E.emptyEnv,
-                    AS.right_exp_errors = []
-                },
-                AS.write_primitive_pos = (0,0),
-                AS.write_primitive_env = E.emptyEnv,
-                AS.write_primitive_errors = []
-            },
-            AS.statement_pos = (2,2),
-            AS.statement_env = E.emptyEnv,
-            AS.statement_errors = []                  
-        },
-        AS.else_body_maybe = Nothing,
-        AS.statement_pos = (3,3),
-        AS.statement_env = E.emptyEnv,
-        AS.statement_errors = []
-    }
-    
-    putStrLn ""
-    
-    putStrLn $ show if_stmt
-    --putStrLn $ pretty_print_any_text $ show if_stmt
-    
-    putStrLn ""
 
-    let t = gen_tac_of_StatementIf (initialize_state) "" if_stmt
-    putStrLn $ show t
-    
-    putStrLn ""
-    -}
-    {-
-    let b0_name = "ciao"
-    let b0 = (Block b0_name [])
-    let t0 = (State [b0] 0 0)
-    --putStrLn $ show $ TAC.lookup t0 b0_name
-    --putStrLn $ show $ TAC.lookup t0 "rand"
-
-    let b1_name = "bella"
-    let b1 = (Block b1_name [])
-    let t1 = add_block b1 t0
-    putStr $ pretty_printer_tac t1
-
-    let t2 = out t1 b0_name (Jump "cp")
-    let t3 = out t2 b0_name (Jump "rm")
-    let t4 = out t3 b1_name (Jump "x")
-    let t5 = out t4 b1_name (Jump "y")
-    putStr $ pretty_printer_tac t5
-
-    let tn = reverse_TAC t5
-
-    putStr $ pretty_printer_tac tn
     -}
