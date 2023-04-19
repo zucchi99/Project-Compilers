@@ -54,7 +54,7 @@ testami test = do
     putStrLn "Parsing"
     let par = Par.pProgram lex
     putStrLn "parser output:"
-    putStr $ pretty_printer_dummy $ printAst par
+    -- putStr $ pretty_printer_dummy $ printAst par
     putStrLn $ printAst par
     putStrLn ""
     
