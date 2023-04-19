@@ -20,14 +20,16 @@ getAst x = case x of
 
 get_tabs :: Int -> String
 get_tabs 0 = ""
-get_tabs n = ' ' : (get_tabs (n-1))
+get_tabs n = '\t' : (get_tabs (n-1))
 
 pretty_printer_dummy :: String -> String
 pretty_printer_dummy text = pretty_printer_dummy_aux text 1
     where
-        pretty_printer_dummy_aux ""       n = ""
-        pretty_printer_dummy_aux (c:xs) n | (c == '{' || c == '[') = (c : '\n' : (get_tabs (n+1)))    ++ (pretty_printer_dummy_aux xs (n+1))
-        pretty_printer_dummy_aux (c:xs) n | (c == '}' || c == ']') = ('\n' : (get_tabs (n-1)) ++ [c]) ++ (pretty_printer_dummy_aux xs (n-1))
+        pretty_printer_dummy_aux ""       _ = "\n\n"
+        --pretty_printer_dummy_aux (c:xs) n | (c == '[') = (c : '\n' : (get_tabs (n+1)))    ++ (pretty_printer_dummy_aux xs (n+1))
+        pretty_printer_dummy_aux (c:xs) n | (c == '{') = (c : '\n' : (get_tabs (n+1)))    ++ (pretty_printer_dummy_aux xs (n+1))
+        --pretty_printer_dummy_aux (c:xs) n | (c == ']') = ('\n' : (get_tabs (n-1)) ++ [c]) ++ (pretty_printer_dummy_aux xs (n-1))
+        pretty_printer_dummy_aux (c:xs) n | (c == '}') = ('\n' : (get_tabs (n-1)) ++ [c]) ++ (pretty_printer_dummy_aux xs (n-1))
         --pretty_printer_dummy_aux (',':xs) n = (",\n" ++ (get_tabs n))           ++ (pretty_printer_dummy_aux xs n)
         pretty_printer_dummy_aux (x:xs)   n = (x : (pretty_printer_dummy_aux xs n))
 
@@ -49,7 +51,7 @@ testami test = do
     -- Parsing
     let par = Par.pProgram lex
     putStrLn "parser output:"
-    --putStr $ pretty_printer_dummy $ printAst par
+    putStr $ pretty_printer_dummy $ printAst par
     putStrLn $ printAst par
     putStrLn ""
     
