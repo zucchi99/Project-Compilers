@@ -4,6 +4,16 @@ module ErrorMessage where
 
 import Data.List
 
+
+errMsgFunctionAlreadyImpl :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgFunctionAlreadyImpl varname pos = printPos pos ++ "The function/procedure " ++ (show varname) ++ " is already implemented"
+
+errMsgDifferentParams :: (Show a) => a -> String -> String -> (Int, Int) -> [Char]
+errMsgDifferentParams varname p1 p2 pos = printPos pos ++ "The function/procedure " ++ (show varname) ++ " is already forward defined, but with different parameters: \n old = " ++ p1 ++ " \n new = " ++ p2
+
+errMsgDifferentRet :: (Show a) => a -> String -> String -> (Int, Int) -> [Char]
+errMsgDifferentRet varname r1 r2 pos = printPos pos ++ "The function " ++ (show varname) ++ " is already forward defined, but with different return type: \n old = " ++ r1 ++ " \n new = " ++ r2
+
 errMsgNotImplemented :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgNotImplemented s pos = "In the block " ++ printPos pos ++ (show s) ++ " is forward declared but not implemented"
 

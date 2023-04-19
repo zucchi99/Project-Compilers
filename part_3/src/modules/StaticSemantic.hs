@@ -33,17 +33,15 @@ checkPresenceDecl id env pos =
         Just _  -> [Err.errMsgAlreadyDeclared (id_name id) pos]
         Nothing -> []
 
-checkPresenceDeclFunc id env pos =
-    case E.lookup env (id_name id) of
-        Just fun@(E.FunEntry _ _ True)  -> (Just fun, [])
-        Just _                          -> (Nothing, [Err.errMsgAlreadyDeclared (id_name id) pos])
-        Nothing                         -> (Nothing, [])
-
-checkPresenceDeclProc id env pos =
-    case E.lookup env (id_name id) of
-        Just pro@(E.ProcEntry _ True)   -> (Just pro, [])
-        Just _                          -> (Nothing, [Err.errMsgAlreadyDeclared (id_name id) pos])
-        Nothing                         -> (Nothing, [])
+-- check if the function or procedure is already in the environment
+-- if it is, check if it's a forward declaration and if the parameters and return type are the same
+-- if it's not, add it to the environment
+checkPresenceDeclFuncProc new_entry id env pos = 
+    case E.lookup env id of
+        Just old_entry  -> case E.checkSignature old_entry new_entry id pos of
+            []      -> (E.addVar env id new_entry, []) 
+            errors  -> (env, errors)
+        Nothing         -> (E.addVar env id new_entry, [])
 
 -- mkArrTy(E1.type, E2.type)
 -- Controllo di indice dell'array (deve essere int)
@@ -53,7 +51,6 @@ mkArrTy (T.ArrayType t _) idx pos =
         T.IntegerType -> []
         _             -> [ Err.errMsgUnexpectedType "The index of an array" T.IntegerType idx pos ]
 mkArrTy t _ pos = [ Err.errMsgTypeNotArray t pos ]
-
 
 -- mkAssignErrs(E1.type, E2.type)
 -- Controllo durante l'assegnamento
@@ -69,8 +66,8 @@ mkAssignErrs lhs rhs pos =
 -- mkIfErrs(E.type, S1.errs)
 -- Controllo della guardia dell'if
 mkIfErrs :: T.Type -> (Int, Int) -> [String]
-mkIfErrs guard pos = 
-    case guard of
+mkIfErrs guard_type pos = 
+    case guard_type of
         (T.ErrorType)   -> [] -- error already found before, do not add new errors
         (T.BooleanType) -> []
         t               -> [ (Err.errMsgUnexpectedType "Guard" T.BooleanType t pos) ]
@@ -88,12 +85,11 @@ mkIdDeclErrs id etype ttype pos =
 -- mkFunEnv(id, τ1 × . . . × τn, τ ) = {id : τ1 × . . . × τn → τ}
 -- Nota: La stringa è il nome della funzione, la lista di tipi sono i tipi dei parametri e il tipo finale è il tipo di ritorno
 --       Il tutto crea un enviroment con una sola entry (che equivale ad una funzione)
-mkFunEnv :: String -> [(String, T.Type)] -> T.Type -> Bool -> E.Env
-mkFunEnv id types returnType forw = E.mkSingletonEnv id E.FunEntry{E.params=types, E.ret=returnType, E.forward = forw}
+-- mkFunEnv :: String -> [(String, T.Type)] -> T.Type -> Bool -> E.Env
+-- mkFunEnv id types returnType forw = E.mkSingletonEnv id E.FunEntry{E.params=types, E.ret=returnType, E.forward = forw}
 
 -- D.errs = mkFunErrs(D1.errs, S.errs, F.loc, D1.loc)
 -- D è la dichiarazione della funzione
-
 mkFunErrs :: [String] -> [String] -> E.Env -> E.Env -> (Int, Int) -> [String]
 mkFunErrs d1errs serrs fenv d1env pos = d1errs ++ serrs ++ E.getClashes fenv d1env pos 
 
@@ -109,6 +105,31 @@ compatible t1 (Just (E.VarEntry t2))   = T.sup t1 t2 == t2
 compatible t1 (Just (E.ConstEntry t2)) = T.sup t1 t2 == t2
 compatible _  _                        = False
 
+get_sx_dx_errors_right_exp :: RightExp -> RightExp -> E.Env -> (RightExp, RightExp, [String])
+get_sx_dx_errors_right_exp sx dx p_env = 
+    let new_sx = staticsemanticAux (sx {right_exp_env = p_env})
+        new_dx = staticsemanticAux (dx {right_exp_env = p_env})
+    in (new_sx, new_dx, merge_errors_right_exp new_sx new_dx)
+
+merge_errors_right_exp :: RightExp -> RightExp -> [String]
+merge_errors_right_exp sx dx = (right_exp_errors sx) ++ (right_exp_errors dx)
+
+apply_coercion :: T.Type -> RightExp -> RightExp
+apply_coercion to_type main_r = 
+    let pos = right_exp_pos main_r
+        env = right_exp_env main_r
+        errs = right_exp_errors main_r
+    in RightExpCoercion main_r (right_exp_type main_r) to_type pos env errs
+
+create_params_for_func_proc :: [Declaration] -> [(String, T.Type)]
+create_params_for_func_proc params = map (\decl -> (id_name (variable_name decl), variable_type decl)) params
+
+-- Given the old environment, add or override the break and continue keywords
+add_break_continue :: E.Env -> E.Env
+add_break_continue env = 
+    let env_break = E.mkSingletonEnv "break" (E.ConstEntry T.TBDType)
+        env_break_continue = E.addVar env_break "continue" (E.ConstEntry T.TBDType)
+    in E.merge env_break_continue env
 
 -- keyword can be "break" or "continue"
 {- checkLoop :: String -> E.Env -> [String]
@@ -142,12 +163,16 @@ instance StaticSemanticClass Ident where
   --  staticsemanticAux env idents = (env, [])
 
 instance StaticSemanticClass Block where
-    staticsemanticAux (Block decls stmts pos env errors) = 
-            -- parto dall'env vuoto e aggiungo le dichiarazioni
-            -- (Inizialmente tutti gli env sono vuoti, quindi non serve fornire l'env iniziale)
-        let decls_aft_decl = staticsemanticAux decls
+    staticsemanticAux (Block decls stmts pos env errors) =
+            --                               ^^^
+            -- env in questo caso è l'enviroment da cui vogliamo iniziare a fare il merge
+            -- così facendo è possibile aggiungere le dichiarazioni dei parametri o aggiungere i break e i continue
+            -- parto dall'env e aggiungo le dichiarazioni
+        let first_decl = head decls 
+            decls_aft_decl = staticsemanticAux (first_decl {declaration_env = env} : tail decls)
             last_decl = last decls_aft_decl
             (env_aft_decls, errs_aft_decls) = (declaration_env last_decl, declaration_errors last_decl)
+
             -- controllo che tutte le forward declaration siano state definite -> altrimenti errore
             errs_forw_decls = map (\x -> Err.errMsgNotImplemented x pos) (E.getForward env_aft_decls)
 
@@ -188,114 +213,196 @@ instance StaticSemanticClass Declaration where
         in (DeclarationVariable id var_type value_maybe pos env_aft_decl (errors ++ err_type ++ err_aft_decl))
 
     staticsemanticAux (DeclarationFunction id params fun_type maybe_block pos env errors) =
+            -- create a function entry for the enviroment, with params and return type
+        let new_fun_entry = case maybe_block of
+                Nothing -> E.FunEntry (create_params_for_func_proc params) fun_type True False False -- forward declaration
+                Just _  -> E.FunEntry (create_params_for_func_proc params) fun_type False True False -- function definition
+
             -- check if is already present in the env a forward declaration for a function
-        let (fun_in_env, err_already_declared) = checkPresenceDeclFunc id env pos
+            (env_after_adding_func, err_already_declared) = checkPresenceDeclFuncProc new_fun_entry (id_name id) env pos
 
             -- parto dall'env vuoto e aggiungo le dichiarazioni
-            -- (Inizialmente tutti gli env sono vuoti, quindi non serve fornire l'env iniziale)
+            env_before_params = E.mkSingletonEnv (id_name id) new_fun_entry
+            first_param = head params
+            decls_aft_params = staticsemanticAux (first_param {declaration_env = env_before_params} : tail params)
+            last_params = last decls_aft_params
+            (env_aft_params, errs_aft_params) = (declaration_env last_params, declaration_errors last_params)
+
+            -- parto dall'env creato dall'ultimo parametro e lo passo al maybe_block se presente
+            block = case maybe_block of
+                Nothing -> Nothing
+                Just b  -> Just (staticsemanticAux (b {block_env = env_aft_params}))
+
+            errs_aft_block = case block of
+                Nothing -> []
+                Just b  -> block_errors b
+
+            -- controllare che la variabile di ritorno sia modificata
+            -- lookup su enviroment del block, con nome della funzione
+            -- controllo se la variabile di ritorno è stata modificata (ultimo bool è True)
+            -- se è False -> warning
+            -- Lo lascio a True, tanto una volta uscito da questo controllo non ci serve più
+
+            -- metto a false il penultimo bool della fun entry
+
+
+        in (DeclarationFunction id params fun_type block pos env_after_adding_func (errors ++ err_already_declared ++ errs_aft_params ++ errs_aft_block))
+
+    staticsemanticAux (DeclarationProcedure id params maybe_block pos env errors) =
+            -- create a function entry for the enviroment, with params and return type
+        let new_pro_entry = case maybe_block of
+                Nothing -> E.ProcEntry (create_params_for_func_proc params) True
+                Just _  -> E.ProcEntry (create_params_for_func_proc params) False
+
+            -- check if is already present in the env a forward declaration for a function
+            (env_after_adding_proc, err_already_declared) = checkPresenceDeclFuncProc new_pro_entry (id_name id) env pos
+
+            -- parto dall'env vuoto e aggiungo le dichiarazioni
             decls_aft_params = staticsemanticAux params
             last_params = last decls_aft_params
             (env_aft_params, errs_aft_params) = (declaration_env last_params, declaration_errors last_params)
 
-            -- extract the name and the type of the parameters
-            -- by the Parser.y the params should always be DeclarationVariable and the value should always be Nothing
-            params_type = (map (\x -> (id_name (variable_name x), variable_type x)) decls_aft_params)
+            -- parto dall'env creato dall'ultimo parametro e lo passo al maybe_block se presente
+            block = case maybe_block of
+                Nothing -> Nothing
+                Just b  -> Just (staticsemanticAux (b {block_env = env_aft_params}))
 
-            -- create an EnvEntry for the function, check if it's a forward declaration or not
-            this_fun = case maybe_block of
-                -- inside params there are only DeclarationVariable
-                Nothing     -> E.FunEntry params_type fun_type True
-                Just block  -> E.FunEntry params_type fun_type False
-
-            -- check if the function has the same type of the return or the same type of the parameters already declared
-            err_check_equal = case fun_in_env of
-                Just fun_in_env_ext@(E.FunEntry params fun_type True) -> case fun_in_env_ext == this_fun of
-                    True -> []
-                    False -> [Err.errMsgWrongFunctionType id pos]
-                _ -> []
-
-            -- combine various errors
-            err_before_decl = err_already_declared ++ err_check_equal
-
-            -- if there are no errors, add the function to the env
-            (env_aft_decl, err_aft_decl) = case err_before_decl of
-                [] -> (E.addVar env (id_name id) this_fun, [])
-                err -> (env, err)
-
-            -- nel blocco fare la merge coi parametri, la vecchia env e break, continue, ...
-            -- controllare che il tipo di ritorno sia compatibile con il tipo dichiarato (la variabile di ritorno si chiama come la funzione)
-
-        in (DeclarationFunction id params fun_type maybe_block pos env_aft_decl (errors ++ errs_aft_params))
-
-
-    staticsemanticAux x@(DeclarationProcedure id params maybe_block pos env errros) = x
-        -- In base a block:
-        --      Nothing -> È una forward declaration, per cui controllo che non ci sia già nell'env.
-        --      Just block -> Controllo che non ci sia nell'env o che sia presente la sua forward declaration
+            errs_aft_block = case block of
+                Nothing -> []
+                Just b  -> block_errors b
+        in (DeclarationProcedure id params block pos env_after_adding_proc (errors ++ err_already_declared ++ errs_aft_params ++ errs_aft_block))
 
 instance StaticSemanticClass [Declaration] where
-    -- Parto dall'enviroment passato
-    -- Ogni enviroment parte dal precedente
-    -- Restituisco l'enviroment finale e gli errori concatenati in ordine di ritrovamento
-    staticsemanticAux decls = decls
-        
-        -- foldl (addDeclaration) (env, []) decls where
-        -- addDeclaration (env, errs) decl = 
-        --     let (envAfter, errsAfter) = staticsemanticAux env decl
-        --     in (envAfter, errs ++ errsAfter)
-
-instance StaticSemanticClass [Statement] where
-    staticsemanticAux stmts = stmts
+    -- Parto dal primo enviroment
+    -- Ogni enviroment si basa sul precedente
+    -- L'ultimo elemento conterrà l'enviroment finale
+    -- Gli errori devono essere tutti recuperati e messi in un unico array
+    staticsemanticAux [] = []
+    staticsemanticAux (x:[]) = [staticsemanticAux x]
+    staticsemanticAux (x:xs) = foldl (\acc x -> acc ++ [staticsemanticAux_oldEnv x acc]) [staticsemanticAux x] xs where
+        staticsemanticAux_oldEnv x old_decls = staticsemanticAux (x {declaration_env = (declaration_env (last old_decls))})
 
 instance StaticSemanticClass Statement where
-    staticsemanticAux x@(StatementBlock block pos env errors) = x
-    staticsemanticAux x@(StatementIf cond then_body maybe_else_body pos env errors) = x
-        -- Controllo che la condizione sia booleana
-        -- Controllo che il then_body sia corretto
-        -- Controllo che il else_body sia corretto
+    staticsemanticAux (StatementBlock block pos env errors) = 
+            --                                  ^^^
+            -- env in questo caso è l'enviroment da cui vogliamo iniziare a fare il merge
+            -- così facendo è possibile aggiungere le dichiarazioni dei parametri o aggiungere i break e i continue
+            -- parto dall'env per analizzare il blocco
+        let block_checked = staticsemanticAux (block {block_env = env})
+        in (StatementBlock block_checked pos env (block_errors block_checked))
+
+    staticsemanticAux (StatementIf cond then_body maybe_else_body pos env errors) =
+            -- Controllo che la condizione sia booleana
+        let cond_errors = mkIfErrs (right_exp_type cond) (right_exp_pos cond)
+            
+            -- Controllo che il then_body sia corretto
+            then_body_checked = staticsemanticAux (then_body {statement_env = env})
+            then_errors = statement_errors then_body_checked
+            
+            -- Controllo che il else_body sia corretto se presente
+            else_body_checked = case maybe_else_body of
+                Nothing -> Nothing
+                Just else_body -> Just (staticsemanticAux (else_body {else_block_env = env}))
+            else__errors = case else_body_checked of
+                Nothing -> []
+                Just else_body -> else_block_errors else_body
+
+            errors_tot = errors ++ cond_errors ++ then_errors ++ else__errors
+        in (StatementIf cond then_body_checked else_body_checked pos env errors_tot)
+
     staticsemanticAux x@(StatementFor cond then_body var pos env errors) = x
-        -- Controllo che la condizione sia booleana, che contenga la variabile var e che sia fattibile
-        -- Controllo che il then_body sia corretto
-        -- Controllo che il var sia una variabile Intera, che non venga modificato dentro then_body
-    staticsemanticAux x@(StatementWhile cond then_body pos env errors) = x
-        -- Controllo che la condizione sia booleana
-        -- Controllo che il then_body sia corretto
-    staticsemanticAux x@(StatementRepeatUntil cond then_body pos env errors) = x
-        -- Controllo che la condizione sia booleana
-        -- Controllo che il then_body sia corretto
-    staticsemanticAux x@(StatementAssign assign pos env errors) = x
-        -- Controllo che l'assegnamento sia corretto
-    staticsemanticAux x@(StatementFuncProcCall id params pos env errors) = x
+        --     -- Controllo che la condizione sia booleana, che contenga la variabile var e che sia fattibile
+        -- let 
+        --     -- Controllo che il then_body sia corretto
+        --     -- Controllo che il var sia una variabile Intera, che non venga modificato dentro then_body
+        -- in
+
+    staticsemanticAux (StatementWhile cond then_body pos env errors) =
+            -- Controllo che la condizione sia booleana
+        let cond_errors = mkIfErrs (right_exp_type cond) (right_exp_pos cond)
+            
+            -- Aggiungo le dichiarazioni dei break e dei continue all'enviroment
+            env_with_break_continue = add_break_continue env
+
+            -- Controllo che il body sia corretto
+            body_checked = staticsemanticAux (then_body {statement_env = env_with_break_continue})
+            body_errors = statement_errors body_checked
+
+            errors_tot = errors ++ cond_errors ++ body_errors
+        in (StatementWhile cond body_checked pos env errors_tot)
+
+    staticsemanticAux (StatementRepeatUntil cond then_body pos env errors) =
+            -- Controllo che la condizione sia booleana
+        let cond_errors = mkIfErrs (right_exp_type cond) (right_exp_pos cond)
+            
+            -- Aggiungo le dichiarazioni dei break e dei continue all'enviroment
+            env_with_break_continue = add_break_continue env
+            
+            -- Controllo che il body sia corretto
+            body_checked = staticsemanticAux (then_body {statement_env = env_with_break_continue})
+            body_errors = statement_errors body_checked
+
+            errors_tot = errors ++ cond_errors ++ body_errors
+        in (StatementWhile cond body_checked pos env errors_tot)
+
+    staticsemanticAux (StatementAssign assign pos env errors) =
+        let assign_checked = staticsemanticAux (assign {assign_env = env})
+            (env_assign, errors_assign) = (assign_env assign_checked, assign_errors assign_checked)
+
+        in (StatementAssign assign_checked pos env_assign (errors ++ errors_assign))
+
+    staticsemanticAux (StatementFuncProcCall id params pos env errors) =
         -- Controllo che la funzione sia presente nell'env
         -- Controllo che i parametri corrispondano al tipo dei parametri voluti della funzione
-    staticsemanticAux x@(StatementWrite write_primitive pos env errors) = x
-        -- Controllo che il write_primitive sia corretto
-    staticsemanticAux x@(StatementRead read_primitive pos env errors) = x
-        -- Controllo che il read_primitive sia corretto
-    staticsemanticAux x@(StatementContinue pos env errors) = x
-        -- Controllo che ci sia il continue nell'env
-    staticsemanticAux x@(StatementBreak pos env errors) = x
-        -- Controllo che ci sia il break nell'env
+        let 
+            -- (params_checked, errors_params) = staticsemanticAuxList params right_exp_errors
+
+            -- Concateno gli errori
+            errors_tot = errors
+        in (StatementFuncProcCall id params pos env errors_tot)
+
+    staticsemanticAux (StatementWrite write_primitive pos env errors) =
+            -- Controllo che il write_primitive sia corretto
+        let write_primitive_cheched = staticsemanticAux (write_primitive {write_primitive_env = env})
+            (env_write, errors_write) = (write_primitive_env write_primitive_cheched, write_primitive_errors write_primitive_cheched)
+        in (StatementWrite write_primitive_cheched pos env_write (errors ++ errors_write))
+
+    staticsemanticAux (StatementRead read_primitive pos env errors) =
+            -- Controllo che il write_primitive sia corretto
+        let read_primitive_cheched = staticsemanticAux (read_primitive {read_primitive_env = env})
+            (env_read, errors_read) = (read_primitive_env read_primitive_cheched, read_primitive_errors read_primitive_cheched)
+        in (StatementRead read_primitive_cheched pos env_read (errors ++ errors_read))
+
+    staticsemanticAux (StatementContinue pos env errors) =
+            -- Controllo che ci sia il continue nell'env
+        let errors_tot = case E.lookup env "continue" of
+                        Just _  -> []
+                        Nothing -> errors ++ [Err.errMsgWrongLoopControl "continue" pos]
+
+        in (StatementContinue pos env errors_tot)
+
+    staticsemanticAux (StatementBreak pos env errors) = 
+            -- Controllo che ci sia il break nell'env
+        let errors_tot = case E.lookup env "break" of
+                        Just _  -> []
+                        Nothing -> errors ++ [Err.errMsgWrongLoopControl "break" pos]
+
+        in (StatementContinue pos env errors_tot)
+
+instance StaticSemanticClass [Statement] where
+    -- Parto dal primo enviroment
+    -- Ogni enviroment si basa sul precedente
+    -- L'ultimo elemento conterrà l'enviroment finale
+    -- Gli errori devono essere tutti recuperati e messi in un unico array
+    staticsemanticAux [] = []
+    staticsemanticAux (x:[]) = [staticsemanticAux x]
+    staticsemanticAux (x:xs) = foldl (\acc x -> acc ++ [staticsemanticAux_oldEnv x acc]) [staticsemanticAux x] xs where
+        staticsemanticAux_oldEnv x old_decls = staticsemanticAux (x {statement_env = (statement_env (last old_decls))})
 
 instance StaticSemanticClass ElseBlock where
-    staticsemanticAux x@(ElseBlock else_body pos env errors) = x
-
-get_sx_dx_errors_right_exp :: RightExp -> RightExp -> E.Env -> (RightExp, RightExp, [String])
-get_sx_dx_errors_right_exp sx dx p_env = 
-    let new_sx = staticsemanticAux (sx {right_exp_env = p_env})
-        new_dx = staticsemanticAux (dx {right_exp_env = p_env})
-    in (new_sx, new_dx, merge_errors_right_exp new_sx new_dx)
-
-merge_errors_right_exp :: RightExp -> RightExp -> [String]
-merge_errors_right_exp sx dx = (right_exp_errors sx) ++ (right_exp_errors dx)
-
-apply_coercion :: T.Type -> RightExp -> RightExp
-apply_coercion to_type main_r = 
-    let pos = right_exp_pos main_r
-        env = right_exp_env main_r
-        errs = right_exp_errors main_r
-    in RightExpCoercion main_r (right_exp_type main_r) to_type pos env errs
-
+    staticsemanticAux (ElseBlock else_body pos env errors) =
+        let else_body_checked = staticsemanticAux (else_body {statement_env = env})
+        in (ElseBlock else_body_checked pos env (errors ++ (statement_errors else_body_checked)))
 
 instance StaticSemanticClass RightExp where
     staticsemanticAux (RightExpOr sx dx pos ty parent_env errors) =
@@ -530,13 +637,11 @@ instance StaticSemanticClass RightExp where
         in case E.lookup parent_env function_name of
             Nothing -> RightExpFuncProcCall id params pos T.ErrorType parent_env (errors ++ [Err.errMsgNotDeclared function_name pos])
             -- Tutto ok, la funzione è stata dichiarata
-            
-            Just (E.FunEntry entry_params ty_ret _) |   map snd entry_params == map right_exp_type params_checked -> RightExpFuncProcCall id params_checked pos ty_ret parent_env errors
+            Just (E.FunEntry entry_params ty_ret _ _ _) |   map snd entry_params == map right_exp_type params_checked -> RightExpFuncProcCall id params_checked pos ty_ret parent_env errors
             -- La funzione è dichiarata nell'enviroment, ma i parametri non corrispondono 
             -- TODO: si potrebbero mandare messaggi più significativi, tipo se manca un parametro o se c'è un parametro in più, se i tipi sono sbagliati, ...
-                                                  |   otherwise -> RightExpFuncProcCall id params pos ty_ret parent_env (errors ++ [Err.errMsgWrongParams function_name pos]) -- TODO: se abbiamo tempo si potrebbe 
+                                                        |   otherwise -> RightExpFuncProcCall id params pos ty_ret parent_env (errors ++ [Err.errMsgWrongParams function_name pos]) -- TODO: se abbiamo tempo si potrebbe 
             -- La funzione è dichiarata nell'enviroment, ma è una procedura
-           
             Just _ -> RightExpFuncProcCall id params pos T.ErrorType parent_env (errors ++ [Err.errMsgAssignToProc function_name pos])
             
     staticsemanticAux (RightExpCopy left_exp pos ty parent_env errors) =
@@ -545,7 +650,6 @@ instance StaticSemanticClass RightExp where
         in case left_exp_type left_exp_checked of
             T.ErrorType     -> RightExpCopy left_exp_checked pos T.ErrorType parent_env (errors ++ (left_exp_errors left_exp_checked))
             lft_expr_type   -> RightExpCopy left_exp_checked pos (left_exp_type left_exp_checked) parent_env (errors ++ (left_exp_errors left_exp_checked))
-
 
     -- staticsemanticAux (RightExpCoercion main_re from_type to_type pos ty parent_env errors) =
         -- La funzione non viene implementata in questo caso, visto che naturalmente non esisterà mai 
@@ -562,11 +666,14 @@ instance StaticSemanticClass LeftExp where
         Just _ -> (LeftExpIdent id pos T.ErrorType env (errors ++ [Err.errAssignToLeftExpr id pos]))
 
     staticsemanticAux (LeftExpArrayAccess array_name array_locations lexp_type pos env errors) =
+        --                                           ^^^^^^^^^^^^^^^
+        -- Controllare che questa lista non sia vuota
+
         -- Controllo che la left_exp sia corretta
         let lexp_checked = staticsemanticAux array_name {left_exp_env = env} 
             -- Controllo che le varie locazioni indicate siano di tipo integer (non può essere altro)
-            first_rexp = (head array_locations) {right_exp_env = env}
-            array_locations_after = staticsemanticAux (first_rexp : tail array_locations)
+            first_rexp = (head array_locations)
+            array_locations_after = staticsemanticAux (first_rexp {right_exp_env = env} : tail array_locations)
             -- Estraggo i tipi dalle locazioni per generare eventuali errori
             array_loc_types_errors = foldl (\lst x -> lst ++ mkArrTy lexp_type (right_exp_type x) (right_exp_pos x)) [] array_locations_after
         in (LeftExpArrayAccess lexp_checked array_locations_after (left_exp_type lexp_checked) pos env (errors ++ array_loc_types_errors))
@@ -583,7 +690,7 @@ instance StaticSemanticClass LeftExp where
 
 instance StaticSemanticClass Assign where
     staticsemanticAux (VariableAssignment left_exp right_exp pos env errors) =
-        -- Controllo che la left_exp sia corretta
+            -- Controllo che la left_exp sia corretta
         let lexp_checked = staticsemanticAux left_exp {left_exp_env = env}
             -- Controllo che la right_exp sia corretta
             rexp_checked = staticsemanticAux right_exp {right_exp_env = env}
@@ -593,9 +700,9 @@ instance StaticSemanticClass Assign where
             -- Estraggo gli errori delle left_exp e right_exp da aggiungere
             l_errors = left_exp_errors lexp_checked
             r_errors = right_exp_errors rexp_checked
-        -- Controllo che left_exp e right_exp abbiano lo stesso tipo
-        
-        in (VariableAssignment lexp_checked rexp_checked pos env (errors ++ l_errors ++ r_errors ++ (mkAssignErrs l_type r_type pos)))
+            -- Controllo che left_exp e right_exp abbiano lo stesso tipo
+            err_different_types = mkAssignErrs l_type r_type pos
+        in (VariableAssignment lexp_checked rexp_checked pos env (errors ++ l_errors ++ r_errors ++ err_different_types))
     
 instance StaticSemanticClass WritePrimitive where
     staticsemanticAux (WriteInt right_exp pos env errors) =
@@ -678,60 +785,3 @@ instance StaticSemanticClass ReadPrimitive where
         in case l_type of
             T.StringType -> (ReadString lexp_checked pos env tot_errors)
             _ -> (ReadString lexp_checked pos env $ tot_errors ++ [Err.errMsgWrongReadPrimitiveType T.StringType l_type pos])
-            
-
-{- main = do 
-
-    let arrayT = T.ArrayType T.RealType [(1, 3)]
-
-    putStrLn "mkArrTy T.ArrayType T.IntegerType"    
-    putStrLn $ show $ mkArrTy arrayT T.IntegerType
-    putStrLn ""
-    
-    putStrLn "mkArrTy T.ArrayType T.RealType"    
-    putStrLn $ show $ mkArrTy arrayT T.RealType
-    putStrLn ""
-    
-    putStrLn "mkArrTy T.RealType T.RealType"    
-    putStrLn $ show $ mkArrTy T.RealType T.RealType
-    putStrLn ""
-
-    putStrLn "mkAssignErrs T.RealType T.IntegerType"    
-    putStrLn $ show $ mkAssignErrs T.RealType T.IntegerType
-    putStrLn ""
-    
-    putStrLn "mkAssignErrs T.IntegerType T.RealType"    
-    putStrLn $ show $ mkAssignErrs T.IntegerType T.RealType
-    putStrLn ""
-
-    putStrLn "mkIfErrs T.BooleanType"
-    putStrLn $ show $ mkIfErrs T.BooleanType
-    putStrLn ""
-
-    putStrLn "mkIfErrs T.IntegerType"
-    putStrLn $ show $ mkIfErrs T.IntegerType
-    putStrLn ""
-
-    putStrLn "mkIdDeclErrs \"x\" T.RealType T.IntegerType"
-    putStrLn $ show $ mkIdDeclErrs "x" T.RealType T.IntegerType
-    putStrLn ""
-
-    putStrLn "mkIdDeclErrs \"x\" T.IntegerType T.RealType"
-    putStrLn $ show $ mkIdDeclErrs "x" T.IntegerType T.RealType
-    putStrLn ""
-
-    putStrLn "mkIdDeclErrs \"x\" T.IntegerType T.StringType"
-    putStrLn $ show $ mkIdDeclErrs "x" T.IntegerType T.StringType
-    putStrLn ""
-
-    putStrLn "mkIdDeclErrs \"x\" T.StringType T.IntegerType"
-    putStrLn $ show $ mkIdDeclErrs "x" T.StringType T.IntegerType
-    putStrLn ""
-
-    putStrLn "mkFunEnv \"f\" [T.IntegerType, T.RealType] T.StringType"
-    putStrLn $ show $ mkFunEnv "f" [T.IntegerType, T.RealType] T.StringType
-    putStrLn ""
-
-    putStrLn "mkFunErrs [] [] (mkFunEnv \"f\" [T.IntegerType, T.RealType] T.StringType) (mkFunEnv \"f\" [T.IntegerType, T.RealType] T.StringType)"
-    putStrLn $ show $ mkFunErrs [] [] (mkFunEnv "f" [T.IntegerType, T.RealType] T.StringType) (mkFunEnv "f" [T.IntegerType, T.RealType] T.StringType)
-    putStrLn "" -}

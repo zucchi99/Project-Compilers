@@ -14,7 +14,7 @@ data Env = Env { env :: Map.Map String EnvEntry} deriving (Show)
 data EnvEntry 
     = VarEntry { ty :: T.Type } 
     | ConstEntry { ty :: T.Type }
-    | FunEntry { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool }
+    | FunEntry { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool }
     | ProcEntry { params :: [(String, T.Type)], forward :: Bool  }
     deriving (Show)
 
@@ -33,7 +33,6 @@ emptyEnv = Env { env = Map.empty }
 mkSingletonEnv :: String -> EnvEntry -> Env
 mkSingletonEnv id ty = Env { env = Map.singleton id ty }
 
-
 -- | Add a new variable to the environment
 -- | If the variable is already present, it is overwritten
 addVar :: Env -> String -> EnvEntry -> Env
@@ -51,17 +50,32 @@ lookup e name = case Map.lookup name (env e) of
 merge :: Env -> Env -> Env
 merge (Env e1) (Env e2) = Env { env = Map.union e1 e2 }
 
--- The function gets the clashes in bindings between two environments
--- It returns a list of strings, each string is an error message
+-- | The function gets the clashes in bindings between two environments
+-- | It returns a list of strings, each string is an error message
 getClashes :: Env -> Env -> (Int, Int) -> [String]
 getClashes (Env e1) (Env e2) pos = Map.foldrWithKey (\k v acc -> if Map.member k e2 then (Err.errMsgClash k pos) : acc else acc) [] e1
 
--- Function that checks if there are FunEntry or ProcEntry with forward = True and if there are returns their key
+-- | Function that checks if there are FunEntry or ProcEntry with forward = True and if there are returns their key
 getForward :: Env -> [String]
 getForward (Env e) = Map.foldrWithKey (\k v acc -> if (isForward v) then k : acc else acc) [] e where
     isForward (FunEntry { forward = True }) = True
     isForward (ProcEntry { forward = True }) = True
     isForward _ = False
+
+-- | Function that given the old entry and the new entry, checks if they have the same signature
+-- | It returns a list of all different errors
+checkSignature :: EnvEntry -> EnvEntry -> String -> (Int, Int) -> [String]
+checkSignature (FunEntry { params = oldParams, ret = oldRet, forward = oldForw }) (FunEntry { params = newParams, ret = newRet }) id pos =
+    let err_already_declared = if oldForw == False then [Err.errMsgFunctionAlreadyImpl id pos] else []
+        err_diff_params = if (oldParams /= newParams) then [Err.errMsgDifferentParams id (show oldParams) (show newParams) pos] else []
+        err_diff_ret = if (oldRet /= newRet) then [Err.errMsgDifferentRet id (show oldRet) (show newRet) pos] else []
+    in err_already_declared ++ err_diff_params ++ err_diff_ret
+checkSignature (ProcEntry { params = oldParams, forward = oldForw }) (ProcEntry { params = newParams }) id pos = 
+    let err_already_declared = if oldForw == False then [Err.errMsgFunctionAlreadyImpl id pos] else []
+        err_diff_params = if (oldParams /= newParams) then [Err.errMsgDifferentParams id (show oldParams) (show newParams) pos] else []
+    in err_already_declared ++ err_diff_params
+checkSignature _ _ id pos = [Err.errMsgAlreadyDeclared id pos]
+
 
 mainEnv = do
     putStrLn "Test - Env.hs"
