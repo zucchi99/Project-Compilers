@@ -20,26 +20,26 @@ import Data.Maybe
 -- already = "var" -> a var was printed before
 -- already = "const" -> a const was printed before
 prettyPrinterDeclaration _ _ [] _ = ""
-prettyPrinterDeclaration newline numtabs (DeclarationCostant name a value b : declarations) "const" =
-    prettyprinterAux True (numtabs + 1) (DeclarationCostant name a value b)                     ++
-    ";"                                                                                         ++
+prettyPrinterDeclaration newline numtabs (DeclarationCostant id maybe_type value pos env errors : declarations) "const" =
+    prettyprinterAux True (numtabs + 1) (DeclarationCostant id maybe_type value pos env errors)             ++
+    ";"                                                                                                     ++
     prettyPrinterDeclaration newline numtabs declarations "const"
-prettyPrinterDeclaration newline numtabs (DeclarationCostant name a value b : declarations) _ =
-    ident True numtabs "const"                                                                  ++
-    prettyprinterAux True (numtabs + 1) (DeclarationCostant name a value b)                     ++
-    ";"                                                                                         ++
+prettyPrinterDeclaration newline numtabs (DeclarationCostant id maybe_type value pos env errors : declarations) _ =
+    ident True numtabs "const"                                                                              ++
+    prettyprinterAux True (numtabs + 1) (DeclarationCostant id maybe_type value pos env errors)             ++
+    ";"                                                                                                     ++
     prettyPrinterDeclaration newline numtabs declarations "const"
-prettyPrinterDeclaration newline numtabs (DeclarationVariable name tipo value a : declarations) "var" =
-    prettyprinterAux True (numtabs + 1) (DeclarationVariable name tipo value a)                 ++
-    ";"                                                                                         ++
+prettyPrinterDeclaration newline numtabs (DeclarationVariable id var_type value_maybe pos env errors : declarations) "var" =
+    prettyprinterAux True (numtabs + 1) (DeclarationVariable id var_type value_maybe pos env errors)        ++
+    ";"                                                                                                     ++
     prettyPrinterDeclaration newline numtabs declarations "var"
-prettyPrinterDeclaration newline numtabs (DeclarationVariable name tipo value a : declarations) _ =
-    ident True numtabs "var"                                                                    ++
-    prettyprinterAux True (numtabs + 1) (DeclarationVariable name tipo value a)                 ++
-    ";"                                                                                         ++
+prettyPrinterDeclaration newline numtabs (DeclarationVariable id var_type value_maybe pos env errors : declarations) _ =
+    ident True numtabs "var"                                                                                ++
+    prettyprinterAux True (numtabs + 1) (DeclarationVariable id var_type value_maybe pos env errors)        ++
+    ";"                                                                                                     ++
     prettyPrinterDeclaration newline numtabs declarations "var"
 prettyPrinterDeclaration newline numtabs (declaration : declarations) _ =
-    prettyprinterAux True numtabs declaration                                                   ++
+    prettyprinterAux True numtabs declaration                                                               ++
     prettyPrinterDeclaration newline numtabs declarations ""
 
 -- Ident a string
@@ -80,7 +80,7 @@ prettyprinter x = case x of
 
 -- PROGRAM START (here for debugging)
 instance PrettyPrinterClass Program where
-    prettyprinterAux newline numtabs (ProgramStart name block _) =
+    prettyprinterAux newline numtabs (ProgramStart name block pos env errors) =
         ident False 0 "program"                                             ++
         prettyprinterAux False 0 name                                       ++ 
         ";"                                                                 ++
@@ -88,59 +88,51 @@ instance PrettyPrinterClass Program where
         "."
 
 instance PrettyPrinterClass Ident where
-    prettyprinterAux newline numtabs (Ident name _) = 
+    prettyprinterAux newline numtabs (Ident name _ _ _) = 
         ident newline numtabs name
 
 instance PrettyPrinterClass [Ident] where
     prettyprinterAux newline numtabs idents = 
         stringPrettyConcat False numtabs idents ", " "separator" newline
 
-instance PrettyPrinterClass BlockWithDecl where
-    prettyprinterAux newline numtabs (BlockWithDeclaration declarations statements _) =
-        prettyprinterAux newline numtabs declarations                       ++
+instance PrettyPrinterClass Block where
+    prettyprinterAux newline numtabs (Block decls stmts pos env errors) =
+        prettyprinterAux newline numtabs decls                              ++
         ident True numtabs "begin"                                          ++
-        prettyprinterAux True (numtabs + 1) statements                      ++
+        prettyprinterAux True (numtabs + 1) stmts                           ++
         ident True numtabs "end"
-
-{--
-instance PrettyPrinterClass BlockExec where
-    prettyprinterAux newline numtabs (BlockOnlyExecution statements _) =
-        ident True numtabs "begin"                                          ++
-        prettyprinterAux True (numtabs + 1) statements                      ++
-        ident True numtabs "end"
---}
 
 instance PrettyPrinterClass Declaration where
-    prettyprinterAux newline numtabs (DeclarationCostant name _ value _) =
-        prettyprinterAux newline numtabs name                               ++
+    prettyprinterAux newline numtabs (DeclarationCostant id maybe_type value pos env errors) =
+        prettyprinterAux newline numtabs id                                 ++
         ident False numtabs "= "                                            ++
         prettyprinterAux False numtabs value
-    prettyprinterAux newline numtabs (DeclarationVariable name tipo value _) =
-        prettyprinterAux newline numtabs name                               ++
-        ident False numtabs ":"                                            ++
-        prettyprinterAux False numtabs tipo                                 ++
-        if isNothing value then "" else 
+    prettyprinterAux newline numtabs(DeclarationVariable id var_type value_maybe pos env errors) =
+        prettyprinterAux newline numtabs id                                 ++
+        ident False numtabs ":"                                             ++
+        prettyprinterAux False numtabs var_type                             ++
+        if isNothing value_maybe then "" else 
             ident False numtabs "= "                                        ++
-            prettyprinterAux False numtabs (fromJust value)
-    prettyprinterAux newline numtabs (DeclarationFunction name params tipo body _) =
+            prettyprinterAux False numtabs (fromJust value_maybe)
+    prettyprinterAux newline numtabs (DeclarationFunction id params fun_type maybe_block pos env errors) =
         ident newline numtabs "function"                                    ++
-        prettyprinterAux False numtabs name                                 ++
+        prettyprinterAux False numtabs id                                 ++
         ident False numtabs "( "                                            ++
         stringPrettyConcat False numtabs params "; " "separator" False      ++
         ident False numtabs ") :"                                           ++
-        prettyprinterAux False numtabs tipo                                 ++
+        prettyprinterAux False numtabs fun_type                                 ++
         ident False numtabs "; "                                            ++
-        if isNothing body then "forward ;" else 
-            prettyprinterAux False numtabs (fromJust body)                  ++
+        if isNothing maybe_block then "forward ;" else 
+            prettyprinterAux False numtabs (fromJust maybe_block)                  ++
             ident False numtabs ";"
-    prettyprinterAux newline numtabs (DeclarationProcedure name params body _) =
+    prettyprinterAux newline numtabs (DeclarationProcedure id params maybe_block pos env errors) =
         ident newline numtabs "procedure"                                   ++
-        prettyprinterAux False numtabs name                                 ++
+        prettyprinterAux False numtabs id                                 ++
         ident False numtabs "( "                                            ++
         stringPrettyConcat False numtabs params "; " "separator" False      ++
         ident False numtabs ") ; "                                          ++
-        if isNothing body then "forward ;" else 
-            prettyprinterAux False numtabs (fromJust body)                  ++
+        if isNothing maybe_block then "forward ;" else 
+            prettyprinterAux False numtabs (fromJust maybe_block)                  ++
             ident False numtabs ";"
 
 instance PrettyPrinterClass [Declaration] where
@@ -148,202 +140,201 @@ instance PrettyPrinterClass [Declaration] where
         prettyPrinterDeclaration newline numtabs blocks ""
 
 instance PrettyPrinterClass Statement where
-    prettyprinterAux newline numtabs (StatementBlock block _) =
+    prettyprinterAux newline numtabs (StatementBlock block pos env errors) =
         prettyprinterAux newline numtabs block
-    prettyprinterAux newline numtabs (StatementIf condition then_body else_body _) =
+    prettyprinterAux newline numtabs (StatementIf cond then_body maybe_else_body pos env errors) =
         ident newline numtabs "if"                                          ++
         "( "                                                                ++
-        prettyprinterAux False numtabs condition                            ++
+        prettyprinterAux False numtabs cond                                 ++
         ") then "                                                           ++
         prettyprinterAux newline (numtabs + 1) then_body                    ++      
-        if isNothing else_body then "" else 
-            prettyprinterAux newline (numtabs + 1) (fromJust else_body)
-    prettyprinterAux newline numtabs (StatementFor condition then_body for_var _) =
+        if isNothing maybe_else_body then "" else 
+            prettyprinterAux newline (numtabs + 1) (fromJust maybe_else_body)
+    prettyprinterAux newline numtabs (StatementFor cond then_body for_var pos env errors) =
         ident newline numtabs "for"                                         ++
         prettyprinterAux False numtabs for_var                              ++
         ident False numtabs "to"                                            ++
-        prettyprinterAux False numtabs condition                            ++
+        prettyprinterAux False numtabs cond                                 ++
         ident False numtabs "do"                                            ++
         prettyprinterAux newline (numtabs + 1) then_body
-    prettyprinterAux newline numtabs (StatementWhile condition then_body _) =
+    prettyprinterAux newline numtabs (StatementWhile cond then_body pos env errors) =
         ident newline numtabs "while"                                       ++
-        prettyprinterAux newline numtabs condition                          ++
+        prettyprinterAux newline numtabs cond                               ++
         ident False numtabs "do"                                            ++
         prettyprinterAux newline (numtabs + 1) then_body
-    prettyprinterAux newline numtabs (StatementRepeatUntil condition then_body _) =
+    prettyprinterAux newline numtabs (StatementRepeatUntil cond then_body pos env errors) =
         ident newline numtabs "repeat"                                      ++
         prettyprinterAux newline (numtabs + 1) then_body                    ++
         ident newline numtabs "until"                                       ++
-        prettyprinterAux False numtabs condition
-    prettyprinterAux newline numtabs (StatementAssign assign _) =
+        prettyprinterAux False numtabs cond
+    prettyprinterAux newline numtabs (StatementAssign assign pos env errors) =
         prettyprinterAux newline numtabs assign
-    prettyprinterAux newline numtabs (StatementFunctionCall name params _) =
-        prettyprinterAux newline numtabs name                               ++
+    prettyprinterAux newline numtabs (StatementFuncProcCall id params pos env errors) =
+        prettyprinterAux newline numtabs id                               ++
         "("                                                                 ++
         prettyprinterAux False numtabs params                               ++
         ")"
-    prettyprinterAux newline numtabs (StatementProcedureCall name params _) =
-        prettyprinterAux newline numtabs name                               ++
-        "("                                                                 ++
-        prettyprinterAux False numtabs params                               ++
-        ")"
-    prettyprinterAux newline numtabs (StatementWrite writeprimitive _) =
-        prettyprinterAux newline numtabs writeprimitive
-    prettyprinterAux newline numtabs (StatementRead readprimitive _) =
-        prettyprinterAux newline numtabs readprimitive
+    prettyprinterAux newline numtabs (StatementWrite write_primitive pos env errors) =
+        prettyprinterAux newline numtabs write_primitive
+    prettyprinterAux newline numtabs (StatementRead read_primitive pos env errors) =
+        prettyprinterAux newline numtabs read_primitive
+    prettyprinterAux newline numtabs (StatementContinue pos env errors) =
+        ident newline numtabs "continue"
+    prettyprinterAux newline numtabs (StatementBreak pos env errors) =
+        ident newline numtabs "break"
 
 instance PrettyPrinterClass [Statement] where
     prettyprinterAux newline numtabs statements =
         stringPrettyConcat True numtabs statements "; " "separator" newline
 
 instance PrettyPrinterClass ElseBlock where
-    prettyprinterAux newline numtabs (ElseBlock body _) =
+    prettyprinterAux newline numtabs (ElseBlock else_body pos env errors) =
         ident newline numtabs "else"                                        ++
-        prettyprinterAux newline (numtabs + 1) body
-
-instance PrettyPrinterClass Assign where
-    prettyprinterAux newline numtabs (VariableAssignment leftExp rightExp _) =
-        prettyprinterAux newline numtabs leftExp                            ++
-        ":= "                                                               ++
-        prettyprinterAux False numtabs rightExp   
+        prettyprinterAux newline (numtabs + 1) else_body 
 
 instance PrettyPrinterClass RightExp where
-    prettyprinterAux newline numtabs (RightExpOr sx dx _) =
+    prettyprinterAux newline numtabs (RightExpOr sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "or "                                                               ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpAnd sx dx _) =
+    prettyprinterAux newline numtabs (RightExpAnd sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "and "                                                              ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpGreater sx dx _) =
+    prettyprinterAux newline numtabs (RightExpGreater sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "> "                                                                ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpLess sx dx _) =
+    prettyprinterAux newline numtabs (RightExpLess sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "< "                                                                ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpGreaterEqual sx dx _) =
+    prettyprinterAux newline numtabs (RightExpGreaterEqual sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         ">= "                                                               ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpLessEqual sx dx _) =
+    prettyprinterAux newline numtabs (RightExpLessEqual sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "<= "                                                               ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpEqual sx dx _) =
+    prettyprinterAux newline numtabs (RightExpEqual sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "= "                                                                ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpPlus sx dx _) =
+    prettyprinterAux newline numtabs (RightExpPlus sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "+ "                                                                ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpMinus sx dx _) =
+    prettyprinterAux newline numtabs (RightExpMinus sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "- "                                                                ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpTimes sx dx _) =
+    prettyprinterAux newline numtabs (RightExpTimes sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "* "                                                                ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpDivide sx dx _) =
+    prettyprinterAux newline numtabs (RightExpDivide sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "/ "                                                                ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpMod sx dx _) =
+    prettyprinterAux newline numtabs (RightExpMod sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "mod "                                                              ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpDiv sx dx _) =
+    prettyprinterAux newline numtabs (RightExpDiv sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         " div "                                                             ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpPower sx dx _) =
+    prettyprinterAux newline numtabs (RightExpPower sx dx pos ty parent_env errors) =
         prettyprinterAux False numtabs sx                                   ++   
         "** "                                                               ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpNot dx _) =
+    prettyprinterAux newline numtabs (RightExpNot dx pos ty parent_env errors) =
         "not "                                                              ++
         prettyprinterAux False numtabs dx                         
-    prettyprinterAux newline numtabs (RightExpMinusUnary dx _) =
+    prettyprinterAux newline numtabs (RightExpMinusUnary dx pos ty parent_env errors) =
         "- "                                                                ++
         prettyprinterAux False numtabs dx                         
-    prettyprinterAux newline numtabs (RightExpPlusUnary dx _) =
+    prettyprinterAux newline numtabs (RightExpPlusUnary dx pos ty parent_env errors) =
         "+ "                                                                ++
         prettyprinterAux False numtabs dx
-    prettyprinterAux newline numtabs (RightExpInteger value _) =
-        ident newline numtabs $ show value
-    prettyprinterAux newline numtabs (RightExpReal value _) =
-        ident newline numtabs $ show value
-    prettyprinterAux newline numtabs (RightExpBoolean value _) =
-        ident newline numtabs $ show value
-    prettyprinterAux newline numtabs (RightExpChar value _) =
-        ident newline numtabs $ show value
-    prettyprinterAux newline numtabs (RightExpString value _) =
-        ident newline numtabs $ show value
-    prettyprinterAux newline numtabs (RightExpFunctionCall name params _) =
-        prettyprinterAux newline numtabs name                               ++
+    prettyprinterAux newline numtabs (RightExpInteger dx pos ty parent_env errors) =
+        ident newline numtabs $ show dx
+    prettyprinterAux newline numtabs (RightExpReal dx pos ty parent_env errors) =
+        ident newline numtabs $ show dx
+    prettyprinterAux newline numtabs (RightExpBoolean dx pos ty parent_env errors) =
+        ident newline numtabs $ show dx
+    prettyprinterAux newline numtabs (RightExpChar dx pos ty parent_env errors) =
+        ident newline numtabs $ show dx
+    prettyprinterAux newline numtabs (RightExpString dx pos ty parent_env errors) =
+        ident newline numtabs $ show dx
+    prettyprinterAux newline numtabs (RightExpFuncProcCall id params pos ty parent_env errors) =
+        prettyprinterAux newline numtabs id                                 ++
         "("                                                                 ++
         prettyprinterAux False numtabs params                               ++
         ")"
-    prettyprinterAux newline numtabs (RightExpCopy leftExp _) =
-        prettyprinterAux newline numtabs leftExp
+    prettyprinterAux newline numtabs (RightExpCopy left_exp pos ty parent_env errors) =
+        prettyprinterAux newline numtabs left_exp
 
 instance PrettyPrinterClass [RightExp] where
     prettyprinterAux newline numtabs expressions =
         stringPrettyConcat False numtabs expressions ", " "separator" newline
 
 instance PrettyPrinterClass LeftExp where
-    prettyprinterAux newline numtabs (LeftExpIdent id _) =
+    prettyprinterAux newline numtabs (LeftExpIdent id pos ty env errors) =
         prettyprinterAux newline numtabs id
-    prettyprinterAux newline numtabs (LeftExpArrayAccess name position _) =
-        prettyprinterAux newline numtabs name                               ++
+    prettyprinterAux newline numtabs (LeftExpArrayAccess array_name array_locations lexp_type pos env errors) =
+        prettyprinterAux newline numtabs array_name                         ++
         "["                                                                 ++
-        prettyprinterAux False numtabs position                             ++
+        prettyprinterAux False numtabs array_locations                      ++
         "]"
-    prettyprinterAux newline numtabs (LeftExpPointerValue leftExp _) =
-        prettyprinterAux newline numtabs leftExp                            ++
+    prettyprinterAux newline numtabs (LeftExpPointerValue left_exp pos left_exp_ty env errors) =
+        prettyprinterAux newline numtabs left_exp                           ++
         "^"
-    prettyprinterAux newline numtabs (LeftExpPointerAddress leftExp _) =
-        prettyprinterAux newline numtabs leftExp                            ++
+    prettyprinterAux newline numtabs (LeftExpPointerAddress left_exp pos left_exp_ty env errors) =
+        prettyprinterAux newline numtabs left_exp                           ++
         "@"
 
+instance PrettyPrinterClass Assign where
+    prettyprinterAux newline numtabs (VariableAssignment left_exp right_exp pos env errors) =
+        prettyprinterAux newline numtabs left_exp                           ++
+        ":= "                                                               ++
+        prettyprinterAux False numtabs right_exp  
+
 instance PrettyPrinterClass WritePrimitive where
-    prettyprinterAux newline numtabs (WriteInt rightexp _) =
+    prettyprinterAux newline numtabs (WriteInt right_exp pos env errors) =
         ident newline numtabs "writeInt ("                                  ++
-        prettyprinterAux False numtabs rightexp                             ++
+        prettyprinterAux False numtabs right_exp                             ++
         ") "
-    prettyprinterAux newline numtabs (WriteReal rightexp _) =
+    prettyprinterAux newline numtabs (WriteReal right_exp pos env errors) =
         ident newline numtabs "writeReal ("                                 ++
-        prettyprinterAux False numtabs rightexp                             ++
+        prettyprinterAux False numtabs right_exp                             ++
         ") "
-    prettyprinterAux newline numtabs (WriteChar rightexp _) =
+    prettyprinterAux newline numtabs (WriteChar right_exp pos env errors) =
         ident newline numtabs "writeChar ("                                 ++
-        prettyprinterAux False numtabs rightexp                             ++
+        prettyprinterAux False numtabs right_exp                             ++
         ") "
-    prettyprinterAux newline numtabs (WriteString rightexp _) =
+    prettyprinterAux newline numtabs (WriteString right_exp pos env errors) =
         ident newline numtabs "writeString ("                               ++
-        prettyprinterAux False numtabs rightexp                             ++
+        prettyprinterAux False numtabs right_exp                             ++
         ") "
 
 instance PrettyPrinterClass ReadPrimitive where
-    prettyprinterAux newline numtabs (ReadInt leftexp _) =
+    prettyprinterAux newline numtabs (ReadInt left_exp pos env errors) =
         ident newline numtabs "readInt ("                                   ++
-        prettyprinterAux False numtabs leftexp                              ++
+        prettyprinterAux False numtabs left_exp                              ++
         ") "
-    prettyprinterAux newline numtabs (ReadReal leftexp _) =
+    prettyprinterAux newline numtabs (ReadReal left_exp pos env errors) =
         ident newline numtabs "readReal ("                                  ++
-        prettyprinterAux False numtabs leftexp                              ++
+        prettyprinterAux False numtabs left_exp                              ++
         ") "
-    prettyprinterAux newline numtabs (ReadChar leftexp _) =
+    prettyprinterAux newline numtabs (ReadChar left_exp pos env errors) =
         ident newline numtabs "readChar ("                                  ++
-        prettyprinterAux False numtabs leftexp                              ++
+        prettyprinterAux False numtabs left_exp                              ++
         ") "
-    prettyprinterAux newline numtabs (ReadString leftexp _) =
+    prettyprinterAux newline numtabs (ReadString left_exp pos env errors) =
         ident newline numtabs "readString ("                                ++
-        prettyprinterAux False numtabs leftexp                              ++
+        prettyprinterAux False numtabs left_exp                              ++
         ") "
 
 instance PrettyPrinterClass Type where
@@ -357,21 +348,21 @@ instance PrettyPrinterClass Type where
         ident newline numtabs "char"
     prettyprinterAux newline numtabs (StringType) =
         ident newline numtabs "string"
-    prettyprinterAux newline numtabs (ArrayType tipo (dimension:[])) =
+    prettyprinterAux newline numtabs (ArrayType array_type (dimension:[])) =
         ident newline numtabs "array ["                                     ++
         show (fst dimension)                                                ++
         ".."                                                                ++
         show (snd dimension)                                                       ++
         "] of "                                                             ++
-        prettyprinterAux False numtabs tipo
-    prettyprinterAux newline numtabs (ArrayType tipo (dimension:dimensions)) =
+        prettyprinterAux False numtabs array_type
+    prettyprinterAux newline numtabs (ArrayType array_type (dimension:dimensions)) =
         ident newline numtabs "array ["                                     ++
         show (fst dimension)                                                       ++
         ".."                                                                ++
         show (snd dimension)                                                       ++
         foldl (\a (x,y) -> ", " ++ show x ++ ".." ++ show y) "" dimensions                ++
         "] of "                                                             ++
-        prettyprinterAux False numtabs tipo
-    prettyprinterAux newline numtabs (PointerType tipo) =
+        prettyprinterAux False numtabs array_type
+    prettyprinterAux newline numtabs (PointerType pointer_type) =
         ident newline numtabs "^"                                           ++
-        prettyprinterAux False numtabs tipo
+        prettyprinterAux False numtabs pointer_type

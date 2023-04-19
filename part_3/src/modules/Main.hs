@@ -6,6 +6,7 @@ module Main where
 -- import qualified PrettyPrinter
 import qualified Parser             as Par
 import qualified LexGrammar         as Lex
+import qualified PrettyPrinter      as Printer
 import ErrM
 import TAC
 
@@ -43,12 +44,14 @@ testami test = do
     putStr "\n\n"
 
     -- Lexing
+    putStrLn "Lexing"
     let lex = Lex.tokens input
     putStrLn "lexer output:"
     putStrLn $ show lex
     putStrLn ""
 
     -- Parsing
+    putStrLn "Parsing"
     let par = Par.pProgram lex
     putStrLn "parser output:"
     putStr $ pretty_printer_dummy $ printAst par
@@ -56,24 +59,27 @@ testami test = do
     putStrLn ""
     
     -- PrettyPrinter
-    -- let pretty = PrettyPrinter.prettyprinter par
-    -- putStrLn "pretty print of abstract syntax:"
-    -- putStrLn pretty
-    -- putStrLn ""
+    putStrLn "PrettyPrinter"
+    let pretty = Printer.prettyprinter par
+    putStrLn "pretty print of abstract syntax:"
+    putStrLn pretty
+    putStrLn ""
 
-    -- let out_dir = "src/test_files/temp/"
-    -- let out_file = out_dir ++ "pretty_print_" ++ test ++ ".pas"
+    let out_dir = "src/test_files/temp/"
+    let out_file = out_dir ++ "pretty_print_" ++ test ++ ".pas"
 
-    -- -- PrettyPrinter to file
-    -- putStrLn "checking if output of pretty printer is correctly lexed and parser..."
-    -- writeFile out_file pretty
+    -- PrettyPrinter to file
+    putStrLn "checking if output of pretty printer is correctly lexed and parser..."
+    writeFile out_file pretty
 
-    -- -- Repeat for test PrettyPrinter
-    -- input <- readFile out_file
-    -- let output = Par.pProgram $ Lex.tokens input
-    -- -- putStrLn $ PrettyPrinter.prettyprinter output
+    -- Repeat for test PrettyPrinter
+    putStrLn "Repeat for test PrettyPrinter"
+    input <- readFile out_file
+    let output = Par.pProgram $ Lex.tokens input
+    putStrLn $ Printer.prettyprinter output
 
     -- TAC Generation
+    putStrLn "TAC Generation"
     let tac = TAC.generate_tac $ (\ (Just x) -> x) (getAst par)
     putStr $ TAC.pretty_printer_tac tac
 
@@ -85,17 +91,4 @@ main = do
     test <- getLine
     
     testami test
-
-    -- input <- readFile "src/test/test_for.pas"
-
-    -- putStr input
-
-    -- putStrLn "Lexing and Parsing... \n"
-
-    -- let output = Par.pProgram $ Lex.tokens input
-
-    -- putStrLn "OK on abstract sintax: \n"
-    -- putStrLn $ show output
-
-    -- PrettyPrinter.pprint output
 

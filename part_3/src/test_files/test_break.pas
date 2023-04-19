@@ -1,5 +1,5 @@
 program forLoop;
 
 begin
-   continue := 5;
+   break;
 end.

@@ -17,6 +17,9 @@ errMsgDifferentRet varname r1 r2 pos = printPos pos ++ "The function " ++ (show 
 errMsgNotImplemented :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgNotImplemented s pos = "In the block " ++ printPos pos ++ (show s) ++ " is forward declared but not implemented"
 
+errMsgReturnNotSet :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgReturnNotSet s pos = "Inside any block of the function " ++ printPos pos ++ (show s) ++ " there is no return statement for this function"
+
 errMsgWrongFunctionType :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgWrongFunctionType s pos = printPos pos ++ (show s) ++ " is forward declared but the types of the parameters and/or the return are different"
 
@@ -32,8 +35,8 @@ errMsgNotCompatible t1 t2 pos = printPos pos ++ (show t1) ++ " is not compatible
 errMsgReturnNotCompatible :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgReturnNotCompatible t pos = printPos pos ++ "Return type is not compatible with type " ++ (show t)
 
-errMsgInternalErr :: [Char]
-errMsgInternalErr = "Unexpected internal error"
+errMsgInternalErr :: (Int, Int) -> [Char]
+errMsgInternalErr pos = printPos pos ++ "Unexpected internal error"
 
 errMsgAlreadyDeclared :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgAlreadyDeclared id pos = printPos pos ++ "The name " ++ (show id) ++ " is already declared in this scope"
