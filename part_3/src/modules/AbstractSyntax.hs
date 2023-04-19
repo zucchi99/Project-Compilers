@@ -45,9 +45,9 @@ data Statement
     | StatementAssign                       { assign :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementFuncProcCall                 { call_name :: Ident, call_params :: [RightExp], statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementWrite                        { write_primitive :: WritePrimitive, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    | StatementRead                         { read_primitive :: ReadPrimitive, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementBreak                        { statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementContinue                     { statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
-    | StatementRead                         { read_primitive :: ReadPrimitive, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     deriving (Show)
 
 data ElseBlock = ElseBlock                  { else_body :: Statement, else_block_pos :: (Int, Int), else_block_env :: E.Env, else_block_errors :: [String] }
