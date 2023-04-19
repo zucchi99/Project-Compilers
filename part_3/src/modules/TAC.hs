@@ -326,19 +326,24 @@ gen_tac_of_StatementBlock state cur_blck stmt = (state, cur_blck)
 
 -- StatementIf { condition :: RightExp, then_body :: Statement, else_body_maybe :: Maybe ElseBlock, statement_pos :: (Int, Int), statement_ :: , statement_errors :: [String] }
 gen_tac_of_StatementIf state cur_blck stmt =
-    let else_blck       = (AS.else_body_maybe stmt)
+    let maybe_else_body = (AS.else_body_maybe stmt)
         -- create temp blocks: block-else (also if there is no else block, easier to code), block-next
-        s2              = add_temp_block (add_temp_block s1 []) []
-        block_else      = get_name_of_last_ith_temp_block state 1
-        block_next      = get_name_of_last_ith_temp_block state 0
+        s1              = add_temp_block (add_temp_block state []) []
+        block_else      = get_name_of_last_ith_temp_block s1 1
+        block_next      = get_name_of_last_ith_temp_block s1 0
         -- generate code for condition 
-        (s1, Just cond_addr) = gen_tac_of_RightExp state cur_blck block_next (AS.condition stmt)
-        -- add if statement and body
-        s3              = out s2 cur_blck (JumpIfFalse block_else cond_addr)
+        (s2, maybe_addr) = gen_tac_of_RightExp s1 cur_blck block_next (AS.condition stmt)
+        -- if cond_addr is given, add instruction : if_false cond_addr then goto block_else
+        -- else : no instruction needed (and / or is present) ==> already handled goto
+        s3               = case maybe_addr of
+                                Nothing      -> s2
+                                Just cond_addr -> out s2 cur_blck (JumpIfFalse { goto = block_else, cond = cond_addr })
+        -- add if body
         (s4, cur_blck1) = gen_tac_of_Statement s3 cur_blck (AS.then_body stmt)
-        s5              = out s4 cur_blck1 (Jump block_next)
+        -- add goto next (skip else body)
+        s5              = out s4 cur_blck1 (Jump { goto = block_next })
         -- add else statement and body
-        (s6, _)    = gen_tac_of_ElseBlock s5 block_else else_blck
+        (s6, _)    = gen_tac_of_ElseBlock s5 block_else maybe_else_body
     in (s6, block_next)
 
 -- data ElseBlock = ElseBlock { else_body :: Statement, else_block_pos :: (Int, Int), else_block_env :: E.Env, else_block_errors :: [String] }}
@@ -416,6 +421,7 @@ gen_tac_of_binary_arithm_operators :: State -> String -> String -> AS.RightExp -
 gen_tac_of_binary_arithm_operators state cur_blck nxt_blck op = gen_tac_of_binary_operators state cur_blck nxt_blck op to_primitive_arithm_binary_operator BinaryArithmAssignment
 
 -- binary logical operator OR
+gen_tac_of_RightExpOr :: State -> String -> String -> AS.RightExp -> AS.RightExp -> (State, Maybe Address)
 gen_tac_of_RightExpOr state cur_blck nxt_blck sx dx =
     let s1                  = add_temp_block state [] -- add temp block to check dx if sx is false
         b_if_sx_is_false    = get_name_of_last_ith_temp_block s1 0
@@ -427,8 +433,7 @@ gen_tac_of_RightExpOr state cur_blck nxt_blck sx dx =
         rght_instr          = JumpIfFalse { goto = nxt_blck, cond = addr_dx }
         s5                  = out s4 cur_blck rght_instr
     in (s5, Nothing)
-
-
+    
 ----------------------------------------------------------------------------------------------------------------------------
 
 pretty_printer_tac :: State -> String
