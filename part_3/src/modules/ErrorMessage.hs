@@ -75,7 +75,7 @@ errMsgWrongReadPrimitiveType :: (Show a1, Show a2) => a1 -> a2 -> (Int, Int) -> 
 errMsgWrongReadPrimitiveType t1 t2 pos = printPos pos ++ "A 'Read' primitive of " ++ (show t1) ++ " type is used, but it's trying to assign a " ++ (show t2) ++ " type"
 
 errMsgRelationNotBool :: (Show a1, Show a2) => a1 -> a2 -> (Int, Int) -> [Char]
-errMsgRelationNotBool t1 t2 pos = printPos pos ++ "A relation operation must be between booleans, but types " ++ (show t1) ++" and " ++ (show t1) ++ " are given"
+errMsgRelationNotBool t1 t2 pos = printPos pos ++ "A relation operation must be between booleans, but types " ++ (show t1) ++" and " ++ (show t2) ++ " are given"
 
 errMsgNotArray :: (Int, Int) -> [Char]
 errMsgNotArray pos = printPos pos ++ "The type is not an array"
@@ -87,7 +87,7 @@ errMsgWrongArrayIndex :: (Int, Int) -> [Char]
 errMsgWrongArrayIndex pos = printPos pos ++ "The array index must be one or more integers, but different types are given"
 
 errMsgOperationNotPermitted :: (Show a1, Show a2) => a1 -> a2 -> String -> (Int, Int) -> [Char]
-errMsgOperationNotPermitted t1 t2 op pos = printPos pos ++ "A " ++ (show op) ++ " operation must be between compatible types, but types " ++ (show t1) ++" and " ++ (show t1) ++ " are given"
+errMsgOperationNotPermitted t1 t2 op pos = printPos pos ++ "A " ++ (show op) ++ " operation must be between compatible types, but types " ++ (show t1) ++" and " ++ (show t2) ++ " are given"
 
 errMsgUnaryOperationNotPermitted :: (Show a) => a -> [a] -> String -> (Int, Int) -> [Char]
 errMsgUnaryOperationNotPermitted t possible_types op pos = printPos pos ++ "A unary" ++ (show op) ++ " operation must be applied only to allowd types (" ++ allowd_types ++ "), but type " ++ (show t) ++ " is given" 
@@ -95,6 +95,9 @@ errMsgUnaryOperationNotPermitted t possible_types op pos = printPos pos ++ "A un
 
 errMsgAssignToProc :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgAssignToProc t pos = printPos pos ++ "Procedure " ++ (show t) ++ " can't assign values"
+
+errMsgAssignToConst :: (Int, Int) -> [Char]
+errMsgAssignToConst pos = printPos pos ++ " It's not possible to assign a value to a const"
 
 errMsgWrongParams :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgWrongParams t pos = printPos pos ++ "Wrong parameters for function " ++ (show t)

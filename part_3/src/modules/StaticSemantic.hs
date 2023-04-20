@@ -113,7 +113,7 @@ get_sx_dx_errors_right_exp :: RightExp -> RightExp -> E.Env -> (RightExp, RightE
 get_sx_dx_errors_right_exp sx dx p_env = 
     let new_sx = staticsemanticAux (sx {right_exp_env = p_env})
         new_dx = staticsemanticAux (dx {right_exp_env = p_env})
-        errors = (right_exp_errors sx) ++ (right_exp_errors dx)
+        errors = (right_exp_errors new_sx) ++ (right_exp_errors new_dx)
     in (new_sx, new_dx, errors)
 
 apply_coercion :: T.Type -> RightExp -> RightExp
@@ -147,7 +147,7 @@ check_math_op sx dx pos parent_env name_op =
                 sup_type    |  (T.all_same_type [sup_type, dx_type, sx_type]) -> (sx_checked, dx_checked, sup_type, [])
                             -- Altrimenti, bisogna fare il cast del nodo con il tipo "non T.sup"
                             -- In questo caso il nodo dx è quello che deve essere castato
-                            |  sup_type /= sx_type -> (sx_checked, (apply_coercion sup_type dx_checked), sup_type, [])
+                            |  sup_type /= dx_type -> (sx_checked, (apply_coercion sup_type dx_checked), sup_type, [])
                             |  otherwise           -> ((apply_coercion sup_type sx_checked), dx_checked, sup_type, [])
 
         -- concateno gli errori
@@ -197,18 +197,20 @@ instance StaticSemanticClass Block where
             -- env in questo caso è l'enviroment da cui vogliamo iniziare a fare il merge
             -- così facendo è possibile aggiungere le dichiarazioni dei parametri o aggiungere i break e i continue
             -- parto dall'env e aggiungo le dichiarazioni
-        let decls_checked = staticsemanticAux $ map (\x -> x {declaration_env = env}) decls
+        let decls_checked = staticsemanticAux decls
             (env_aft_decls, errs_aft_decls) = case decls_checked of
                 []  -> (env, [])
                 xs  -> (declaration_env (last xs), foldl (\acc x -> acc ++ (declaration_errors x)) [] xs)
 
             -- controllo che tutte le forward declaration siano state definite -> altrimenti errore
             errs_forw_decls = map (\x -> Err.errMsgNotImplemented x pos) (E.getForward env_aft_decls)
+            -- dopo le segno come definite, altrimenti ogni blocco innestato le riconosce come forward e ritorna errore
+            env_aft_update = E.updateForward env_aft_decls
 
             -- una volta finite le dichiarazioni del blocco, faccio il merge con il blocco padre 
             -- conserva le dichiarazioni di ambo i blocchi, ma se ci sono dichiarazioni con lo stesso id tiene quelle del blocco figlio
             -- Ogni statement può modificare l'env, ma non può aggiugnere nuove dichiarazioni
-            env_before_stmts = E.merge env_aft_decls env
+            env_before_stmts = E.merge env_aft_update env
             stmts_checked = staticsemanticAux $ map (\x -> x {statement_env = env_before_stmts}) stmts
             (env_aft_stmts, errs_aft_stmts) = case stmts_checked of
                 []  -> (env, [])
@@ -340,8 +342,10 @@ instance StaticSemanticClass Statement where
         in (StatementBlock block_checked pos env (errors ++ (block_errors block_checked)))
 
     staticsemanticAux (StatementIf cond then_body maybe_else_body pos env errors) =
+            -- eseguo la condizione
+        let cond_checked = staticsemanticAux (cond {right_exp_env = env})
             -- Controllo che la condizione sia booleana
-        let cond_errors = mkIfErrs (right_exp_type cond) (right_exp_pos cond)
+            cond_errors = mkIfErrs (right_exp_type cond_checked) (right_exp_pos cond_checked)
             
             -- Controllo che il then_body sia corretto
             then_body_checked = staticsemanticAux (then_body {statement_env = env})
@@ -357,7 +361,7 @@ instance StaticSemanticClass Statement where
 
             -- Concateno gli errori
             errors_tot = errors ++ cond_errors ++ then_errors ++ else_errors
-        in (StatementIf cond then_body_checked else_body_checked pos env errors_tot)
+        in (StatementIf cond_checked then_body_checked else_body_checked pos env errors_tot)
 
     staticsemanticAux x@(StatementFor cond then_body var pos env errors) = x
         -- DA SISTEMARE
@@ -370,8 +374,10 @@ instance StaticSemanticClass Statement where
         -- in
 
     staticsemanticAux (StatementWhile cond then_body pos env errors) =
+            -- eseguo la condizione
+        let cond_checked = staticsemanticAux (cond {right_exp_env = env})
             -- Controllo che la condizione sia booleana
-        let cond_errors = mkIfErrs (right_exp_type cond) (right_exp_pos cond)
+            cond_errors = mkIfErrs (right_exp_type cond_checked) (right_exp_pos cond_checked)
             
             -- Aggiungo le dichiarazioni dei break e dei continue all'enviroment
             env_with_break_continue = add_break_continue env
@@ -381,11 +387,13 @@ instance StaticSemanticClass Statement where
             body_errors = statement_errors body_checked
 
             errors_tot = errors ++ cond_errors ++ body_errors
-        in (StatementWhile cond body_checked pos env errors_tot)
+        in (StatementWhile cond_checked body_checked pos env errors_tot)
 
     staticsemanticAux (StatementRepeatUntil cond then_body pos env errors) =
+            -- eseguo la condizione
+        let cond_checked = staticsemanticAux (cond {right_exp_env = env})
             -- Controllo che la condizione sia booleana
-        let cond_errors = mkIfErrs (right_exp_type cond) (right_exp_pos cond)
+            cond_errors = mkIfErrs (right_exp_type cond_checked) (right_exp_pos cond_checked)
             
             -- Aggiungo le dichiarazioni dei break e dei continue all'enviroment
             env_with_break_continue = add_break_continue env
@@ -395,7 +403,7 @@ instance StaticSemanticClass Statement where
             body_errors = statement_errors body_checked
 
             errors_tot = errors ++ cond_errors ++ body_errors
-        in (StatementRepeatUntil cond body_checked pos env errors_tot)
+        in (StatementRepeatUntil cond_checked body_checked pos env errors_tot)
 
     staticsemanticAux (StatementAssign assign pos env errors) =
         let assign_checked = staticsemanticAux (assign {assign_env = env})
@@ -677,6 +685,7 @@ instance StaticSemanticClass LeftExp where
         let (left_type, env_type, error_type) = case E.lookup env (id_name id) of
                 Nothing                     -> (T.ErrorType, env, [Err.errMsgNotDeclared id pos])
                 Just (E.VarEntry ty_ret)    -> (ty_ret, env, [])
+                Just (E.ConstEntry ty_ret)  -> (ty_ret, env, [])
                 -- Posso cambiare qua dentro lo stato di changed, visto che sto sicuramente sovrascrivvendo il valore nell'env SOLO IN CASO DI ASSIGN
                 -- Infatti, dalle altre parti in cui viene valutato LeftExpIdent, l'env non viene passato al blocco padre
                 Just fun_entry@(E.FunEntry _ ty_ret _ True _)    -> (ty_ret, E.addVar env (id_name id) (fun_entry {E.changed = True}), [])
@@ -723,6 +732,10 @@ instance StaticSemanticClass Assign where
     staticsemanticAux (VariableAssignment left_exp right_exp pos env errors) =
             -- Controllo che la left_exp sia corretta
         let lexp_checked = staticsemanticAux (left_exp {left_exp_env = env})
+            -- controllo che la lexp non sia una costante
+            -- COME POSSO FARE A SAPERE SE LA LEXP È UNA COSTANTE??
+
+
             -- Controllo che la right_exp sia corretta
             rexp_checked = staticsemanticAux (right_exp {right_exp_env = env})
             -- Controllo che left_exp e right_exp abbiano lo stesso tipo

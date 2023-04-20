@@ -1,14 +1,19 @@
 program Hello;
 
 var x : integer;
+    a : string;
 
-function  p() : integer; begin end;
-procedure g(); begin end;
+
 
 begin
+    function  p() : string; begin 
+    p:= "ciao";
+    end;
+    procedure g(); begin end;
     begin 
         x := 0;
         g();
-        p();
-    end
+        a := p();
+    end;
+    a := p();
 end.

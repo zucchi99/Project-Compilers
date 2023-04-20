@@ -2,40 +2,42 @@ program Hello;
 const x = 2.0;
 var a, b : integer;
 var j : integer;
+procedure t(); forward;
 procedure f(); 
     procedure g();
     var a : integer;
     begin 
         a := -1;
-        writeln(a);         
-        writeln('g'); 
+        // writeln(a);         
+        // writeln('g'); 
     end; 
 begin;
     g();
-    writeln('f');
+    // writeln('f');
 end;
 begin
-  a := 2;
+  a := x + 2;
+  x := 2;
   if (x > 2) then
   begin
-  writeln ("Hello World 2")
+  // writeln ("Hello World 2")
   end
   else
   begin
-      writeln(a);
+      // writeln(a);
       begin
           a := 4;
           f();
       end;
-      writeln(a);
+      // writeln(a);
   end;
   for j := 0 to 5 do
   begin
-    writeln(j);
+    // writeln(j);
   end;
   for j := 0 to 5 do
   begin
-    writeln(j);
+    // writeln(j);
   end
 end.
 
