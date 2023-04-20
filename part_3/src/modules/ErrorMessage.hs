@@ -20,6 +20,9 @@ errMsgNotImplemented s pos = "In the block " ++ printPos pos ++ (show s) ++ " is
 errMsgReturnNotSet :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgReturnNotSet s pos = "Inside any block of the function " ++ printPos pos ++ (show s) ++ " there is no return statement for this function"
 
+errMsgReturnOutsideFunction :: String -> (Int, Int) -> [Char]
+errMsgReturnOutsideFunction id pos = printPos pos ++ "The Return statement of function " ++ (show id) ++ " is outside its block"
+
 errMsgWrongFunctionType :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgWrongFunctionType s pos = printPos pos ++ (show s) ++ " is forward declared but the types of the parameters and/or the return are different"
 

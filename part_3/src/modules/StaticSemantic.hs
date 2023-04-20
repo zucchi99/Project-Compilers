@@ -151,6 +151,11 @@ check_math_op sx dx pos parent_env name_op =
         errors_tot = merged_errors ++ errs_plus_not_permitted
     in (sx_coerc, dx_coerc, math_type, errors_tot)
 
+need_coerc :: T.Type -> T.Type -> Bool
+need_coerc T.RealType T.IntegerType = True
+need_coerc _ _ = False
+
+
 -- keyword can be "break" or "continue"
 {- checkLoop :: String -> E.Env -> [String]
 checkLoop keyword env
@@ -647,10 +652,21 @@ instance StaticSemanticClass [RightExp] where
 instance StaticSemanticClass LeftExp where
     -- Controllo che l'id sia presente nell'env e che sia una variabile (altrimenti non avrebbe senso assegnare qualcosa)
     staticsemanticAux (LeftExpIdent id pos ty env errors) = 
-        case E.lookup env (id_name id) of
-            Nothing -> (LeftExpIdent id pos T.ErrorType env (errors ++ [Err.errMsgNotDeclared id pos]))
-            Just (E.VarEntry ty_ret) -> (LeftExpIdent id pos ty_ret env errors)
-            Just _ -> (LeftExpIdent id pos T.ErrorType env (errors ++ [Err.errAssignToLeftExpr id pos]))
+            -- Controllo che l'id sia presente nell'env
+        let (left_type, env_type, error_type) = case E.lookup env (id_name id) of
+                Nothing                     -> (T.ErrorType, env, [Err.errMsgNotDeclared id pos])
+                Just (E.VarEntry ty_ret)    -> (ty_ret, env, [])
+                -- Posso cambiare qua dentro lo stato di changed, visto che sto sicuramente sovrascrivvendo il valore nell'env SOLO IN CASO DI ASSIGN
+                -- Infatti, dalle altre parti in cui viene valutato LeftExpIdent, l'env non viene passato al blocco padre
+                Just fun_entry@(E.FunEntry _ ty_ret _ True _)    -> (ty_ret, E.addVar env (id_name id) (fun_entry {E.changed = True}), [])
+                -- Non posso assegnare al nome di una procedura se sono fuori dal suo blocco
+                Just fun_entry@(E.FunEntry _ ty_ret _ False _)   -> (T.ErrorType, env, [Err.errMsgReturnOutsideFunction (id_name id) pos])
+                -- Se è una costante o una procedure, non posso assegnare nulla
+                _                           -> (T.ErrorType, env, [Err.errAssignToLeftExpr id pos])
+
+            -- concateno gli errori
+            errors_tot = errors ++ error_type
+        in (LeftExpIdent id pos left_type env_type errors_tot)
 
     staticsemanticAux (LeftExpArrayAccess array_name array_locations lexp_type pos env errors) =
         -- DA SISTEMARE
@@ -684,9 +700,13 @@ instance StaticSemanticClass Assign where
             rexp_checked = staticsemanticAux (right_exp {right_exp_env = env})
             -- Controllo che left_exp e right_exp abbiano lo stesso tipo
             err_different_types = mkAssignErrs (left_exp_type lexp_checked) (right_exp_type rexp_checked) pos
+            -- controllo se right_exp ha bisogno di una coercion
+            rexp_checked_coerced = case need_coerc (left_exp_type lexp_checked) (right_exp_type rexp_checked) of
+                True    -> apply_coercion (T.sup (left_exp_type lexp_checked) (right_exp_type rexp_checked)) rexp_checked
+                False   -> rexp_checked
             -- Concateno gli errori
             errors_tot = errors ++ (left_exp_errors lexp_checked) ++ (right_exp_errors rexp_checked) ++ err_different_types
-        in (VariableAssignment lexp_checked rexp_checked pos env errors_tot)
+        in (VariableAssignment lexp_checked rexp_checked_coerced pos (left_exp_env lexp_checked) errors_tot)
     
 instance StaticSemanticClass WritePrimitive where
     staticsemanticAux (WriteInt right_exp pos env errors) =
