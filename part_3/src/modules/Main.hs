@@ -7,6 +7,7 @@ module Main where
 import qualified Parser             as Par
 import qualified LexGrammar         as Lex
 import qualified PrettyPrinter      as Printer
+import qualified StaticSemantic     as Static
 import ErrM
 import TAC
 
@@ -77,6 +78,16 @@ testami test = do
     input <- readFile out_file
     let output = Par.pProgram $ Lex.tokens input
     putStrLn $ Printer.prettyprinter output
+
+    -- Static Semantic
+    putStrLn "Static Semantic"
+    let static = Static.staticsemanticcheck par
+
+    let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
+    writeFile out_file $ show static
+
+    -- let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
+    -- writeFile out_file $ pretty_printer_dummy $ show static
 
     -- TAC Generation
     putStrLn "TAC Generation"

@@ -169,9 +169,10 @@ checkLoop keyword env
 -- __________________________ STATIC SEMANTIC ANALISYS
 staticsemanticcheck x = case x of
     -- parse successful
-    (ErrM.Ok a)    -> intercalate "\n\n" $ program_errors $ staticsemanticAux a
+    -- (ErrM.Ok a)    -> intercalate "\n\n" $ program_errors $ staticsemanticAux a
+    (ErrM.Ok a)    -> staticsemanticAux a
     -- parse error
-    (ErrM.Bad err) -> err
+    (ErrM.Bad err) -> (ProgramStart (Ident "CJOSUL" (-1,-1) E.emptyEnv []) (Block [] [] (-1,-1) E.emptyEnv []) (-1,-1) E.emptyEnv [])
 
 -- __________________________ STATIC SEMANTIC CLASSES
 class StaticSemanticClass a where
@@ -216,7 +217,7 @@ instance StaticSemanticClass Block where
             -- concat all errors
             tot_errors = errors ++ errs_aft_decls ++ errs_forw_decls ++ errs_aft_stmts
 
-        in (Block decls stmts pos env_aft_stmts tot_errors)
+        in (Block decls_checked stmts_checked pos env_aft_stmts tot_errors)
 
 instance StaticSemanticClass Declaration where
     staticsemanticAux (DeclarationCostant id maybe_type value pos env errors) = 
