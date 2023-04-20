@@ -20,6 +20,9 @@ errMsgNotImplemented s pos = "In the block " ++ printPos pos ++ (show s) ++ " is
 errMsgReturnNotSet :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgReturnNotSet s pos = "Inside any block of the function " ++ printPos pos ++ (show s) ++ " there is no return statement for this function"
 
+errMsgReturnOutsideFunction :: String -> (Int, Int) -> [Char]
+errMsgReturnOutsideFunction id pos = printPos pos ++ "The Return statement of function " ++ (show id) ++ " is outside its block"
+
 errMsgWrongFunctionType :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgWrongFunctionType s pos = printPos pos ++ (show s) ++ " is forward declared but the types of the parameters and/or the return are different"
 
@@ -43,6 +46,9 @@ errMsgAlreadyDeclared id pos = printPos pos ++ "The name " ++ (show id) ++ " is 
 
 errMsgNotDeclared :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgNotDeclared id pos = printPos pos ++ "The name " ++ (show id) ++ " is not declared in this scope"
+
+errMsgNotFunctionProcedure :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgNotFunctionProcedure id pos = printPos pos ++ "The object " ++ (show id) ++ " is not a function or procedure"
 
 --errMsgArrIdxNotInt t = errMsgUnexpectedType "Array indexes" T.IntegerType t
 --errMsgGuardNotBool t = errMsgUnexpectedType "Guard" T.BooleanType t
@@ -70,6 +76,15 @@ errMsgWrongReadPrimitiveType t1 t2 pos = printPos pos ++ "A 'Read' primitive of 
 
 errMsgRelationNotBool :: (Show a1, Show a2) => a1 -> a2 -> (Int, Int) -> [Char]
 errMsgRelationNotBool t1 t2 pos = printPos pos ++ "A relation operation must be between booleans, but types " ++ (show t1) ++" and " ++ (show t1) ++ " are given"
+
+errMsgNotArray :: (Int, Int) -> [Char]
+errMsgNotArray pos = printPos pos ++ "The type is not an array"
+
+errMsgWrongArrayDim :: (Int, Int) -> [Char]
+errMsgWrongArrayDim pos = printPos pos ++ "The array access has not the right dimension"
+
+errMsgWrongArrayIndex :: (Int, Int) -> [Char]
+errMsgWrongArrayIndex pos = printPos pos ++ "The array index must be one or more integers, but different types are given"
 
 errMsgOperationNotPermitted :: (Show a1, Show a2) => a1 -> a2 -> String -> (Int, Int) -> [Char]
 errMsgOperationNotPermitted t1 t2 op pos = printPos pos ++ "A " ++ (show op) ++ " operation must be between compatible types, but types " ++ (show t1) ++" and " ++ (show t1) ++ " are given"
