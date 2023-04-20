@@ -328,12 +328,15 @@ make_start_end_label is_start = if (is_start) then "start" else "end"
 generate_tac :: AS.Program -> State
 generate_tac (AS.ProgramStart _ code pos _ _) = 
     let (main_name, state) = initialize_state pos
-    in reverse_TAC $ gen_tac_of_Block state main_name code
+    in reverse_TAC $ fst $ gen_tac_of_Block state main_name code
 
 --{ block_declarations :: [Declaration], statements :: [Statement], block_pos :: (Int, Int), block_env :: E.Env, block_errors :: [String] }
-gen_tac_of_Block :: State -> String -> AS.Block -> State
-gen_tac_of_Block state cur_blck (AS.Block []        []        pos   _   _  ) = out state cur_blck (Comment $ "end of block?" ++ (print_row_col pos))
-gen_tac_of_Block state cur_blck (AS.Block (x:decls) stmts     pos env err) = gen_tac_of_Block state cur_blck (AS.Block [] stmts pos env err) --todo
+gen_tac_of_Block :: State -> String -> AS.Block -> (State, String)
+gen_tac_of_Block state cur_blck (AS.Block []        []        pos   _   _  ) = 
+    let s10 = out state cur_blck (Comment $ "end of block?" ++ (print_row_col pos))
+    in  (s10, cur_blck)
+gen_tac_of_Block state cur_blck (AS.Block (x:decls) stmts     pos env err) = 
+    gen_tac_of_Block state cur_blck (AS.Block [] stmts pos env err) --todo
 gen_tac_of_Block state cur_blck (AS.Block []        (x:stmts) pos env err) = 
     let (s10, cur_blck1) = gen_tac_of_Statement state cur_blck x
     in  gen_tac_of_Block s10 cur_blck1 (AS.Block [] stmts pos env err) 
@@ -341,6 +344,7 @@ gen_tac_of_Block state cur_blck (AS.Block []        (x:stmts) pos env err) =
 --________________________________ Statement __________________________________________
 
 -- Statement wrapper
+gen_tac_of_Statement :: State -> String -> AS.Statement -> (State, String)
 gen_tac_of_Statement state cur_blck stmt = gen_tac_fun state cur_blck stmt
     where gen_tac_fun = case stmt of
             (AS.StatementBlock {})          -> gen_tac_of_StatementBlock
@@ -355,7 +359,8 @@ gen_tac_of_Statement state cur_blck stmt = gen_tac_fun state cur_blck stmt
             (AS.StatementContinue {})       -> gen_tac_of_StatementContinue
             (AS.StatementRead {})           -> gen_tac_of_StatementRead
 
-gen_tac_of_StatementBlock state cur_blck stmt = (state, cur_blck)
+gen_tac_of_StatementBlock :: State -> String -> AS.Statement -> (State, String)
+gen_tac_of_StatementBlock state cur_blck blck_stmt = gen_tac_of_Block state cur_blck (AS.block blck_stmt)
 
 -- StatementIf { condition :: RightExp, then_body :: Statement, else_body_maybe :: Maybe ElseBlock, statement_pos :: (Int, Int), statement_ :: , statement_errors :: [String] }
 gen_tac_of_StatementIf state cur_blck if_stmt =
@@ -370,18 +375,21 @@ gen_tac_of_StatementIf state cur_blck if_stmt =
         s14             = out s10 block_then (Comment $ "start of THEN " ++ block_then ++ " added by" ++ show_stmt)
         s15             = out s14 block_else (Comment $ "start of ELSE " ++ block_else ++ " added by" ++ show_stmt)
         s16             = out s15 block_next (Comment $ "start of NEXT " ++ block_next ++ " added by" ++ show_stmt)
+        s17             = out s16 block_else (Comment $ "is ELSE block empty? " ++ (show $ isNothing maybe_else_body))
         -- generate code for condition 
-        (s20, maybe_addr) = gen_tac_of_RightExp s16 cur_blck block_then block_else (AS.condition if_stmt)
+        (s20, maybe_addr) = gen_tac_of_RightExp s17 cur_blck block_then block_else (AS.condition if_stmt)
         -- if cond_addr is given, add instruction : if_false cond_addr then goto block_else
         -- else : no instruction needed (and / or is present) ==> already handled goto
         s30              = out_jumpIf_if_address_is_given s20 cur_blck block_else maybe_addr JumpIfFalse
         -- add then body
-        (s40, cur_blck1) = gen_tac_of_Statement s30 block_then (AS.then_body if_stmt)
+        (s40, cur_blck_then) = gen_tac_of_Statement s30 block_then (AS.then_body if_stmt)
         -- add goto next (skip else body)
-        s50              = out s40 cur_blck1 (Jump { goto = block_next })
+        s50              = out s40 cur_blck_then (Jump { goto = block_next })
         -- add else statement and body
-        (s60, _)         = gen_tac_of_ElseBlock s50 block_else maybe_else_body
-    in (s60, block_next)
+        (s60, cur_blck_else) = gen_tac_of_ElseBlock s50 block_else maybe_else_body
+        -- add goto next (necessary only if elseBlock has added blocks betweem else and next blocks )
+        s70              = out s60 cur_blck_else (Jump { goto = block_next })
+    in (s70, block_next)
 
 -- data ElseBlock = ElseBlock { else_body :: Statement, else_block_pos :: (Int, Int), else_block_env :: E.Env, else_block_errors :: [String] }}
 gen_tac_of_ElseBlock state cur_blck Nothing          = (state, cur_blck)
@@ -459,6 +467,10 @@ gen_tac_of_LeftExp state cur_blck l_exp =
         (AS.LeftExpArrayAccess {})     -> (state, prim_type, AddressTempVar "todo")
         (AS.LeftExpPointerValue {})    -> (state, prim_type, AddressTempVar "todo")
         (AS.LeftExpPointerAddress {})  -> (state, prim_type, AddressTempVar "todo")
+
+isNothing :: Maybe a -> Bool
+isNothing Nothing = True
+isNothing _       = False
 
 --________________________________ Right Expression __________________________________________
 
