@@ -83,11 +83,11 @@ testami test = do
     putStrLn "Static Semantic"
     let static = Static.staticsemanticcheck par
 
-    let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
-    writeFile out_file $ show static
-
     -- let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
-    -- writeFile out_file $ pretty_printer_dummy $ show static
+    -- writeFile out_file $ show static
+
+    let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
+    writeFile out_file $ pretty_printer_dummy $ show static
 
     -- TAC Generation
     putStrLn "TAC Generation"
