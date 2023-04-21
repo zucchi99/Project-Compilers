@@ -603,21 +603,30 @@ instance StaticSemanticClass RightExp where
         in (RightExpPower sx_coerc dx_coerc pos math_type parent_env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpNot dx pos ty parent_env errors) =
-            -- Controllo che dx sia booleano
-        let dx_checked = staticsemanticAux (dx {right_exp_env = parent_env})
-            err_unary_not_permitted = case right_exp_type dx_checked of
-                T.BooleanType   -> []
-                res_type        -> [Err.errMsgUnaryOperationNotPermitted res_type [T.BooleanType] "not" pos]
-            -- concateno gli errori
-            errors_tot = errors ++ (right_exp_errors dx_checked) ++ err_unary_not_permitted
             -- Gestione del NOT per il TAC: per evitare di valutare i booleani lazy con not(x op.bool y) nel TAC, eliminamo il not e invertiamo l'operatore
             -- (not ( x or y ))  ----> ((not x) and (not y))
             -- (not ( x and y )) ----> ((not x)  or (not y))
-            right_exp_to_return = case dx_checked of
-                RightExpOr  sx_or  dx_or  _ _ _ _     -> RightExpAnd (apply_not sx_or) (apply_not dx_or) pos T.BooleanType parent_env errors
-                RightExpAnd sx_and dx_and _ _ _ _     -> RightExpOr  (apply_not sx_and) (apply_not dx_and) pos T.BooleanType parent_env errors
-                _                                     -> (RightExpNot dx_checked pos T.BooleanType parent_env errors_tot)
-        in right_exp_to_return
+        let dx_new = case dx of
+                RightExpOr  sx_or  dx_or  p t e er  -> RightExpAnd (apply_not sx_or)  (apply_not dx_or)  p t e er
+                RightExpAnd sx_and dx_and p t e er  -> RightExpOr  (apply_not sx_and) (apply_not dx_and) p t e er
+                right_exp                           -> right_exp
+
+            -- Analisi di semantica statica su dx_new
+            dx_checked = staticsemanticAux (dx_new {right_exp_env = parent_env})
+            -- Controllo che dx_new sia booleano
+            err_unary_not_permitted = case right_exp_type dx_checked of
+                T.BooleanType   -> []
+                res_type        -> [Err.errMsgUnaryOperationNotPermitted res_type [T.BooleanType] "not" pos]
+
+            -- concateno gli errori
+            errors_tot = errors ++ (right_exp_errors dx_checked) ++ err_unary_not_permitted
+
+            new_right_exp_checked = case dx_new of
+                RightExpOr  _ _ _ _ _ _ -> dx_checked
+                RightExpAnd _ _ _ _ _ _ -> dx_checked
+                _                       -> RightExpNot dx_checked pos T.BooleanType parent_env errors_tot
+
+        in new_right_exp_checked
 
     staticsemanticAux (RightExpMinusUnary dx pos ty parent_env errors) =
             -- Controllo che dx sia un math type permesso

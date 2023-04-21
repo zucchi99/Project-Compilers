@@ -4,6 +4,6 @@ var
     a,b : integer;
 begin
     begin 
-        x := 2 = 2 and 3 = "tanto" and "ciao" = 4;
+        x := not (true and "false" and true);
     end;
 end.
