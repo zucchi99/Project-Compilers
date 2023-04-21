@@ -669,7 +669,7 @@ instance StaticSemanticClass RightExp where
     staticsemanticAux (RightExpCopy left_exp pos ty parent_env errors) =
             -- Controllo che left_exp sia corretto
         let left_exp_checked = staticsemanticAux (left_exp {left_exp_env = parent_env})
-        in (RightExpCopy left_exp pos (left_exp_type left_exp_checked) parent_env (errors ++ (left_exp_errors left_exp_checked)))
+        in (RightExpCopy left_exp_checked pos (left_exp_type left_exp_checked) parent_env (errors ++ (left_exp_errors left_exp_checked)))
 
     -- staticsemanticAux coerc@(RightExpCoercion main_re from_type to_type pos ty parent_env errors) = coerc
     -- La funzione non viene implementata in questo caso, visto che naturalmente non esisterà mai 
@@ -734,7 +734,6 @@ instance StaticSemanticClass Assign where
         let lexp_checked = staticsemanticAux (left_exp {left_exp_env = env})
             -- controllo che la lexp non sia una costante
             -- COME POSSO FARE A SAPERE SE LA LEXP È UNA COSTANTE??
-
 
             -- Controllo che la right_exp sia corretta
             rexp_checked = staticsemanticAux (right_exp {right_exp_env = env})
