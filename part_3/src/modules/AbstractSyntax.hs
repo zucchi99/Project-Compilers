@@ -98,6 +98,12 @@ data WritePrimitive
     | WriteString                           { write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String] }
     deriving (Show)
 
+make_label_WritePrimitive :: WritePrimitive -> String
+make_label_WritePrimitive (WriteInt {})     = "write_int"
+make_label_WritePrimitive (WriteReal {})    = "write_real"
+make_label_WritePrimitive (WriteChar {})    = "write_char"
+make_label_WritePrimitive (WriteString {})  = "write_string"
+
 data ReadPrimitive
     = ReadInt                               { read_exp :: LeftExp, read_primitive_pos :: (Int, Int), read_primitive_env :: E.Env, read_primitive_errors :: [String] }
     | ReadReal                              { read_exp :: LeftExp, read_primitive_pos :: (Int, Int), read_primitive_env :: E.Env, read_primitive_errors :: [String] }
@@ -105,3 +111,8 @@ data ReadPrimitive
     | ReadString                            { read_exp :: LeftExp, read_primitive_pos :: (Int, Int), read_primitive_env :: E.Env, read_primitive_errors :: [String] }
     deriving (Show)
 
+make_label_ReadPrimitive :: ReadPrimitive -> String
+make_label_ReadPrimitive (ReadInt {})     = "read_int"
+make_label_ReadPrimitive (ReadReal {})    = "read_real"
+make_label_ReadPrimitive (ReadChar {})    = "read_char"
+make_label_ReadPrimitive (ReadString {})  = "read_string"
