@@ -245,14 +245,21 @@ add_many_empty_temp_block :: State -> Int -> State
 add_many_empty_temp_block state 0 = state
 add_many_empty_temp_block state n = add_many_empty_temp_block (add_temp_block state []) (n-1)
 
--- add a temp empty block in the middle of the tac, after b_before
+-- add 1+ temp empty block in the middle of the tac, after b_before
 -- NB less efficient
-
 add_many_blocks_after_given_block :: State -> String -> Int -> State
 add_many_blocks_after_given_block (State tac str tmp_i bck_i str_i) b_before n =
     let bck_i'  = bck_i + n
         tac'    = insert_in_list tac b_before bck_i n     
     in  (State tac' str tmp_i bck_i' str_i)
+
+add_blocks_then_else_next :: State -> String -> (State, String, String, String)
+add_blocks_then_else_next state b_before =
+    let s00 = add_many_blocks_after_given_block state b_before 3
+        block_then      = get_name_of_last_ith_temp_block s00 2
+        block_else      = get_name_of_last_ith_temp_block s00 1
+        block_next      = get_name_of_last_ith_temp_block s00 0
+    in (s00, block_then, block_else, block_next)
 
 insert_in_list :: [Block] -> String -> Int -> Int -> [Block]
 insert_in_list tac b_before bck_i n = insert_in_list_aux tac b_before (create_many_empty_temp_blocks n bck_i) where
@@ -300,6 +307,12 @@ add_string state str =
     in state { strings = strings', str_idx = str_idx' }
     
 -- ____________________________ LABELS ________________________________________
+
+block_TBD :: String
+block_TBD = "BLOCK_TO_BE_DEFINED"
+
+is_block_TBD :: String -> Bool
+is_block_TBD b_name = b_name == block_TBD
 
 make_ident_var_label :: String -> (Int, Int) -> String
 make_ident_var_label name pos = name ++ "?" ++ (print_row_col pos)
@@ -364,20 +377,17 @@ gen_tac_of_StatementBlock state cur_blck blck_stmt = gen_tac_of_Block state cur_
 
 -- StatementIf { condition :: RightExp, then_body :: Statement, else_body_maybe :: Maybe ElseBlock, statement_pos :: (Int, Int), statement_ :: , statement_errors :: [String] }
 gen_tac_of_StatementIf state cur_blck if_stmt =
-    let show_stmt        = " if statement declared at " ++ (print_row_col $ AS.statement_pos if_stmt)
-        s00             = out state cur_blck (Comment $ "start of" ++ show_stmt)
+    let --show_stmt        = " if statement declared at " ++ (print_row_col $ AS.statement_pos if_stmt)
+        --s00             = out state cur_blck (Comment $ "start of" ++ show_stmt)
         maybe_else_body = (AS.else_body_maybe if_stmt)
         -- create temp blocks: block-then, block-else (also if there is no else block, easier to code), block-next
-        s10             = add_many_blocks_after_given_block s00 cur_blck 3
-        block_then      = get_name_of_last_ith_temp_block s10 2
-        block_else      = get_name_of_last_ith_temp_block s10 1
-        block_next      = get_name_of_last_ith_temp_block s10 0
-        s14             = out s10 block_then (Comment $ "start of THEN " ++ block_then ++ " added by" ++ show_stmt)
-        s15             = out s14 block_else (Comment $ "start of ELSE " ++ block_else ++ " added by" ++ show_stmt)
-        s16             = out s15 block_next (Comment $ "start of NEXT " ++ block_next ++ " added by" ++ show_stmt)
-        s17             = out s16 block_else (Comment $ "is ELSE block empty? " ++ (show $ isNothing maybe_else_body))
+        (s10, block_then, block_else, block_next) = add_blocks_then_else_next state cur_blck
+        --s14             = out s10 block_then (Comment $ "start of THEN " ++ block_then ++ " added by" ++ show_stmt)
+        --s15             = out s14 block_else (Comment $ "start of ELSE " ++ block_else ++ " added by" ++ show_stmt)
+        --s16             = out s15 block_next (Comment $ "start of NEXT " ++ block_next ++ " added by" ++ show_stmt)
+        --s17             = out s16 block_else (Comment $ "is ELSE block empty? " ++ (show $ isNothing maybe_else_body))
         -- generate code for condition 
-        (s20, maybe_addr) = gen_tac_of_RightExp s17 cur_blck block_then block_else (AS.condition if_stmt)
+        (s20, maybe_addr) = gen_tac_of_RightExp s10 cur_blck block_then block_else (AS.condition if_stmt)
         -- if cond_addr is given, add instruction : if_false cond_addr then goto block_else
         -- else : no instruction needed (and / or is present) ==> already handled goto
         s30              = out_jumpIf_if_address_is_given s20 cur_blck block_else maybe_addr JumpIfFalse
@@ -407,33 +417,30 @@ gen_tac_of_StatementAssign state cur_blck stmt = gen_tac_of_VariableAssignment s
 
 -- data Assign = VariableAssignment { left_exp_assignment :: LeftExp, right_exp_assignment :: RightExp, assign_pos :: (Int, Int), assign_env :: E.Env, assign_errors :: [String] }
 gen_tac_of_VariableAssignment state cur_blck assgn_stmt = 
-    let s00         = out state cur_blck (Comment $ "start of variable assignment declared at " ++ (print_row_col $ AS.assign_pos assgn_stmt))
+    let -- s00         = out state cur_blck (Comment $ "start of variable assignment declared at " ++ (print_row_col $ AS.assign_pos assgn_stmt))
         r_exp       = (AS.right_exp_assignment assgn_stmt)
-        has_and_or  = r_exp_has_boolean_operators r_exp
-    in gen_tac_of_VariableAssignment_aux s00 cur_blck assgn_stmt has_and_or
+        has_and_or  = r_exp_has_binary_boolean_operators r_exp
+    in gen_tac_of_VariableAssignment_aux state cur_blck assgn_stmt has_and_or
 
 gen_tac_of_VariableAssignment_aux state cur_blck assgn_stmt True = 
-    let show_stmt       = " assignment declared at " ++ (print_row_col $ AS.assign_pos assgn_stmt)
-        s00             = out state cur_blck (Comment $ "start of" ++ show_stmt)
+    let --show_stmt       = " assignment declared at " ++ (print_row_col $ AS.assign_pos assgn_stmt)
+        --s00             = out state cur_blck (Comment $ "start of" ++ show_stmt)
         -- BEFORE RIGHT EXPRESSION
         r_exp         = (AS.right_exp_assignment assgn_stmt)
         -- generate 2 temp block only if r_exp is boolean and contains and/or
         -- NB first create else blck after then block (remember the reverse tac ad the end of generation)
-        s10             = add_many_blocks_after_given_block state cur_blck 3
-        blck_true       = get_name_of_last_ith_temp_block s10 2
-        blck_false      = get_name_of_last_ith_temp_block s10 1
-        block_next      = get_name_of_last_ith_temp_block s10 0
-        s14             = out s10 blck_true  (Comment $ "start of THEN " ++ blck_true  ++ " added by" ++ show_stmt)
-        s15             = out s14 blck_false (Comment $ "start of ELSE " ++ blck_false ++ " added by" ++ show_stmt)
-        s16             = out s15 block_next (Comment $ "start of NEXT " ++ block_next ++ " added by" ++ show_stmt)
+        (s10, blck_true, blck_false, block_next) = add_blocks_then_else_next state cur_blck
+        --s14             = out s10 blck_true  (Comment $ "start of THEN " ++ blck_true  ++ " added by" ++ show_stmt)
+        --s15             = out s14 blck_false (Comment $ "start of ELSE " ++ blck_false ++ " added by" ++ show_stmt)
+        --s16             = out s15 block_next (Comment $ "start of NEXT " ++ block_next ++ " added by" ++ show_stmt)
         -- if has_and_or=True ==> gen_tac_of_RightExp will return (state, Nothing)
-        (s20, Nothing) = gen_tac_of_RightExp s16 cur_blck blck_true blck_false r_exp
+        (s20, Nothing) = gen_tac_of_RightExp s10 cur_blck blck_true blck_false r_exp
         -- AFTER LEFT EXPRESSION
         l_exp         = (AS.left_exp_assignment assgn_stmt)
         (s30, t, l_addr)    = gen_tac_of_LeftExp s20 cur_blck l_exp
         -- add assignment code
         s40            = out s30 blck_true  (NullAssignment { l = l_addr, r = (AddressBool True),  assign_type = t })
-        s45            = out s40 blck_true (Jump { goto = block_next })
+        s45            = out s40 blck_true  (Jump { goto = block_next })
         s50            = out s45 blck_false (NullAssignment { l = l_addr, r = (AddressBool False), assign_type = t })
     in (s50, block_next)
 gen_tac_of_VariableAssignment_aux state cur_blck assgn_stmt False = 
@@ -450,7 +457,14 @@ gen_tac_of_VariableAssignment_aux state cur_blck assgn_stmt False =
 
 gen_tac_of_StatementFuncProcCall state cur_blck stmt = (state, cur_blck)
 
-gen_tac_of_StatementWrite state cur_blck stmt = (state, cur_blck)
+gen_tac_of_StatementWrite state cur_blck wrt_stmt = (state, cur_blck)
+{-
+    let prim_write      = (AS.write_primitive wrt_stmt)
+        s10             = add_many_blocks_after_given_block state cur_blck 2
+        blck_true       = get_name_of_last_ith_temp_block s10 2
+        blck_false      = get_name_of_last_ith_temp_block s10 1
+    in gen_tac_of_WritePrimitive s10 cur_blck blck_true blck_false prim_write
+-}
 
 gen_tac_of_StatementBreak state cur_blck stmt = (state, cur_blck)
 
@@ -469,13 +483,10 @@ gen_tac_of_LeftExp state cur_blck l_exp =
         (AS.LeftExpPointerValue {})    -> (state, prim_type, AddressTempVar "todo")
         (AS.LeftExpPointerAddress {})  -> (state, prim_type, AddressTempVar "todo")
 
-isNothing :: Maybe a -> Bool
-isNothing Nothing = True
-isNothing _       = False
-
 --________________________________ Right Expression __________________________________________
 
 -- Right Expression wrapper
+gen_tac_of_RightExp :: State -> String -> String -> String -> AS.RightExp -> (State, Maybe Address)
 gen_tac_of_RightExp state cur_blck blck_true blck_false r_exp =
     case r_exp of
         -- base case : literals
@@ -484,12 +495,11 @@ gen_tac_of_RightExp state cur_blck blck_true blck_false r_exp =
         (AS.RightExpBoolean {})         -> (state, Just $ AddressBool $ AS.right_exp_bool   r_exp)
         (AS.RightExpChar {})            -> (state, Just $ AddressChar $ AS.right_exp_char   r_exp)
         (AS.RightExpString {} )         -> ((add_string state (AS.right_exp_string r_exp)), Just $ AddressTempVar $ make_block_label $ StringBlockType (str_idx state))
-        -- unary boolean operators
-        -- NOT todo
+        -- unary boolean operator
+        (AS.RightExpNot {})             -> gen_tac_of_RightExpNot                 state cur_blck blck_true blck_false r_exp
         -- binary boolean operators
         (AS.RightExpOr {})              -> gen_tac_of_binary_logical_operators state cur_blck blck_true blck_false (AS.sx r_exp) (AS.dx r_exp) JumpIfTrue JumpIfFalse
         (AS.RightExpAnd {})             -> gen_tac_of_binary_logical_operators state cur_blck blck_false blck_true (AS.sx r_exp) (AS.dx r_exp) JumpIfFalse JumpIfTrue
-        -- AND todo
         -- binary arithmetic operators
         (AS.RightExpPlus {})            -> gen_tac_of_binary_arithm_operators     state cur_blck blck_true blck_false r_exp
         (AS.RightExpMinus {})           -> gen_tac_of_binary_arithm_operators     state cur_blck blck_true blck_false r_exp
@@ -505,19 +515,39 @@ gen_tac_of_RightExp state cur_blck blck_true blck_false r_exp =
         (AS.RightExpLessEqual {})       -> gen_tac_of_binary_relational_operators state cur_blck blck_true blck_false r_exp
         (AS.RightExpEqual {})           -> gen_tac_of_binary_relational_operators state cur_blck blck_true blck_false r_exp
 
-    
+gen_tac_of_RightExpNot :: State -> String -> String -> String -> AS.RightExp -> (State, Maybe Address)
+gen_tac_of_RightExpNot state cur_blck blck_true blck_false not_exp = 
+    let --s00         = out state cur_blck (Comment $ "start of NOT assignment declared at " ++ (print_row_col $ AS.right_exp_pos not_exp))
+        r_exp       = (AS.dx not_exp)
+        has_and_or  = r_exp_has_binary_boolean_operators not_exp
+    in gen_tac_of_RightExpNot_aux state cur_blck blck_true blck_false r_exp has_and_or
+
+gen_tac_of_RightExpNot_aux :: State -> String -> String -> String -> AS.RightExp -> Bool -> (State, Maybe Address)
+-- not needed the false case, we rewrite in the ss module (not ( x or y )) to ((not x) and (not y)), and same for (not ( x and y ))
+-- gen_tac_of_RightExpNot_aux state _        blck_true blck_false r_exp True = throw exception "not expected"
+gen_tac_of_RightExpNot_aux state cur_blck _         _         r_exp False = 
+    let (s10, Just addr) = gen_tac_of_RightExp state cur_blck "dummy" "dummy" r_exp
+        -- create temp variable to store not result
+        -- NB actually it is needed only for the cases: (not true), (not false)
+        -- in all other cases the addr returned is already a left address
+        (tmp_name, s20)  = add_temp_var s10
+        tmp_var          = (AddressTempVar tmp_name)
+        s30              = out s20 cur_blck (UnaryAssignment { l = tmp_var, r = addr, assign_type = TypeBool, un_op = Not })
+    in  (s30, Just tmp_var)
+
 -- both arithmetic and relational binary operators
 gen_tac_of_binary_operators :: State -> String -> String -> String -> AS.RightExp -> (AS.RightExp -> t) -> (Address -> Address -> Address -> PrimType -> t -> Instruction) -> (State, Maybe Address)
-gen_tac_of_binary_operators state cur_blck blck_true blck_false op to_primitive_op constructor = 
-    let (s10, Just r1) = gen_tac_of_RightExp state cur_blck blck_true blck_false (AS.sx op)
-        (s20, Just r2) = gen_tac_of_RightExp s10 cur_blck blck_true blck_false (AS.dx op)
+gen_tac_of_binary_operators state cur_blck blck_true blck_false r_exp to_primitive_op constructor = 
+    let bin_op          = to_primitive_op r_exp
+        --s00             = out state cur_blck (Comment $ "start of show bin_op declared at " ++ (print_row_col $ AS.right_exp_pos r_exp))
+        (s10, Just r1)  = gen_tac_of_RightExp state cur_blck blck_true blck_false (AS.sx r_exp)
+        (s20, Just r2)  = gen_tac_of_RightExp s10   cur_blck blck_true blck_false (AS.dx r_exp)
         (tmp_name, s30) = add_temp_var s20
-        tmp_var = (AddressTempVar tmp_name)
-        r_exp_type = (AS.right_exp_type op)
-        ass_type = if r_exp_type == T.TBDType then TypeBool else to_primitive_type r_exp_type
-        bin_op = to_primitive_op op
-        instr = (constructor tmp_var r1 r2 ass_type bin_op)
-        s40 = out s30 cur_blck instr
+        tmp_var         = (AddressTempVar tmp_name)
+        r_exp_type      = (AS.right_exp_type r_exp)
+        ass_type        = if r_exp_type == T.TBDType then TypeBool else to_primitive_type r_exp_type
+        instr           = (constructor tmp_var r1 r2 ass_type bin_op)
+        s40             = out s30 cur_blck instr
     in (s40, Just tmp_var)
 
 -- binary relational operators: <, <=, >, >=, =, !=
@@ -528,7 +558,7 @@ gen_tac_of_binary_relational_operators state cur_blck blck_true blck_false op = 
 gen_tac_of_binary_arithm_operators :: State -> String -> String -> String -> AS.RightExp -> (State, Maybe Address)
 gen_tac_of_binary_arithm_operators state cur_blck blck_true blck_false op = gen_tac_of_binary_operators state cur_blck blck_true blck_false op to_primitive_arithm_binary_operator BinaryArithmAssignment
 
--- binary logical operator OR
+-- binary logical operator: AND, OR
 gen_tac_of_binary_logical_operators :: State -> String -> String -> String -> AS.RightExp -> AS.RightExp -> (String -> Address -> Instruction) -> (String -> Address -> Instruction) -> (State, Maybe Address)
 gen_tac_of_binary_logical_operators state cur_blck blck_true blck_false sx dx fstJumpIf sndJumpIf =
     let -- generate code for left-exp
@@ -545,31 +575,45 @@ gen_tac_of_binary_logical_operators state cur_blck blck_true blck_false sx dx fs
 
 
 --________________________________ Read / Write Primitive ________________________________________
-    {-
-gen_tac_of_WritePrimitive state cur_blck prim = 
-    let (s10, maybe_addr) = gen_tac_of_RightExp state cur_blck blck_true blck_false r_exp
-    in
-    = WriteInt                              { write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String] }
-    | WriteReal                             { write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String] }
-    | WriteChar                             { write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String] }
-    | WriteString                           { write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String] }
+
+{-
+gen_tac_of_WritePrimitive :: State -> String -> String -> String -> AS.WritePrimitive -> State
+gen_tac_of_WritePrimitive state cur_blck blck_true blck_false prim_write = 
+    let r_exp           = (AS.write_exp prim_write)
+        prim_write_name = AS.make_label_WritePrimitive prim_write
+        has_and_or      = r_exp_has_binary_boolean_operators r_exp
+    in gen_tac_of_WritePrimitive_aux state cur_blck blck_true blck_false r_exp prim_write_name has_and_or
+
+gen_tac_of_WritePrimitive_aux :: State -> String -> String -> String -> AS.RightExp -> String -> Bool -> State
+gen_tac_of_WritePrimitive_aux state cur_blck blck_true blck_false r_exp prim_write_name False =
+    let (s10, Just addr) = gen_tac_of_RightExp state cur_blck blck_true blck_false r_exp
+        prim_type        = to_primitive_type (AS.right_exp_type r_exp)
+        s20              = out s10 cur_blck (Parameter { param = addr, param_type = prim_type })
+        s30              = out s20 cur_blck (ProcCall { p_name = prim_write_name, num_params = 1 })
+    in  s30
 -}
+
 --________________________________ Identifier ________________________________________
 
+gen_tac_of_Ident :: AS.Ident -> Address
 gen_tac_of_Ident ident = (AddressProgramVar $ make_ident_var_label (AS.id_name ident) (AS.ident_pos ident))
 
 -----------------------------------------------------------------------------------------------------------------------------
 
 -- ____________________________ AUX FUNCTIONS ________________________________________
 
-r_exp_has_boolean_operators :: AS.RightExp -> Bool
-r_exp_has_boolean_operators (AS.RightExpOr {})  = True 
-r_exp_has_boolean_operators (AS.RightExpAnd {}) = True
-r_exp_has_boolean_operators _                   = False
+r_exp_has_binary_boolean_operators :: AS.RightExp -> Bool
+r_exp_has_binary_boolean_operators (AS.RightExpOr {})  = True 
+r_exp_has_binary_boolean_operators (AS.RightExpAnd {}) = True
+r_exp_has_binary_boolean_operators _                   = False
 
 out_jumpIf_if_address_is_given :: State -> String -> String -> Maybe Address -> (String -> Address -> Instruction) -> State
 out_jumpIf_if_address_is_given state cur_blck goto_blck Nothing          constructor = state
 out_jumpIf_if_address_is_given state cur_blck goto_blck (Just cond_addr) constructor = out state cur_blck (constructor goto_blck cond_addr)
+
+isNothing :: Maybe a -> Bool
+isNothing Nothing = True
+isNothing _       = False
 
 ----------------------------------------------------------------------------------------------------------------------------
 
@@ -587,4 +631,3 @@ pretty_printer_string :: [ String ] -> String
 pretty_printer_string str = (pretty_printer_string_aux str 0) where
     pretty_printer_string_aux []     _ = "\n"
     pretty_printer_string_aux (x:xs) i = (make_block_label $ StringBlockType i) ++ ":\n   " ++ (show x) ++ "\n" ++ (pretty_printer_string_aux xs (i+1))
-
