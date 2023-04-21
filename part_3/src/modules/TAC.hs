@@ -388,7 +388,8 @@ gen_tac_of_StatementIf state cur_blck if_stmt =
         -- add else statement and body
         (s60, cur_blck_else) = gen_tac_of_ElseBlock s50 block_else maybe_else_body
         -- add goto next (necessary only if elseBlock has added blocks betweem else and next blocks )
-        s70              = out s60 cur_blck_else (Jump { goto = block_next })
+        --s65              = out s60 block_else (Comment $ "block_else: " ++ block_else ++ ", cur_blck_else: " ++ cur_blck_else ++ " equal?" ++ (show $ block_else == cur_blck_else))
+        s70              = if block_else == cur_blck_else then s60 else out s60 block_else (Jump { goto = block_next })
     in (s70, block_next)
 
 -- data ElseBlock = ElseBlock { else_body :: Statement, else_block_pos :: (Int, Int), else_block_env :: E.Env, else_block_errors :: [String] }}
@@ -486,7 +487,8 @@ gen_tac_of_RightExp state cur_blck blck_true blck_false r_exp =
         -- unary boolean operators
         -- NOT todo
         -- binary boolean operators
-        (AS.RightExpOr {})              -> gen_tac_of_RightExpOr state cur_blck blck_true blck_false (AS.sx r_exp) (AS.dx r_exp) 
+        (AS.RightExpOr {})              -> gen_tac_of_binary_logical_operators state cur_blck blck_true blck_false (AS.sx r_exp) (AS.dx r_exp) JumpIfTrue JumpIfFalse
+        (AS.RightExpAnd {})             -> gen_tac_of_binary_logical_operators state cur_blck blck_false blck_true (AS.sx r_exp) (AS.dx r_exp) JumpIfFalse JumpIfTrue
         -- AND todo
         -- binary arithmetic operators
         (AS.RightExpPlus {})            -> gen_tac_of_binary_arithm_operators     state cur_blck blck_true blck_false r_exp
@@ -527,16 +529,18 @@ gen_tac_of_binary_arithm_operators :: State -> String -> String -> String -> AS.
 gen_tac_of_binary_arithm_operators state cur_blck blck_true blck_false op = gen_tac_of_binary_operators state cur_blck blck_true blck_false op to_primitive_arithm_binary_operator BinaryArithmAssignment
 
 -- binary logical operator OR
-gen_tac_of_RightExpOr :: State -> String -> String -> String -> AS.RightExp -> AS.RightExp -> (State, Maybe Address)
-gen_tac_of_RightExpOr state cur_blck blck_true blck_false sx dx =
+gen_tac_of_binary_logical_operators :: State -> String -> String -> String -> AS.RightExp -> AS.RightExp -> (String -> Address -> Instruction) -> (String -> Address -> Instruction) -> (State, Maybe Address)
+gen_tac_of_binary_logical_operators state cur_blck blck_true blck_false sx dx fstJumpIf sndJumpIf =
     let -- generate code for left-exp
         (s20, may_sx_addr) = gen_tac_of_RightExp state cur_blck blck_true blck_false sx
-        -- if left is true ==> jump if true to blck_true
-        s30                = out_jumpIf_if_address_is_given s20 cur_blck blck_true may_sx_addr JumpIfTrue 
+        -- for OR:  if left is true  ==> jump if true  to blck_true
+        -- for AND: if left is false ==> jump if false to blck_false
+        s30                = out_jumpIf_if_address_is_given s20 cur_blck blck_true may_sx_addr fstJumpIf 
         -- generate code for right-exp
         (s40, may_dx_addr) = gen_tac_of_RightExp s30 cur_blck blck_true blck_false dx
-        -- if right is false ==> jump if false to blck_false
-        s50                = out_jumpIf_if_address_is_given s40 cur_blck blck_false may_dx_addr JumpIfFalse
+        -- for OR:  if right is false ==> jump if false to blck_false
+        -- for AND: if right is true  ==> jump if true  to blck_true
+        s50                = out_jumpIf_if_address_is_given s40 cur_blck blck_false may_dx_addr sndJumpIf
     in (s50, Nothing)
 
 
