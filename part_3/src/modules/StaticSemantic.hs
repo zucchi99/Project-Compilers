@@ -123,6 +123,14 @@ apply_coercion to_type main_r =
         errs = right_exp_errors main_r
     in RightExpCoercion main_r (right_exp_type main_r) to_type pos env errs
 
+apply_not ::  RightExp -> RightExp
+apply_not main_r = 
+    let ty = right_exp_type main_r
+        pos = right_exp_pos main_r
+        env = right_exp_env main_r
+        errs = right_exp_errors main_r
+    in RightExpNot main_r pos ty env errs
+
 create_params_for_func_proc :: [Declaration] -> [(String, T.Type)]
 create_params_for_func_proc params = map (\decl -> (id_name (variable_name decl), variable_type decl)) params
 
@@ -602,7 +610,14 @@ instance StaticSemanticClass RightExp where
                 res_type        -> [Err.errMsgUnaryOperationNotPermitted res_type [T.BooleanType] "not" pos]
             -- concateno gli errori
             errors_tot = errors ++ (right_exp_errors dx_checked) ++ err_unary_not_permitted
-        in (RightExpNot dx_checked pos T.BooleanType parent_env errors_tot)
+            -- Gestione del NOT per il TAC: per evitare di valutare i booleani lazy con not(x op.bool y) nel TAC, eliminamo il not e invertiamo l'operatore
+            -- (not ( x or y ))  ----> ((not x) and (not y))
+            -- (not ( x and y )) ----> ((not x)  or (not y))
+            right_exp_to_return = case dx_checked of
+                RightExpOr  sx_or  dx_or  _ _ _ _     -> RightExpAnd (apply_not sx_or) (apply_not dx_or) pos T.BooleanType parent_env errors
+                RightExpAnd sx_and dx_and _ _ _ _     -> RightExpOr  (apply_not sx_and) (apply_not dx_and) pos T.BooleanType parent_env errors
+                _                                     -> (RightExpNot dx_checked pos T.BooleanType parent_env errors_tot)
+        in right_exp_to_return
 
     staticsemanticAux (RightExpMinusUnary dx pos ty parent_env errors) =
             -- Controllo che dx sia un math type permesso
