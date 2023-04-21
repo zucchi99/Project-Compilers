@@ -82,7 +82,8 @@ data RightExp
     deriving (Show)
 
 data LeftExp
-    = LeftExpIdent                          { left_exp_name :: Ident , left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
+    = LeftExpIdent                          { left_exp_name :: Ident, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
+    | LeftExpConst                          { left_exp_name :: Ident, value :: E.ConstType, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
     | LeftExpArrayAccess                    { array_name :: LeftExp, array_pos :: [RightExp], left_exp_type :: T.Type, left_exp_pos  :: (Int, Int), left_exp_env :: E.Env, left_exp_errors :: [String] }
     | LeftExpPointerValue                   { pointer_value :: LeftExp, left_exp_pos  :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
     | LeftExpPointerAddress                 { pointer_address :: LeftExp, left_exp_pos  :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
@@ -98,18 +99,18 @@ data WritePrimitive
     | WriteString                           { write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String] }
     deriving (Show)
 
-make_label_WritePrimitive :: WritePrimitive -> String
-make_label_WritePrimitive (WriteInt {})     = "write_int"
-make_label_WritePrimitive (WriteReal {})    = "write_real"
-make_label_WritePrimitive (WriteChar {})    = "write_char"
-make_label_WritePrimitive (WriteString {})  = "write_string"
-
 data ReadPrimitive
     = ReadInt                               { read_exp :: LeftExp, read_primitive_pos :: (Int, Int), read_primitive_env :: E.Env, read_primitive_errors :: [String] }
     | ReadReal                              { read_exp :: LeftExp, read_primitive_pos :: (Int, Int), read_primitive_env :: E.Env, read_primitive_errors :: [String] }
     | ReadChar                              { read_exp :: LeftExp, read_primitive_pos :: (Int, Int), read_primitive_env :: E.Env, read_primitive_errors :: [String] }
     | ReadString                            { read_exp :: LeftExp, read_primitive_pos :: (Int, Int), read_primitive_env :: E.Env, read_primitive_errors :: [String] }
     deriving (Show)
+
+make_label_WritePrimitive :: WritePrimitive -> String
+make_label_WritePrimitive (WriteInt {})     = "write_int"
+make_label_WritePrimitive (WriteReal {})    = "write_real"
+make_label_WritePrimitive (WriteChar {})    = "write_char"
+make_label_WritePrimitive (WriteString {})  = "write_string"
 
 make_label_ReadPrimitive :: ReadPrimitive -> String
 make_label_ReadPrimitive (ReadInt {})     = "read_int"

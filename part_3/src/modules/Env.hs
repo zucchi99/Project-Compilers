@@ -11,11 +11,19 @@ import Data.Maybe
 
 data Env = Env { env :: Map.Map String EnvEntry} deriving (Show)
 
+data ConstType = 
+    IntConst        { value_int :: Int }
+    | RealConst     { value_double :: Double }
+    | BoolConst     { value_bool :: Bool }
+    | StringConst   { value_string :: String }
+    | CharConst     { value_char :: Char }
+    deriving (Show)
+
 data EnvEntry 
-    = VarEntry { ty :: T.Type } 
-    | ConstEntry { ty :: T.Type }
-    | FunEntry { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool }
-    | ProcEntry { params :: [(String, T.Type)], forward :: Bool  }
+    = VarEntry      { ty :: T.Type } 
+    | ConstEntry    { ty :: T.Type, const_value :: ConstType }
+    | FunEntry      { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool }
+    | ProcEntry     { params :: [(String, T.Type)], forward :: Bool  }
     deriving (Show)
 
 instance Eq EnvEntry where

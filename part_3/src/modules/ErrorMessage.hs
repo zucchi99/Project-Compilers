@@ -96,11 +96,17 @@ errMsgUnaryOperationNotPermitted t possible_types op pos = printPos pos ++ "A un
 errMsgAssignToProc :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgAssignToProc t pos = printPos pos ++ "Procedure " ++ (show t) ++ " can't assign values"
 
-errMsgAssignToConst :: (Int, Int) -> [Char]
-errMsgAssignToConst pos = printPos pos ++ " It's not possible to assign a value to a const"
+errMsgAssignToConst :: String -> (Int, Int) -> [Char]
+errMsgAssignToConst id pos = printPos pos ++ (show id) ++ ": It's not possible to assign a value to const " 
+
+errMsgConstLimit :: String -> (Int, Int) -> [Char]
+errMsgConstLimit id pos = printPos pos ++ (show id) ++ ": A const can only be an integer, a char, a string, a boolean or a real " 
 
 errMsgWrongParams :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgWrongParams t pos = printPos pos ++ "Wrong parameters for function " ++ (show t)
+
+errMsgCostNotPointArray :: String -> (Int, Int) -> String
+errMsgCostNotPointArray id pos = printPos pos ++ (show id) ++ ": A costant can't be an array or a pointer"
 
 printPos :: (Int, Int) -> [Char]
 printPos (l, c) = "At line " ++ (show l) ++ ", column " ++ (show c) ++ ": \n\t"

@@ -82,10 +82,10 @@ testami test = do
     -- Static Semantic
     putStrLn "Static Semantic"
     let static = Static.staticsemanticcheck par
+    putStrLn "Static semantic output:"
+    Static.static_semantic_errors static
 
-    -- let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
-    -- writeFile out_file $ show static
-
+    -- Static Semantic Debug
     let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
     writeFile out_file $ pretty_printer_dummy $ show static
 

@@ -31,13 +31,10 @@ begin
       end;
       // writeln(a);
   end;
-  for j := 0 to 5 do
+  while (a > 0) do
   begin
-    // writeln(j);
+      a := a - 1;
+      // writeln(a);
   end;
-  for j := 0 to 5 do
-  begin
-    // writeln(j);
-  end
 end.
 
