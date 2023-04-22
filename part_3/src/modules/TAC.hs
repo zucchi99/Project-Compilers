@@ -557,7 +557,9 @@ gen_tac_of_RightExpFuncProcCall state cur_blck r_exp = (state, cur_blck, (Addres
 
 --TODO
 -- RightExpLeftExp { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-gen_tac_of_RightExpLeftExp state cur_blck r_exp = (state, cur_blck, (AddressTempVar "TODO"))
+gen_tac_of_RightExpLeftExp state cur_blck r_exp = 
+    let (s10, prim_type, address) = gen_tac_of_LeftExp state cur_blck (AS.left_exp_right_exp r_exp)
+    in (s10, cur_blck, address)
 
 --TODO
 -- RightExpCoercion { right_exp_coercion :: RightExp, right_exp_from_type :: T.Type, right_exp_to_type :: T.Type, right_exp_pos :: (Int, Int), right_exp_env :: E.Env, right_exp_errors :: [String] }
