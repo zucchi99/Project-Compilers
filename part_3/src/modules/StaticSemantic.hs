@@ -230,7 +230,7 @@ static_semantic_check x =
 
 static_semantic_errors :: Err Program -> String
 static_semantic_errors x = case x of
-    (ErrM.Ok a)    -> "The Static Semantic analaysis doesn't found any error \n"
+    (ErrM.Ok a)    -> "The Static Semantic analysis did not found any error\n"
     (ErrM.Bad err) -> "\n" ++ err ++ "\n"    
 
 -- __________________________ STATIC SEMANTIC CLASSES

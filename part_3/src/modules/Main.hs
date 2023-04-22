@@ -64,11 +64,16 @@ testami test = do
     writeFile out_file $ Printer.pretty_print_ast (ErrM.Ok static) "ident"
 
     -- TAC Generation
-    -- putStrLn "TAC Generation"
-    -- let tac = TAC.generate_tac static
-    -- putStr $ TAC.pretty_printer_tac tac
+    putStrLn "TAC Generation"
+    let just_tac = case static of
+            (ErrM.Ok program) -> Just $ TAC.generate_tac program
+            (ErrM.Bad err)    -> Nothing
+    
+    putStr $ case just_tac of
+        Nothing   -> ""
+        Just tac  -> TAC.pretty_printer_tac tac
 
-    putStrLn "check successful!"
+    putStrLn "end"
 
 main = do
 
