@@ -369,7 +369,7 @@ gen_tac_of_Block state cur_blck (AS.Block (d:decls) stmts     pos env err) =
     let (s10, cur_blck1) = case d of 
             -- only string to be actually treated
             (AS.DeclarationCostant {})      -> gen_tac_of_DeclarationCostant   state cur_blck d
-            --(AS.DeclarationVariable {})     -> gen_tac_of_DeclarationVariable  state cur_blck d
+            (AS.DeclarationVariable {})     -> gen_tac_of_DeclarationVariable  state cur_blck d
             --(AS.DeclarationFunction {})     -> gen_tac_of_DeclarationFunction  state cur_blck d
             --(AS.DeclarationProcedure {})    -> gen_tac_of_DeclarationProcedure state cur_blck d
     in gen_tac_of_Block s10 cur_blck1 (AS.Block decls stmts pos env err)
@@ -379,8 +379,8 @@ gen_tac_of_Block state cur_blck (AS.Block []        (x:stmts) pos env err) =
     let (s10, cur_blck1) = gen_tac_of_Statement state cur_blck x
     in  gen_tac_of_Block s10 cur_blck1 (AS.Block [] stmts pos env err) 
 
+--________________________________ Declaration __________________________________________
 
--- { costant_name :: Ident, costant_type_maybe :: Maybe T.Type, costant_value :: RightExp, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
 gen_tac_of_DeclarationCostant state cur_blck declaration = 
     let value = (AS.costant_value declaration)
     in  case value of
@@ -390,6 +390,16 @@ gen_tac_of_DeclarationCostant state cur_blck declaration =
                 s20                       = add_to_string_constants_list s10 ident_name address
             in  (s20, cur_blck1)
         _   -> (state, cur_blck)
+
+gen_tac_of_DeclarationVariable state cur_blck declaration =
+    case (AS.variable_value_maybe declaration) of
+        Nothing         -> (state, cur_blck)
+        Just assgn_stmt ->
+            let t                         = to_primitive_type (AS.variable_type declaration)
+                l_addr                    = gen_tac_of_Ident (AS.variable_name declaration)
+                (s10, cur_blck10, r_addr) = gen_tac_of_RightExp state cur_blck assgn_stmt
+                s20                       = out s10 cur_blck10 (NullAssignment { l = l_addr, r = r_addr, assign_type = t })
+            in (s20, cur_blck10)
 
 --________________________________ Statement __________________________________________
 
