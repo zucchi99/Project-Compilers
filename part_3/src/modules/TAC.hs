@@ -147,6 +147,7 @@ data Block = Block {
 data State = State { 
     tac                          :: [ Block ],
     strings                      :: [ String ],
+    string_constants             :: [ (String, Address) ], -- map : string constant identifier -> AddressTempVar of the string
     temp_idx, block_idx, str_idx :: Int
 } deriving (Show)
 
@@ -166,14 +167,14 @@ empty_block :: Block
 empty_block = (Block "" [])
 
 empty_state :: State
-empty_state = (State [] [] 0 0 0)
+empty_state = (State [] [] [] 0 0 0)
 
 initialize_state :: (Int, Int) -> (String, State)
 initialize_state main_pos = 
     let start_name = make_block_label StartBlockType
         main_type  = (MainBlockType main_pos True)
         main_name  = make_block_label main_type
-        s          = add_block (State [] [] 0 0 0) StartBlockType []
+        s          = add_block empty_state StartBlockType []
         s10         = add_block s main_type []
         s20         = out s10 start_name (Jump main_name)
     in  (main_name, s20)
@@ -206,16 +207,16 @@ to_primitive_type _             = TypeAddr
 
 -- reverse list of blocks and reverse each block list of instructions
 reverse_TAC :: State -> State
-reverse_TAC (State t str tmp_i bck_i str_i) = (State (reverse $ map (\ (Block n c) -> (Block n (reverse c))) t) (reverse str) tmp_i bck_i str_i)
+reverse_TAC (State t str const tmp_i bck_i str_i) = (State (reverse $ map (\ (Block n c) -> (Block n (reverse c))) t) (reverse str) const tmp_i bck_i str_i)
 
 -- check if block is already present in TAC
 lookup :: State -> String -> Maybe Block
-lookup (State [] _ _ _ _) _ = Nothing
-lookup (State (x:xs) str tmp_i bck_i str_i) cur_blck = 
+lookup (State [] _ _ _ _ _) _ = Nothing
+lookup (State (x:xs) str const tmp_i bck_i str_i) cur_blck = 
     let (Block cur_name _) = x in
         if cur_name == cur_blck
         then Just x
-        else TAC.lookup (State xs str tmp_i bck_i str_i) cur_blck
+        else TAC.lookup (State xs str const tmp_i bck_i str_i) cur_blck
 
 -- add instruction to tac inside given block, create new temp block if block was not present
 out :: State -> String -> Instruction -> State
@@ -248,10 +249,10 @@ add_many_empty_temp_block state n = add_many_empty_temp_block (add_temp_block st
 -- add 1+ temp empty block in the middle of the tac, after b_before
 -- NB less efficient
 add_many_blocks_after_given_block :: State -> String -> Int -> State
-add_many_blocks_after_given_block (State tac str tmp_i bck_i str_i) b_before n =
+add_many_blocks_after_given_block (State tac str const tmp_i bck_i str_i) b_before n =
     let bck_i'  = bck_i + n
         tac'    = insert_in_list tac b_before bck_i n     
-    in  (State tac' str tmp_i bck_i' str_i)
+    in  (State tac' str const tmp_i bck_i' str_i)
 
 add_blocks_then_else_next :: State -> String -> (State, String, String, String)
 add_blocks_then_else_next state b_before =
@@ -292,7 +293,7 @@ get_name_of_last_ith_temp_block state i = make_block_label (TempBlockType ((bloc
 
 -- update a block inside tac, inefficient: O(|blocks|)
 update_block :: State -> Block -> String -> State
-update_block (State t str tmp_i bck_i str_i) b cur_blck = (State (update_block_aux t b cur_blck) str tmp_i bck_i str_i) where
+update_block (State t str const tmp_i bck_i str_i) b cur_blck = (State (update_block_aux t b cur_blck) str const tmp_i bck_i str_i) where
     update_block_aux []     _ cur_blck = [ (Block ("Internal error: block " ++ cur_blck ++ " not found") []) ]
     update_block_aux (x:xs) b cur_blck = 
         let (Block cur_name _) = x in
@@ -305,6 +306,21 @@ add_string state str =
     let strings' = (str:(strings state))
         str_idx' = ((str_idx state)+1)
     in state { strings = strings', str_idx = str_idx' }
+
+    
+add_to_string_constants_list :: State -> String -> Address -> State
+add_to_string_constants_list state string address = 
+    let string_constants' = (string, address):(string_constants state)
+        s' = state { string_constants = string_constants' }
+    in  s'
+
+get_address_from_string_constant :: State -> String -> Address
+get_address_from_string_constant (State _ _ []                _ _ _) ident = (AddressTempVar "internal error identifier not found")
+get_address_from_string_constant (State t str ((name, addr):xs) tmp_i bck_i str_i) ident =
+    if name == ident 
+        then addr
+        else get_address_from_string_constant (State t str xs tmp_i bck_i str_i) ident   
+
     
 -- ____________________________ LABELS ________________________________________
 
@@ -347,14 +363,33 @@ generate_tac (AS.ProgramStart _ code pos _ _) =
 
 --{ block_declarations :: [Declaration], statements :: [Statement], block_pos :: (Int, Int), block_env :: E.Env, block_errors :: [String] }
 gen_tac_of_Block :: State -> String -> AS.Block -> (State, String)
-gen_tac_of_Block state cur_blck (AS.Block []        []        pos   _   _  ) = 
-    let s10 = out state cur_blck (Comment $ "end of block?" ++ (print_row_col pos))
-    in  (s10, cur_blck)
-gen_tac_of_Block state cur_blck (AS.Block (x:decls) stmts     pos env err) = 
-    gen_tac_of_Block state cur_blck (AS.Block [] stmts pos env err) --todo
+gen_tac_of_Block state cur_blck (AS.Block []        []        pos   _   _  ) = (state, cur_blck)
+-- DECLARATIONS
+gen_tac_of_Block state cur_blck (AS.Block (d:decls) stmts     pos env err) = 
+    let (s10, cur_blck1) = case d of 
+            -- only string to be actually treated
+            (AS.DeclarationCostant {})      -> gen_tac_of_DeclarationCostant   state cur_blck d
+            --(AS.DeclarationVariable {})     -> gen_tac_of_DeclarationVariable  state cur_blck d
+            --(AS.DeclarationFunction {})     -> gen_tac_of_DeclarationFunction  state cur_blck d
+            --(AS.DeclarationProcedure {})    -> gen_tac_of_DeclarationProcedure state cur_blck d
+    in gen_tac_of_Block s10 cur_blck1 (AS.Block decls stmts pos env err)
+-- STATEMENTS
 gen_tac_of_Block state cur_blck (AS.Block []        (x:stmts) pos env err) = 
+    -- after statements
     let (s10, cur_blck1) = gen_tac_of_Statement state cur_blck x
     in  gen_tac_of_Block s10 cur_blck1 (AS.Block [] stmts pos env err) 
+
+
+-- { costant_name :: Ident, costant_type_maybe :: Maybe T.Type, costant_value :: RightExp, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
+gen_tac_of_DeclarationCostant state cur_blck declaration = 
+    let value = (AS.costant_value declaration)
+    in  case value of
+        (AS.RightExpString{}) -> 
+            let (s10, cur_blck1, address) = gen_tac_of_string state cur_blck value
+                ident_name                = (AS.id_name (AS.costant_name declaration))
+                s20                       = add_to_string_constants_list s10 ident_name address
+            in  (s20, cur_blck1)
+        _   -> (state, cur_blck)
 
 --________________________________ Statement __________________________________________
 
@@ -421,10 +456,10 @@ gen_tac_of_StatementAssign state cur_blck stmt = gen_tac_of_VariableAssignment s
 -- data Assign = VariableAssignment { left_exp_assignment :: LeftExp, right_exp_assignment :: RightExp, assign_pos :: (Int, Int), assign_env :: E.Env, assign_errors :: [String] }
 gen_tac_of_VariableAssignment state cur_blck assgn_stmt = 
     let -- s00                      = out state cur_blck (Comment $ "start of variable assignment declared at " ++ (print_row_col $ AS.assign_pos assgn_stmt))
-        -- BEFORE RIGHT EXPRESSION
-        (s10, cur_blck10, r_addr)   = gen_tac_of_RightExp state cur_blck   (AS.right_exp_assignment assgn_stmt)
-        -- AFTER LEFT EXPRESSION
-        (s20, t, l_addr)            = gen_tac_of_LeftExp  s10   cur_blck10 (AS.left_exp_assignment assgn_stmt)
+        -- BEFORE LEFT EXPRESSION
+        (s10, t, l_addr)            = gen_tac_of_LeftExp  state   cur_blck10 (AS.left_exp_assignment assgn_stmt)
+        -- AFTER RIGHT EXPRESSION
+        (s20, cur_blck10, r_addr)   = gen_tac_of_RightExp s10 cur_blck   (AS.right_exp_assignment assgn_stmt)
         -- add assignment code
         s30                         = out s20 cur_blck10 (NullAssignment { l = l_addr, r = r_addr, assign_type = t })
     in (s30, cur_blck10)
@@ -447,14 +482,22 @@ gen_tac_of_StatementContinue state cur_blck stmt = (state, cur_blck)
 
 --________________________________ Left Expression __________________________________________
 
+gen_tac_of_LeftExp :: State -> String -> AS.LeftExp -> (State, PrimType, Address)
 gen_tac_of_LeftExp state cur_blck l_exp = 
     let prim_type = to_primitive_type (AS.left_exp_type l_exp)
     in case l_exp of 
+        -- variable
         (AS.LeftExpIdent {})           -> (state, prim_type, gen_tac_of_Ident (AS.left_exp_name l_exp))
-        --array_name :: LeftExp, array_pos :: [RightExp], left_exp_type :: T.Type, left_exp_pos  :: (Int, Int), left_exp_env :: E.Env, left_exp_errors :: [String] 
+        -- only string-constants (non-string constants has been already substituted by static semantic)
+        (AS.LeftExpConst {})           -> (state, prim_type, get_address_from_string_constant state (AS.id_name (AS.left_exp_name l_exp)))
         (AS.LeftExpArrayAccess {})     -> (state, prim_type, AddressTempVar "todo")
         (AS.LeftExpPointerValue {})    -> (state, prim_type, AddressTempVar "todo")
         (AS.LeftExpPointerAddress {})  -> (state, prim_type, AddressTempVar "todo")
+        
+--________________________________ Identifier ________________________________________
+
+gen_tac_of_Ident :: AS.Ident -> Address
+gen_tac_of_Ident ident = (AddressProgramVar $ make_ident_var_label (AS.id_name ident) (AS.ident_pos ident))
 
 --________________________________ Right Expression __________________________________________
 
@@ -507,6 +550,7 @@ gen_tac_of_RightExpFuncProcCall state cur_blck r_exp = (state, cur_blck, (Addres
 gen_tac_of_RightExpLeftExp state cur_blck r_exp = (state, cur_blck, (AddressTempVar "TODO"))
 
 --TODO
+-- RightExpCoercion { right_exp_coercion :: RightExp, right_exp_from_type :: T.Type, right_exp_to_type :: T.Type, right_exp_pos :: (Int, Int), right_exp_env :: E.Env, right_exp_errors :: [String] }
 gen_tac_of_RightExpCoercion state cur_blck r_exp = (state, cur_blck, (AddressTempVar "TODO"))
 
 gen_tac_of_RightExpPlusUnary :: State -> String -> AS.RightExp -> (State, String, Address)
@@ -524,7 +568,7 @@ gen_tac_of_RightExpMinusUnary state cur_blck r_exp =
 gen_tac_of_literal :: State -> String -> t1 -> (t2 -> Address) -> (t1 -> t2) -> (State, String, Address)
 gen_tac_of_literal state cur_blck r_exp constructor attribute = (state, cur_blck, constructor $ attribute r_exp)
 
-gen_tac_of_string :: State -> b -> AS.RightExp -> (State, b, Address)
+gen_tac_of_string :: State -> String -> AS.RightExp -> (State, String, Address)
 gen_tac_of_string state cur_blck r_exp = 
     let s10 = add_string state (AS.right_exp_string r_exp)
     in (s10, cur_blck, AddressTempVar $ make_block_label $ StringBlockType (str_idx state))
@@ -610,12 +654,6 @@ gen_tac_of_WritePrimitive state cur_blck prim_write =
         s30              = out s20 cur_blck10 (ProcCall { p_name = prim_write_name, num_params = 1 })
     in  (s30, cur_blck10)
 
-
---________________________________ Identifier ________________________________________
-
-gen_tac_of_Ident :: AS.Ident -> Address
-gen_tac_of_Ident ident = (AddressProgramVar $ make_ident_var_label (AS.id_name ident) (AS.ident_pos ident))
-
 -----------------------------------------------------------------------------------------------------------------------------
 
 -- ____________________________ AUX FUNCTIONS ________________________________________
@@ -632,7 +670,7 @@ isNothing _       = False
 ----------------------------------------------------------------------------------------------------------------------------
 
 pretty_printer_tac :: State -> String
-pretty_printer_tac (State t str _ _ _) = "# TAC START\n" ++ "# FUNCTIONS AND PROCEDURE\n" ++ (pretty_printer_tac_aux t str) ++ "#TAC END\n" where
+pretty_printer_tac (State t str _ _ _ _) = "# TAC START\n" ++ "# FUNCTIONS AND PROCEDURE\n" ++ (pretty_printer_tac_aux t str) ++ "#TAC END\n" where
     pretty_printer_tac_aux []     str = "\n# STRINGS\n" ++ pretty_printer_string str
     pretty_printer_tac_aux (x:xs) str = (pretty_printer_block x) ++ (pretty_printer_tac_aux xs str)
 
