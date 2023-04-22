@@ -61,6 +61,7 @@ data RightExp
     | RightExpGreaterEqual                  { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpLessEqual                     { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpEqual                         { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+    | RightExpNotEqual                      { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpPlus                          { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpMinus                         { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpTimes                         { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
@@ -77,7 +78,7 @@ data RightExp
     | RightExpChar                          { right_exp_char :: Char, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpString                        { right_exp_string :: String, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpFuncProcCall                  { call_name_right_exp :: Ident, call_params_right_exp :: [RightExp], right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-    | RightExpCopy                          { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+    | RightExpLeftExp                       { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpCoercion                      { right_exp_coercion :: RightExp, right_exp_from_type :: T.Type, right_exp_to_type :: T.Type, right_exp_pos :: (Int, Int), right_exp_env :: E.Env, right_exp_errors :: [String] }
     deriving (Show)
 

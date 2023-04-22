@@ -11,30 +11,6 @@ import qualified StaticSemantic     as Static
 import ErrM
 import TAC
 
-printAst :: Show a => Err a -> String
-printAst x = case x of
-    (ErrM.Ok a)    -> show a
-    (ErrM.Bad err) -> err
-
-getAst x = case x of
-    (ErrM.Ok  a)   -> Just a
-    (ErrM.Bad err) -> Nothing
-
-get_tabs :: Int -> String
-get_tabs 0 = ""
-get_tabs n = '\t' : (get_tabs (n-1))
-
-pretty_printer_dummy :: String -> String
-pretty_printer_dummy text = pretty_printer_dummy_aux text 1
-    where
-        pretty_printer_dummy_aux ""       _ = "\n\n"
-        --pretty_printer_dummy_aux (c:xs) n | (c == '[') = (c : '\n' : (get_tabs (n+1)))    ++ (pretty_printer_dummy_aux xs (n+1))
-        pretty_printer_dummy_aux (c:xs) n | (c == '{') = (c : '\n' : (get_tabs (n+1)))    ++ (pretty_printer_dummy_aux xs (n+1))
-        --pretty_printer_dummy_aux (c:xs) n | (c == ']') = ('\n' : (get_tabs (n-1)) ++ [c]) ++ (pretty_printer_dummy_aux xs (n-1))
-        pretty_printer_dummy_aux (c:xs) n | (c == '}') = ('\n' : (get_tabs (n-1)) ++ [c]) ++ (pretty_printer_dummy_aux xs (n-1))
-        --pretty_printer_dummy_aux (',':xs) n = (",\n" ++ (get_tabs n))           ++ (pretty_printer_dummy_aux xs n)
-        pretty_printer_dummy_aux (x:xs)   n = (x : (pretty_printer_dummy_aux xs n))
-
 testami test = do
 
     -- Read file
@@ -55,13 +31,12 @@ testami test = do
     putStrLn "Parsing"
     let par = Par.pProgram lex
     putStrLn "parser output:"
-    -- putStr $ pretty_printer_dummy $ printAst par
-    putStrLn $ printAst par
+    putStrLn $ Printer.pretty_print_ast par "inline"
     putStrLn ""
     
     -- PrettyPrinter
     putStrLn "PrettyPrinter"
-    let pretty = Printer.prettyprinter par
+    let pretty = Printer.serializer par
     putStrLn "pretty print of abstract syntax:"
     putStrLn pretty
     putStrLn ""
@@ -77,22 +52,21 @@ testami test = do
     putStrLn "Repeat for test PrettyPrinter"
     input <- readFile out_file
     let output = Par.pProgram $ Lex.tokens input
-    putStrLn $ Printer.prettyprinter output
+    putStrLn $ Printer.serializer output
 
     -- Static Semantic
     putStrLn "Static Semantic"
-    let static = Static.staticsemanticcheck par
-    putStrLn "Static semantic output:"
-    Static.static_semantic_errors static
+    let static = Static.static_semantic_check par
+    putStrLn $ Static.static_semantic_errors static
 
     -- Static Semantic Debug
     let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
-    writeFile out_file $ pretty_printer_dummy $ show static
+    writeFile out_file $ Printer.pretty_print_ast (ErrM.Ok static) "ident"
 
     -- TAC Generation
-    putStrLn "TAC Generation"
-    let tac = TAC.generate_tac $ (\ (Just x) -> x) (getAst par)
-    putStr $ TAC.pretty_printer_tac tac
+    -- putStrLn "TAC Generation"
+    -- let tac = TAC.generate_tac static
+    -- putStr $ TAC.pretty_printer_tac tac
 
     putStrLn "check successful!"
 

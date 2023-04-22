@@ -15,13 +15,6 @@ import Data.List
 import ErrM
 
 -- __________________________ AUXILIAR CLASSES AND FUNCTIONS
-
-{-
-getErrorsFromMaybe :: Maybe T.Type -> [String]
-getErrorsFromMaybe (Just (T.ErrorType m)) = m
-getErrorsFromMaybe maybe                  = []
--}
-
 checkPresenceDecl :: Ident -> E.Env -> (Int, Int) -> [[Char]]
 checkPresenceDecl id env pos = 
     case E.lookup env (id_name id) of
@@ -219,16 +212,26 @@ add_const_to_env env name value pos =
     in (new_env, errs)
 
 -- __________________________ STATIC SEMANTIC ANALISYS
-staticsemanticcheck x = case x of
-    -- parse successful
-    -- (ErrM.Ok a)    -> intercalate "\n\n" $ program_errors $ staticsemanticAux a
-    (ErrM.Ok a)    -> staticsemanticAux a
-    -- parse error
-    (ErrM.Bad err) -> (ProgramStart (Ident "CJOSUL" (-1,-1) E.emptyEnv []) (Block [] [] (-1,-1) E.emptyEnv []) (-1,-1) E.emptyEnv [])
+static_semantic_check :: Err Program -> Err Program
+static_semantic_check x = 
+    let program_checked = case x of
+            (ErrM.Ok program)   -> (ErrM.Ok (staticsemanticAux program))
+            (ErrM.Bad err)      -> (ErrM.Bad err)
 
-static_semantic_errors :: Program -> IO ()
-static_semantic_errors (ProgramStart _ _ _ _ errs) =
-    if (length errs) > 0 then mapM_ (\err -> putStrLn (err ++ "\n")) errs else putStrLn "No static semantic errors"
+        program_errors = case program_checked of
+            (ErrM.Ok (ProgramStart _ _ _ _ errs)) -> intercalate "\n\n" errs
+            (ErrM.Bad err)                        -> err
+
+        static_semantic_result = case program_errors of
+            "" -> program_checked
+            _  -> (ErrM.Bad program_errors)
+
+    in static_semantic_result
+
+static_semantic_errors :: Err Program -> String
+static_semantic_errors x = case x of
+    (ErrM.Ok a)    -> "The Static Semantic analaysis doesn't found any error \n"
+    (ErrM.Bad err) -> "\n" ++ err ++ "\n"    
 
 -- __________________________ STATIC SEMANTIC CLASSES
 class StaticSemanticClass a where
@@ -402,7 +405,7 @@ instance StaticSemanticClass Statement where
             -- eseguo la condizione
         let cond_checked = staticsemanticAux (cond {right_exp_env = env})
             -- Controllo che la condizione sia booleana
-            cond_errors = mkIfErrs (right_exp_type cond_checked) (right_exp_pos cond_checked)
+            cond_errors = mkIfErrs (right_exp_type cond_checked) (right_exp_pos cond_checked) ++ (right_exp_errors cond_checked)
             
             -- Controllo che il then_body sia corretto
             then_body_checked = staticsemanticAux (then_body {statement_env = env})
@@ -434,7 +437,7 @@ instance StaticSemanticClass Statement where
             -- eseguo la condizione
         let cond_checked = staticsemanticAux (cond {right_exp_env = env})
             -- Controllo che la condizione sia booleana
-            cond_errors = mkIfErrs (right_exp_type cond_checked) (right_exp_pos cond_checked)
+            cond_errors = mkIfErrs (right_exp_type cond_checked) (right_exp_pos cond_checked) ++ (right_exp_errors cond_checked)
             
             -- Aggiungo le dichiarazioni dei break e dei continue all'enviroment
             env_with_break_continue = add_break_continue env
@@ -450,7 +453,7 @@ instance StaticSemanticClass Statement where
             -- eseguo la condizione
         let cond_checked = staticsemanticAux (cond {right_exp_env = env})
             -- Controllo che la condizione sia booleana
-            cond_errors = mkIfErrs (right_exp_type cond_checked) (right_exp_pos cond_checked)
+            cond_errors = mkIfErrs (right_exp_type cond_checked) (right_exp_pos cond_checked) ++ (right_exp_errors cond_checked)
             
             -- Aggiungo le dichiarazioni dei break e dei continue all'enviroment
             env_with_break_continue = add_break_continue env
@@ -564,8 +567,12 @@ instance StaticSemanticClass RightExp where
         in (RightExpLessEqual sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpEqual sx dx pos ty env errors) =
-        let (sx_checked, dx_checked, errors_tot) = check_rel_op sx dx pos env "less equal"
+        let (sx_checked, dx_checked, errors_tot) = check_rel_op sx dx pos env "equal"
         in (RightExpEqual sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
+
+    staticsemanticAux (RightExpNotEqual sx dx pos ty env errors) =
+        let (sx_checked, dx_checked, errors_tot) = check_rel_op sx dx pos env "not equal"
+        in (RightExpNotEqual sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpPlus sx dx pos ty parent_env errors) =
         -- Checking if both sx and dx are compatibile for a math operation
@@ -694,13 +701,13 @@ instance StaticSemanticClass RightExp where
             errors_tot = errors ++ errs_params ++ errs_fun
         in (RightExpFuncProcCall id params_checked pos checked_type parent_env errors_tot)
 
-    staticsemanticAux (RightExpCopy left_exp pos ty parent_env errors) =
+    staticsemanticAux (RightExpLeftExp left_exp pos ty parent_env errors) =
             -- Controllo che left_exp sia corretto
         let left_exp_checked = staticsemanticAux (left_exp {left_exp_env = parent_env})
             -- se la left_exp è una costante -> sostituisco la right_exp_copy con un right_exp col corretto valore/tipo
             new_right_exp = case left_exp_checked of
                 const@(LeftExpConst _ _ _ _ _ _)    -> from_leftexpconst_to_rightexp const pos parent_env (errors ++ (left_exp_errors left_exp_checked))
-                _                                   -> (RightExpCopy left_exp_checked pos (left_exp_type left_exp_checked) parent_env (errors ++ (left_exp_errors left_exp_checked)))
+                _                                   -> (RightExpLeftExp left_exp_checked pos (left_exp_type left_exp_checked) parent_env (errors ++ (left_exp_errors left_exp_checked)))
         in new_right_exp
 
     -- staticsemanticAux coerc@(RightExpCoercion main_re from_type to_type pos ty parent_env errors) = coerc

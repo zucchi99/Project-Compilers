@@ -98,6 +98,7 @@ RightExpLess.                   RightExp2       ::= RightExp2 "<" RightExp3 ;
 RightExpGreaterEqual.           RightExp2       ::= RightExp2 ">=" RightExp3 ;
 RightExpLessEqual.              RightExp2       ::= RightExp2 "<=" RightExp3 ;
 RightExpEqual.                  RightExp2       ::= RightExp2 "=" RightExp3 ;
+RightExpNotEqual.               RightExp2       ::= RightExp2 "<>" RightExp3 ;
 
 RightExpPlus.                   RightExp3       ::= RightExp3 "+" RightExp4 ;
 RightExpMinus.                  RightExp3       ::= RightExp3 "-" RightExp4 ;
@@ -119,7 +120,7 @@ RightExpBoolean.                RightExp7       ::= Boolean ;
 RightExpChar.                   RightExp7       ::= Char ;
 RightExpString.                 RightExp7       ::= String ;
 RightExpFunctionCall.           RightExp7       ::= FuncProcCall ;
-RightExpCopy.                   RightExp7       ::= LeftExp ;
+RightExpLeftExp.                RightExp7       ::= LeftExp ;
 
 -- __________ LEFT EXPRESSIONS __________
 

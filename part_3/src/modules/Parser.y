@@ -33,54 +33,55 @@ import qualified Env as E
     ';' { PT _ (TS _ 13) }
     '<' { PT _ (TS _ 14) }
     '<=' { PT _ (TS _ 15) }
-    '=' { PT _ (TS _ 16) }
-    '>' { PT _ (TS _ 17) }
-    '>=' { PT _ (TS _ 18) }
-    '@' { PT _ (TS _ 19) }
-    '[' { PT _ (TS _ 20) }
-    ']' { PT _ (TS _ 21) }
-    '^' { PT _ (TS _ 22) }
-    'and' { PT _ (TS _ 23) }
-    'array' { PT _ (TS _ 24) }
-    'begin' { PT _ (TS _ 25) }
-    'boolean' { PT _ (TS _ 26) }
-    'break' { PT _ (TS _ 27) }
-    'char' { PT _ (TS _ 28) }
-    'const' { PT _ (TS _ 29) }
-    'continue' { PT _ (TS _ 30) }
-    'div' { PT _ (TS _ 31) }
-    'do' { PT _ (TS _ 32) }
-    'else' { PT _ (TS _ 33) }
-    'end' { PT _ (TS _ 34) }
-    'false' { PT _ (TS _ 35) }
-    'for' { PT _ (TS _ 36) }
-    'forward' { PT _ (TS _ 37) }
-    'function' { PT _ (TS _ 38) }
-    'if' { PT _ (TS _ 39) }
-    'integer' { PT _ (TS _ 40) }
-    'mod' { PT _ (TS _ 41) }
-    'not' { PT _ (TS _ 42) }
-    'of' { PT _ (TS _ 43) }
-    'or' { PT _ (TS _ 44) }
-    'procedure' { PT _ (TS _ 45) }
-    'program' { PT _ (TS _ 46) }
-    'readChar' { PT _ (TS _ 47) }
-    'readInt' { PT _ (TS _ 48) }
-    'readReal' { PT _ (TS _ 49) }
-    'readString' { PT _ (TS _ 50) }
-    'real' { PT _ (TS _ 51) }
-    'repeat' { PT _ (TS _ 52) }
-    'string' { PT _ (TS _ 53) }
-    'then' { PT _ (TS _ 54) }
-    'to' { PT _ (TS _ 55) }
-    'true' { PT _ (TS _ 56) }
-    'until' { PT _ (TS _ 57) }
-    'var' { PT _ (TS _ 58) }
-    'while' { PT _ (TS _ 59) }
-    'writeChar' { PT _ (TS _ 60) }
-    'writeInt' { PT _ (TS _ 61) }
-    'writeReal' { PT _ (TS _ 62) }
-    'writeString' { PT _ (TS _ 63) }
+    '<>' { PT _ (TS _ 16) }
+    '=' { PT _ (TS _ 17) }
+    '>' { PT _ (TS _ 18) }
+    '>=' { PT _ (TS _ 19) }
+    '@' { PT _ (TS _ 20) }
+    '[' { PT _ (TS _ 21) }
+    ']' { PT _ (TS _ 22) }
+    '^' { PT _ (TS _ 23) }
+    'and' { PT _ (TS _ 24) }
+    'array' { PT _ (TS _ 25) }
+    'begin' { PT _ (TS _ 26) }
+    'boolean' { PT _ (TS _ 27) }
+    'break' { PT _ (TS _ 28) }
+    'char' { PT _ (TS _ 29) }
+    'const' { PT _ (TS _ 30) }
+    'continue' { PT _ (TS _ 31) }
+    'div' { PT _ (TS _ 32) }
+    'do' { PT _ (TS _ 33) }
+    'else' { PT _ (TS _ 34) }
+    'end' { PT _ (TS _ 35) }
+    'false' { PT _ (TS _ 36) }
+    'for' { PT _ (TS _ 37) }
+    'forward' { PT _ (TS _ 38) }
+    'function' { PT _ (TS _ 39) }
+    'if' { PT _ (TS _ 40) }
+    'integer' { PT _ (TS _ 41) }
+    'mod' { PT _ (TS _ 42) }
+    'not' { PT _ (TS _ 43) }
+    'of' { PT _ (TS _ 44) }
+    'or' { PT _ (TS _ 45) }
+    'procedure' { PT _ (TS _ 46) }
+    'program' { PT _ (TS _ 47) }
+    'readChar' { PT _ (TS _ 48) }
+    'readInt' { PT _ (TS _ 49) }
+    'readReal' { PT _ (TS _ 50) }
+    'readString' { PT _ (TS _ 51) }
+    'real' { PT _ (TS _ 52) }
+    'repeat' { PT _ (TS _ 53) }
+    'string' { PT _ (TS _ 54) }
+    'then' { PT _ (TS _ 55) }
+    'to' { PT _ (TS _ 56) }
+    'true' { PT _ (TS _ 57) }
+    'until' { PT _ (TS _ 58) }
+    'var' { PT _ (TS _ 59) }
+    'while' { PT _ (TS _ 60) }
+    'writeChar' { PT _ (TS _ 61) }
+    'writeInt' { PT _ (TS _ 62) }
+    'writeReal' { PT _ (TS _ 63) }
+    'writeString' { PT _ (TS _ 64) }
     L_ident  { PT _ (TV _) }
     L_integ  { PT _ (TI _) }
     L_doubl  { PT _ (TD _) }
@@ -455,6 +456,13 @@ RightExp2   : RightExp3   { $1 }
                     right_exp_env = E.emptyEnv,
                     right_exp_errors = [] 
                 }}
+            | RightExp2 '<>' RightExp3 {
+                RightExpNotEqual {
+                    sx = $1, dx = $3, right_exp_pos = (right_exp_pos $1),
+                    right_exp_type = T.TBDType,
+                    right_exp_env = E.emptyEnv,
+                    right_exp_errors = [] 
+                }}
 
 RightExp3   :: { RightExp }
 RightExp3   : RightExp4 { $1 }
@@ -586,7 +594,7 @@ RightExp7   : '(' RightExp ')' { $2 }
                     right_exp_errors = []  
                 }}
             | LeftExp {
-                RightExpCopy {
+                RightExpLeftExp {
                     left_exp_right_exp = $1, right_exp_pos = (left_exp_pos $1),
                     right_exp_type = T.TBDType,
                     right_exp_env = E.emptyEnv,
