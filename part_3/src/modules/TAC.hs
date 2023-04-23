@@ -17,7 +17,6 @@ data PrimType =
     | TypeChar
     | TypeBool
     | TypeAddr
-    deriving (Show)
 
 -- ___________ PRIMITIVE ADDRESS TYPE ___________
 
@@ -28,7 +27,6 @@ data Address =
     | AddressBool       Bool
     | AddressProgramVar String
     | AddressTempVar    String
-    deriving (Show)
 
 instance Eq Address where
     AddressInt        _   == AddressInt        _   = True
@@ -64,12 +62,12 @@ data Instruction =
     | Jump                  { goto :: String }
     -- if r goto label
     | JumpIfTrue            { goto :: String, cond :: Address }
-    -- ifFalse r goto label
+    -- if false r goto label
     | JumpIfFalse           { goto :: String, cond :: Address }
     -- if r1 rel r2 goto label
     | JumpConditional       { goto :: String, r1,r2 :: Address, rel_op :: BinaryRelatOp }
     -- l = array[i]
-    | ReadFromArray         { array :: Address, i,r :: Address, assign_type :: PrimType }
+    | ReadFromArray         { array :: Address, i,l :: Address, assign_type :: PrimType }
     -- array[i] = r
     | WriteToArray          { array :: Address, i,r :: Address, assign_type :: PrimType }
     -- l = @id (&id in C)
@@ -90,7 +88,6 @@ data Instruction =
     | RetVal                { value :: Address, return_type :: PrimType }
     -- comment (for the sake of debugging)
     | Comment               { comment :: String }
-    deriving (Show)
 
 -- ___________ SET OF OPERATIONS ___________
 
@@ -98,7 +95,6 @@ data UnaryOp =
     Coerce          { type_from, type_to    :: PrimType }
     | Negate        { negation_type         :: PrimType }
     | Not 
-    deriving (Show)
 
 data BinaryArithmOp = 
     Sum             { binary_type           :: PrimType }
@@ -108,7 +104,6 @@ data BinaryArithmOp =
     | Remainder     { binary_type           :: PrimType }
     | Power         { binary_type           :: PrimType }
     | AddressSum
-    deriving (Show)
 
 -- NB trivially binary_type = T.BooleanType, no attribute needed
 data BinaryRelatOp = 
@@ -118,7 +113,6 @@ data BinaryRelatOp =
     | LessEqual   
     | Equal       
     | NotEqual    
-    deriving (Show)
 
 -- ___________ TAC CODE TYPE ___________
 
@@ -185,7 +179,7 @@ to_primitive_relational_operator (AS.RightExpGreater {})        = GreaterThan
 to_primitive_relational_operator (AS.RightExpLessEqual {})      = LessEqual
 to_primitive_relational_operator (AS.RightExpGreaterEqual {})   = GreaterEqual
 to_primitive_relational_operator (AS.RightExpEqual {})          = Equal
--- to_primitive_relational_operator (AS.RightExpNotEqual {}) = NotEqual
+to_primitive_relational_operator (AS.RightExpNotEqual {})       = NotEqual
 
 to_primitive_arithm_binary_operator :: AS.RightExp -> BinaryArithmOp
 to_primitive_arithm_binary_operator r_exp = 
@@ -502,7 +496,26 @@ gen_tac_of_VariableAssignment state cur_blck assgn_stmt =
     in (s30, cur_blck10)
 
 --TODO
-gen_tac_of_StatementFuncProcCall state cur_blck stmt = (state, cur_blck)
+-- gen_tac_of_StatementFuncProcCall :: State -> String -> AS.StatementFuncProcCall -> (State, String)
+gen_tac_of_StatementFuncProcCall state cur_blck stmt = 
+    let params = AS.call_params stmt
+        fun_name = (AS.id_name (AS.call_name stmt))
+        types   = map (\x -> to_primitive_type (AS.right_exp_type x)) params
+        (s10, cur_blck10, addrs) = gen_tac_of_list_RightExp state cur_blck params []
+        s20              = out_params s10 cur_blck10 addrs types
+        -- TODO: differenziare tra funzioni e procedure
+        s30              = out s20 cur_blck10 (ProcCall { p_name = fun_name, num_params = length params })
+    in (s30, cur_blck10)
+
+gen_tac_of_list_RightExp :: State -> String -> [AS.RightExp] -> [Address] -> (State, String, [Address])
+gen_tac_of_list_RightExp state cur_blck [] addrs = (state, cur_blck, addrs)
+gen_tac_of_list_RightExp state cur_blck (x:xs) addrs = gen_tac_of_list_RightExp new_state cur_blck1 xs (addr:addrs)
+    where (new_state, cur_blck1, addr) = gen_tac_of_RightExp state cur_blck x
+
+--out_params :: State -> String -> [Address] -> [PrimType] -> State
+out_params state cur_blck10 [] [] = state
+out_params state cur_blck10 (addr:addrs) (taddr:taddrs) = out_params new_state cur_blck10 addrs taddrs
+    where new_state = out state cur_blck10 (Parameter { param = addr, param_type = taddr })
 
 --TODO
 gen_tac_of_StatementRead state cur_blck stmt = (state, cur_blck)
@@ -571,6 +584,7 @@ gen_tac_of_RightExp state cur_blck r_exp =
         (AS.RightExpGreaterEqual {})    -> gen_tac_of_binary_relational_operators state cur_blck r_exp
         (AS.RightExpLessEqual {})       -> gen_tac_of_binary_relational_operators state cur_blck r_exp
         (AS.RightExpEqual {})           -> gen_tac_of_binary_relational_operators state cur_blck r_exp
+        (AS.RightExpNotEqual {})        -> gen_tac_of_binary_relational_operators state cur_blck r_exp
         -- function / procedure call TODO
         (AS.RightExpFuncProcCall {})    -> gen_tac_of_RightExpFuncProcCall        state cur_blck r_exp
         -- use a LeftExp as RightExp
@@ -719,3 +733,59 @@ pretty_printer_string :: [ String ] -> String
 pretty_printer_string str = (pretty_printer_string_aux str 0) where
     pretty_printer_string_aux []     _ = "\n"
     pretty_printer_string_aux (x:xs) i = (make_block_label $ StringBlockType i) ++ ":\n   " ++ (show x) ++ "\n" ++ (pretty_printer_string_aux xs (i+1))
+
+instance Show PrimType where
+    show TypeInt    = "integer"
+    show TypeReal   = "real"
+    show TypeChar   = "char"
+    show TypeBool   = "boolean"
+
+instance Show Address where 
+    show (AddressInt i)         = show i
+    show (AddressReal r)        = show r
+    show (AddressChar c)        = show c
+    show (AddressBool b)        = if b then "true" else "false"
+    show (AddressProgramVar v)  = v
+    show (AddressTempVar t)     = t
+
+instance Show Instruction where
+    show (BinaryArithmAssignment l r1 r2 _ op)    = (show l) ++ " = " ++ (show r1) ++ " " ++ (show op) ++ " " ++ (show r2) 
+    show (BinaryRelatAssignment l r1 r2 _ op)     = (show l) ++ " = " ++ (show r1) ++ " " ++ (show op) ++ " " ++ (show r2) 
+    show (UnaryAssignment l r _ op)               = (show l) ++ " = " ++ (show op) ++ " " ++ (show r) 
+    show (NullAssignment l r _)                   = (show l) ++ " = " ++ (show r) 
+    show (Jump goto)                              = "goto " ++ goto
+    show (JumpIfTrue goto cond)                   = "if " ++ (show cond) ++ " == true goto " ++ goto
+    show (JumpIfFalse goto cond)                  = "if " ++ (show cond) ++ " == false goto " ++ goto
+    --JumpConditional
+    show (ReadFromArray array i l _)              = (show l) ++ " = " ++ (show array) ++ "[" ++ (show i) ++ "]"
+    show (WriteToArray array i r _)             = (show array) ++ "[" ++ (show i) ++ "]" ++ " = " ++ (show r)
+    show (ReadPointerAddress l pointer)           = (show l) ++ " = " ++ "@" ++ (show pointer)
+    show (ReadPointerValue l1 l2)                 = (show l1) ++ " = " ++ "^" ++ (show l2)
+    show (WritePointerValue l r)                  = (show l) ++ " = " ++ (show r)
+    show (ProcCall p_name num_params)             = "pcall " ++ p_name ++ " " ++ (show num_params)
+    show (FunCall f_name num_params l _)          = (show l) ++ " = fcall " ++ f_name ++ " " ++ (show num_params)
+    show (Parameter param param_type)             = "param " ++ (show param)
+    show (Return)                                 = "return"
+    show (RetVal value return_type)               = "return " ++ (show value)
+    show (Comment comment)                        = "# " ++ comment
+
+instance Show BinaryArithmOp where
+    show (Sum _) = "+"
+    show (Subtract _) = "-"
+    show (Multiply _) = "*"
+    show (Divide _) = "/"
+    show (Remainder _) = "%"
+    show (Power _) = "**"
+
+instance Show BinaryRelatOp where
+    show GreaterThan = ">"
+    show GreaterEqual = ">="
+    show LessThan = "<"
+    show LessEqual = "<="
+    show Equal = "=="
+    show NotEqual = "<>"
+
+instance Show UnaryOp where
+    show (Coerce from to) = "(" ++ (show to) ++ ")"
+    show (Negate _) = "-"
+    show (Not) = "not"
