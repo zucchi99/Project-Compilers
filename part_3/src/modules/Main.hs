@@ -55,21 +55,28 @@ testami test = do
     putStrLn $ Printer.serializer output
 
     -- Static Semantic
-    putStrLn "Static Semantic"
     let static = Static.static_semantic_check par
+    putStrLn "\nStatic Semantic errors:"
     putStrLn $ Static.static_semantic_errors static
+    putStrLn "Static Semantic data structure:"
+    putStr $ show $ static
 
     -- Static Semantic Debug
-    let static = Static.static_semantic_debug par
+    let static_debug = Static.static_semantic_debug par
     let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
-    writeFile out_file $ Printer.pretty_print_ast_debug static "ident"
+    writeFile out_file $ Printer.pretty_print_ast_debug static_debug "ident"
 
     -- TAC Generation
-    -- putStrLn "TAC Generation"
-    -- let tac = TAC.generate_tac static
-    -- putStr $ TAC.pretty_printer_tac tac
+    putStrLn "TAC Generation"
+    let just_tac = case static of
+            (ErrM.Ok program) -> Just $ TAC.generate_tac program
+            (ErrM.Bad err)    -> Nothing
+    
+    putStr $ case just_tac of
+        Nothing   -> ""
+        Just tac  -> TAC.pretty_printer_tac tac
 
-    putStrLn "check successful!"
+    putStrLn "end"
 
 main = do
 

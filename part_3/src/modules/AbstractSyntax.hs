@@ -12,47 +12,67 @@ import qualified Env as E
 -- ___________ TYPE FOR ABSTRACT SYNTAX  ___________
 
 -- identifier for variables, functions, procedures, ...
+-- TAC DONE
 data Ident = Ident                          { id_name :: String, ident_pos :: (Int, Int), ident_env :: E.Env, ident_errors :: [String] }
     deriving (Show)
 
 -- starting of the program
+-- TAC DONE
 data Program = ProgramStart                 { program_name :: Ident, program_block :: Block, program_pos :: (Int, Int), program_env :: E.Env, program_errors :: [String] }
     deriving (Show)
 
 -- Block structures
+-- TAC DONE
 data Block = Block                          { block_declarations :: [Declaration], statements :: [Statement], block_pos :: (Int, Int), block_env :: E.Env, block_errors :: [String] }
     deriving (Show)
 
 -- Declarations
 data Declaration
+    -- TAC DONE
     = DeclarationCostant                    { costant_name :: Ident, costant_type_maybe :: Maybe T.Type, costant_value :: RightExp, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
+    -- TAC DONE
     | DeclarationVariable                   { variable_name :: Ident, variable_type :: T.Type, variable_value_maybe :: Maybe RightExp, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
     -- NB v_value in params must be all nothing !               (OR we can accept default values)
     -- NB (f_body == Nothing) <==> is forward
+    -- TAC TODO
     | DeclarationFunction                   { declaration_name :: Ident, declaration_params :: [Declaration], function_type :: T.Type, declaration_body_maybe :: Maybe Block, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
     -- NB v_value in params must be all nothing !               (OR we can accept default values)
     -- NB (f_body == Nothing) <==> is forward
+    -- TAC TODO
     | DeclarationProcedure                  { declaration_name :: Ident, declaration_params :: [Declaration], declaration_body_maybe :: Maybe Block, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
     deriving (Show)
 
 -- Statements
 data Statement
+    -- TAC DONE
     = StatementBlock                        { block :: Block, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    -- TAC DONE
     | StatementIf                           { condition :: RightExp, then_body :: Statement, else_body_maybe :: Maybe ElseBlock, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    -- TAC TODO
     | StatementFor                          { condition :: RightExp, then_body :: Statement, for_var :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    -- TAC DONE
     | StatementWhile                        { condition :: RightExp, then_body :: Statement, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    -- TAC DONE
     | StatementRepeatUntil                  { condition :: RightExp, then_body :: Statement, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    -- TAC DONE
     | StatementAssign                       { assign :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    -- TAC TODO
     | StatementFuncProcCall                 { call_name :: Ident, call_params :: [RightExp], statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    -- TAC DONE
     | StatementWrite                        { write_primitive :: WritePrimitive, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    -- TAC TODO
     | StatementRead                         { read_primitive :: ReadPrimitive, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    -- TAC TODO
     | StatementBreak                        { statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+    -- TAC TODO
     | StatementContinue                     { statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     deriving (Show)
 
+-- TAC DONE
 data ElseBlock = ElseBlock                  { else_body :: Statement, else_block_pos :: (Int, Int), else_block_env :: E.Env, else_block_errors :: [String] }
     deriving (Show)
 
+-- TAC TODO for: RightExpFuncProcCall, RightExpCoercion
 data RightExp
     = RightExpOr                            { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpAnd                           { sx, dx :: RightExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
@@ -77,23 +97,32 @@ data RightExp
     | RightExpBoolean                       { right_exp_bool :: Bool, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpChar                          { right_exp_char :: Char, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpString                        { right_exp_string :: String, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+    -- TAC TODO
     | RightExpFuncProcCall                  { call_name_right_exp :: Ident, call_params_right_exp :: [RightExp], right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpLeftExp                       { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+    -- TAC TODO
     | RightExpCoercion                      { right_exp_coercion :: RightExp, right_exp_from_type :: T.Type, right_exp_type :: T.Type, right_exp_pos :: (Int, Int), right_exp_env :: E.Env, right_exp_errors :: [String] }
     deriving (Show)
 
 data LeftExp
+    -- TAC DONE
     = LeftExpIdent                          { left_exp_name :: Ident, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
     | LeftExpForIterator                    { left_exp_name :: Ident, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
+    -- TAC DONE
     | LeftExpConst                          { left_exp_name :: Ident, value :: E.ConstType, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
+    -- TAC TODO
     | LeftExpArrayAccess                    { array_name :: LeftExp, array_pos :: [RightExp], left_exp_type :: T.Type, left_exp_pos  :: (Int, Int), left_exp_env :: E.Env, left_exp_errors :: [String] }
+    -- TAC TODO
     | LeftExpPointerValue                   { pointer_value :: LeftExp, left_exp_pos  :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
+    -- TAC TODO
     | LeftExpPointerAddress                 { pointer_address :: LeftExp, left_exp_pos  :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
     deriving (Show)
 
+-- TAC DONE
 data Assign = VariableAssignment            { left_exp_assignment :: LeftExp, right_exp_assignment :: RightExp, assign_pos :: (Int, Int), assign_env :: E.Env, assign_errors :: [String] }
     deriving (Show)
 
+-- TAC DONE
 data WritePrimitive
     = WriteInt                              { write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String] }
     | WriteReal                             { write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String] }
@@ -101,6 +130,7 @@ data WritePrimitive
     | WriteString                           { write_exp :: RightExp, write_primitive_pos :: (Int, Int), write_primitive_env :: E.Env, write_primitive_errors :: [String] }
     deriving (Show)
 
+-- TAC TODO
 data ReadPrimitive
     = ReadInt                               { read_exp :: LeftExp, read_primitive_pos :: (Int, Int), read_primitive_env :: E.Env, read_primitive_errors :: [String] }
     | ReadReal                              { read_exp :: LeftExp, read_primitive_pos :: (Int, Int), read_primitive_env :: E.Env, read_primitive_errors :: [String] }

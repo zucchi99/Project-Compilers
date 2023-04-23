@@ -155,13 +155,13 @@ need_coerc T.RealType T.IntegerType = True
 need_coerc _ _ = False
 
 from_leftexpconst_to_rightexp :: LeftExp -> (Int, Int) -> E.Env -> [String] -> RightExp
-from_leftexpconst_to_rightexp (LeftExpConst _ value _ ty _ _) pos env errs = 
+from_leftexpconst_to_rightexp (LeftExpConst ident value l_pos ty l_env l_errs) pos env errs = 
     case value of
         E.BoolConst b   -> RightExpBoolean b pos ty env errs
         E.IntConst i    -> RightExpInteger i pos ty env errs
         E.RealConst r   -> RightExpReal r pos ty env errs
         E.CharConst c   -> RightExpChar c pos ty env errs
-        E.StringConst s -> RightExpString s pos ty env errs
+        E.StringConst s -> RightExpLeftExp (LeftExpConst ident value l_pos ty l_env l_errs) pos ty env errs
 
 check_read_primitive :: LeftExp -> T.Type -> (Int, Int) -> E.Env -> (LeftExp, [String])
 check_read_primitive left_exp read_type pos env = 
@@ -233,7 +233,7 @@ static_semantic_debug x =
 
 static_semantic_errors :: Err Program -> String
 static_semantic_errors x = case x of
-    (ErrM.Ok a)    -> "The Static Semantic analaysis doesn't found any error \n"
+    (ErrM.Ok a)    -> "The Static Semantic analysis did not found any error\n"
     (ErrM.Bad err) -> "\n" ++ err ++ "\n"    
 
 -- __________________________ STATIC SEMANTIC CLASSES
@@ -727,8 +727,8 @@ instance StaticSemanticClass RightExp where
         let left_exp_checked = staticsemanticAux (left_exp {left_exp_env = parent_env})
             -- se la left_exp è una costante -> sostituisco la right_exp_copy con un right_exp col corretto valore/tipo
             new_right_exp = case left_exp_checked of
-                const@(LeftExpConst _ _ _ _ _ _)    -> from_leftexpconst_to_rightexp const pos parent_env (errors ++ (left_exp_errors left_exp_checked))
-                _                                   -> (RightExpLeftExp left_exp_checked pos (left_exp_type left_exp_checked) parent_env (errors ++ (left_exp_errors left_exp_checked)))
+                const@(LeftExpConst _ _ _ _ _ _)              -> from_leftexpconst_to_rightexp const pos parent_env (errors ++ (left_exp_errors left_exp_checked))
+                _                                             -> (RightExpLeftExp left_exp_checked pos (left_exp_type left_exp_checked) parent_env (errors ++ (left_exp_errors left_exp_checked)))
         in new_right_exp
 
     -- staticsemanticAux coerc@(RightExpCoercion main_re from_type to_type pos ty parent_env errors) = coerc
