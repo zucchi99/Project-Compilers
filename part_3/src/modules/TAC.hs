@@ -361,7 +361,6 @@ generate_tac (AS.ProgramStart _ code pos _ _) =
     let (main_name, state) = initialize_state pos
     in reverse_TAC $ fst $ gen_tac_of_Block state main_name code
 
---{ block_declarations :: [Declaration], statements :: [Statement], block_pos :: (Int, Int), block_env :: E.Env, block_errors :: [String] }
 gen_tac_of_Block :: State -> String -> AS.Block -> (State, String)
 gen_tac_of_Block state cur_blck (AS.Block []        []        pos   _   _  ) = (state, cur_blck)
 -- DECLARATIONS
@@ -370,36 +369,44 @@ gen_tac_of_Block state cur_blck (AS.Block (d:decls) stmts     pos env err) =
             -- only string to be actually treated
             (AS.DeclarationCostant {})      -> gen_tac_of_DeclarationCostant   state cur_blck d
             (AS.DeclarationVariable {})     -> gen_tac_of_DeclarationVariable  state cur_blck d
-            --(AS.DeclarationFunction {})     -> gen_tac_of_DeclarationFunction  state cur_blck d
-            --(AS.DeclarationProcedure {})    -> gen_tac_of_DeclarationProcedure state cur_blck d
+            (AS.DeclarationFunction {})     -> gen_tac_of_DeclarationFunction  state cur_blck d
+            (AS.DeclarationProcedure {})    -> gen_tac_of_DeclarationProcedure state cur_blck d
     in gen_tac_of_Block s10 cur_blck1 (AS.Block decls stmts pos env err)
 -- STATEMENTS
-gen_tac_of_Block state cur_blck (AS.Block []        (x:stmts) pos env err) = 
+gen_tac_of_Block state cur_blck (AS.Block []        (s:stmts) pos env err) = 
     -- after statements
-    let (s10, cur_blck1) = gen_tac_of_Statement state cur_blck x
+    let (s10, cur_blck1) = gen_tac_of_Statement state cur_blck s
     in  gen_tac_of_Block s10 cur_blck1 (AS.Block [] stmts pos env err) 
 
 --________________________________ Declaration __________________________________________
 
-gen_tac_of_DeclarationCostant state cur_blck declaration = 
-    let value = (AS.costant_value declaration)
+gen_tac_of_DeclarationCostant :: State -> String -> AS.Declaration -> (State, String)
+gen_tac_of_DeclarationCostant state cur_blck decl_const = 
+    let value = (AS.costant_value decl_const)
     in  case value of
         (AS.RightExpString{}) -> 
             let (s10, cur_blck1, address) = gen_tac_of_string state cur_blck value
-                ident_name                = (AS.id_name (AS.costant_name declaration))
+                ident_name                = (AS.id_name (AS.costant_name decl_const))
                 s20                       = add_to_string_constants_list s10 ident_name address
             in  (s20, cur_blck1)
         _   -> (state, cur_blck)
 
-gen_tac_of_DeclarationVariable state cur_blck declaration =
-    case (AS.variable_value_maybe declaration) of
+gen_tac_of_DeclarationVariable :: State -> String -> AS.Declaration -> (State, String)
+gen_tac_of_DeclarationVariable state cur_blck decl_var =
+    case (AS.variable_value_maybe decl_var) of
         Nothing         -> (state, cur_blck)
         Just assgn_stmt ->
-            let t                         = to_primitive_type (AS.variable_type declaration)
-                l_addr                    = gen_tac_of_Ident (AS.variable_name declaration)
+            let t                         = to_primitive_type (AS.variable_type decl_var)
+                l_addr                    = gen_tac_of_Ident (AS.variable_name decl_var)
                 (s10, cur_blck10, r_addr) = gen_tac_of_RightExp state cur_blck assgn_stmt
                 s20                       = out s10 cur_blck10 (NullAssignment { l = l_addr, r = r_addr, assign_type = t })
             in (s20, cur_blck10)
+
+gen_tac_of_DeclarationFunction :: State -> String -> AS.Declaration -> (State, String)
+gen_tac_of_DeclarationFunction  state cur_blck decl_fun = (state, cur_blck)
+
+gen_tac_of_DeclarationProcedure :: State -> String -> AS.Declaration -> (State, String)
+gen_tac_of_DeclarationProcedure state cur_blck decl_prc = (state, cur_blck)
 
 --________________________________ Statement __________________________________________
 
@@ -495,6 +502,7 @@ gen_tac_of_StatementContinue state cur_blck stmt = (state, cur_blck)
 gen_tac_of_LeftExp :: State -> String -> AS.LeftExp -> (State, PrimType, Address)
 gen_tac_of_LeftExp state cur_blck l_exp = 
     let prim_type = to_primitive_type (AS.left_exp_type l_exp)
+        --s10       = out state cur_blck (Comment $ show l_exp)
     in case l_exp of 
         -- variable
         (AS.LeftExpIdent {})           -> (state, prim_type, gen_tac_of_Ident (AS.left_exp_name l_exp))
@@ -545,7 +553,7 @@ gen_tac_of_RightExp state cur_blck r_exp =
         (AS.RightExpEqual {})           -> gen_tac_of_binary_relational_operators state cur_blck r_exp
         -- function / procedure call TODO
         (AS.RightExpFuncProcCall {})    -> gen_tac_of_RightExpFuncProcCall        state cur_blck r_exp
-        -- use a LeftExp as Right TODO
+        -- use a LeftExp as RightExp
         (AS.RightExpLeftExp {})         -> gen_tac_of_RightExpLeftExp             state cur_blck r_exp
         -- coerce a rightexp to make it compatible with expected type TODO
         (AS.RightExpCoercion {})        -> gen_tac_of_RightExpCoercion            state cur_blck r_exp
