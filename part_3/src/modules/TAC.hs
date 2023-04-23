@@ -597,7 +597,6 @@ gen_tac_of_string state cur_blck r_exp =
 gen_tac_of_RightExpNot state cur_blck not_exp = 
     let --s00         = out state cur_blck (Comment $ "start of NOT assignment declared at " ++ (print_row_col $ AS.right_exp_pos not_exp))
         r_exp       = (AS.dx not_exp)
-        has_and_or  = r_exp_has_binary_boolean_operators not_exp
         (s10, cur_blck10, addr) = gen_tac_of_RightExp state cur_blck r_exp
         -- create temp variable to store not result
         -- NB actually it is needed only for the cases: (not true), (not false)
@@ -678,16 +677,13 @@ gen_tac_of_WritePrimitive state cur_blck prim_write =
 
 -- ____________________________ AUX FUNCTIONS ________________________________________
 
-r_exp_has_binary_boolean_operators :: AS.RightExp -> Bool
-r_exp_has_binary_boolean_operators (AS.RightExpOr {})  = True 
-r_exp_has_binary_boolean_operators (AS.RightExpAnd {}) = True
-r_exp_has_binary_boolean_operators _                   = False
-
 isNothing :: Maybe a -> Bool
 isNothing Nothing = True
 isNothing _       = False
 
 ----------------------------------------------------------------------------------------------------------------------------
+
+-- ____________________________ PRETTY PRINTER ________________________________________
 
 pretty_printer_tac :: State -> String
 pretty_printer_tac (State t str _ _ _ _) = "# TAC START\n" ++ "# FUNCTIONS AND PROCEDURE\n" ++ (pretty_printer_tac_aux t str) ++ "#TAC END\n" where
