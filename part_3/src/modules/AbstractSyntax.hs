@@ -50,9 +50,9 @@ data Statement
     | StatementIf                           { condition :: RightExp, then_body :: Statement, else_body_maybe :: Maybe ElseBlock, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     -- TAC TODO
     | StatementFor                          { condition :: RightExp, then_body :: Statement, for_var :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
-    -- TAC TODO
+    -- TAC DONE
     | StatementWhile                        { condition :: RightExp, then_body :: Statement, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
-    -- TAC TODO
+    -- TAC DONE
     | StatementRepeatUntil                  { condition :: RightExp, then_body :: Statement, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     -- TAC DONE
     | StatementAssign                       { assign :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
