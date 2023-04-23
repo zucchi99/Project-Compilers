@@ -365,12 +365,7 @@ gen_tac_of_Block :: State -> String -> AS.Block -> (State, String)
 gen_tac_of_Block state cur_blck (AS.Block []        []        pos   _   _  ) = (state, cur_blck)
 -- DECLARATIONS
 gen_tac_of_Block state cur_blck (AS.Block (d:decls) stmts     pos env err) = 
-    let (s10, cur_blck1) = case d of 
-            -- only string to be actually treated
-            (AS.DeclarationCostant {})      -> gen_tac_of_DeclarationCostant   state cur_blck d
-            (AS.DeclarationVariable {})     -> gen_tac_of_DeclarationVariable  state cur_blck d
-            (AS.DeclarationFunction {})     -> gen_tac_of_DeclarationFunction  state cur_blck d
-            (AS.DeclarationProcedure {})    -> gen_tac_of_DeclarationProcedure state cur_blck d
+    let (s10, cur_blck1) = gen_tac_of_Declaration state cur_blck d
     in gen_tac_of_Block s10 cur_blck1 (AS.Block decls stmts pos env err)
 -- STATEMENTS
 gen_tac_of_Block state cur_blck (AS.Block []        (s:stmts) pos env err) = 
@@ -379,6 +374,14 @@ gen_tac_of_Block state cur_blck (AS.Block []        (s:stmts) pos env err) =
     in  gen_tac_of_Block s10 cur_blck1 (AS.Block [] stmts pos env err) 
 
 --________________________________ Declaration __________________________________________
+
+gen_tac_of_Declaration state cur_blck declaration = 
+    case declaration of 
+            -- only string to be actually treated
+            (AS.DeclarationCostant {})      -> gen_tac_of_DeclarationCostant   state cur_blck declaration
+            (AS.DeclarationVariable {})     -> gen_tac_of_DeclarationVariable  state cur_blck declaration
+            (AS.DeclarationFunction {})     -> gen_tac_of_DeclarationFunction  state cur_blck declaration
+            (AS.DeclarationProcedure {})    -> gen_tac_of_DeclarationProcedure state cur_blck declaration
 
 gen_tac_of_DeclarationCostant :: State -> String -> AS.Declaration -> (State, String)
 gen_tac_of_DeclarationCostant state cur_blck decl_const = 
