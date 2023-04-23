@@ -97,7 +97,10 @@ errMsgAssignToProc :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgAssignToProc t pos = printPos pos ++ "Procedure " ++ (show t) ++ " can't assign values"
 
 errMsgAssignToConst :: String -> (Int, Int) -> [Char]
-errMsgAssignToConst id pos = printPos pos ++ (show id) ++ ": It's not possible to assign a value to const " 
+errMsgAssignToConst id pos = printPos pos ++ (show id) ++ ": It's not possible to assign a value to a const " 
+
+errMsgAssignToForIterator :: String -> (Int, Int) -> [Char]
+errMsgAssignToForIterator id pos = printPos pos ++ (show id) ++ ": It's not possible to assign a value to a for iterator " 
 
 errMsgConstLimit :: String -> (Int, Int) -> [Char]
 errMsgConstLimit id pos = printPos pos ++ (show id) ++ ": A const can only be an integer, a char, a string, a boolean or a real " 
@@ -107,6 +110,9 @@ errMsgWrongParams t pos = printPos pos ++ "Wrong parameters for function " ++ (s
 
 errMsgCostNotPointArray :: String -> (Int, Int) -> String
 errMsgCostNotPointArray id pos = printPos pos ++ (show id) ++ ": A costant can't be an array or a pointer"
+
+errMsgForIteratorNotPointArray :: String -> (Int, Int) -> String
+errMsgForIteratorNotPointArray id pos = printPos pos ++ (show id) ++ ": A for iterator can't be an array or a pointer"
 
 printPos :: (Int, Int) -> [Char]
 printPos (l, c) = "At line " ++ (show l) ++ ", column " ++ (show c) ++ ": \n\t"

@@ -82,6 +82,10 @@ pretty_print_ast x ident = case x of
                     | ident == "inline" -> show a
     (ErrM.Bad err) -> err
 
+pretty_print_ast_debug x ident = case ident of
+    "ident"     -> pretty_printer_naive $ show x
+    "inline"    -> show x
+
 -- __________________________ PRETTY PRINTER ABSTRACT SINTAX TREE FOR REGENERATE THE CODE
 serializer :: PrettyPrinterClass a => Err a -> String
 serializer x = case x of
@@ -166,12 +170,16 @@ instance PrettyPrinterClass Statement where
         if isNothing maybe_else_body then "" else 
             pretty_printer newline (numtabs + 1) (fromJust maybe_else_body)
     pretty_printer newline numtabs (StatementFor cond then_body for_var pos env errors) =
-        ident newline numtabs "for"                                         ++
-        pretty_printer False numtabs for_var                              ++
-        ident False numtabs "to"                                            ++
-        pretty_printer False numtabs cond                                 ++
-        ident False numtabs "do"                                            ++
-        pretty_printer newline (numtabs + 1) then_body
+        let cond_type = case cond of
+                RightExpLessEqual _ _ _ _ _ _       -> "to"
+                RightExpGreaterEqual _ _ _ _ _ _    -> "downto"
+                _                                   -> "not_yet_implemented"
+        in  ident newline numtabs "for"                                         ++
+            pretty_printer False numtabs for_var                              ++
+            ident False numtabs cond_type                                            ++
+            pretty_printer False numtabs (dx cond)                                 ++
+            ident False numtabs "do"                                            ++
+            pretty_printer newline (numtabs + 1) then_body
     pretty_printer newline numtabs (StatementWhile cond then_body pos env errors) =
         ident newline numtabs "while"                                       ++
         pretty_printer newline numtabs cond                               ++

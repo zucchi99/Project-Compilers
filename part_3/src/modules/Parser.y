@@ -51,37 +51,38 @@ import qualified Env as E
     'continue' { PT _ (TS _ 31) }
     'div' { PT _ (TS _ 32) }
     'do' { PT _ (TS _ 33) }
-    'else' { PT _ (TS _ 34) }
-    'end' { PT _ (TS _ 35) }
-    'false' { PT _ (TS _ 36) }
-    'for' { PT _ (TS _ 37) }
-    'forward' { PT _ (TS _ 38) }
-    'function' { PT _ (TS _ 39) }
-    'if' { PT _ (TS _ 40) }
-    'integer' { PT _ (TS _ 41) }
-    'mod' { PT _ (TS _ 42) }
-    'not' { PT _ (TS _ 43) }
-    'of' { PT _ (TS _ 44) }
-    'or' { PT _ (TS _ 45) }
-    'procedure' { PT _ (TS _ 46) }
-    'program' { PT _ (TS _ 47) }
-    'readChar' { PT _ (TS _ 48) }
-    'readInt' { PT _ (TS _ 49) }
-    'readReal' { PT _ (TS _ 50) }
-    'readString' { PT _ (TS _ 51) }
-    'real' { PT _ (TS _ 52) }
-    'repeat' { PT _ (TS _ 53) }
-    'string' { PT _ (TS _ 54) }
-    'then' { PT _ (TS _ 55) }
-    'to' { PT _ (TS _ 56) }
-    'true' { PT _ (TS _ 57) }
-    'until' { PT _ (TS _ 58) }
-    'var' { PT _ (TS _ 59) }
-    'while' { PT _ (TS _ 60) }
-    'writeChar' { PT _ (TS _ 61) }
-    'writeInt' { PT _ (TS _ 62) }
-    'writeReal' { PT _ (TS _ 63) }
-    'writeString' { PT _ (TS _ 64) }
+    'downto' { PT _ (TS _ 34) }
+    'else' { PT _ (TS _ 35) }
+    'end' { PT _ (TS _ 36) }
+    'false' { PT _ (TS _ 37) }
+    'for' { PT _ (TS _ 38) }
+    'forward' { PT _ (TS _ 39) }
+    'function' { PT _ (TS _ 40) }
+    'if' { PT _ (TS _ 41) }
+    'integer' { PT _ (TS _ 42) }
+    'mod' { PT _ (TS _ 43) }
+    'not' { PT _ (TS _ 44) }
+    'of' { PT _ (TS _ 45) }
+    'or' { PT _ (TS _ 46) }
+    'procedure' { PT _ (TS _ 47) }
+    'program' { PT _ (TS _ 48) }
+    'readChar' { PT _ (TS _ 49) }
+    'readInt' { PT _ (TS _ 50) }
+    'readReal' { PT _ (TS _ 51) }
+    'readString' { PT _ (TS _ 52) }
+    'real' { PT _ (TS _ 53) }
+    'repeat' { PT _ (TS _ 54) }
+    'string' { PT _ (TS _ 55) }
+    'then' { PT _ (TS _ 56) }
+    'to' { PT _ (TS _ 57) }
+    'true' { PT _ (TS _ 58) }
+    'until' { PT _ (TS _ 59) }
+    'var' { PT _ (TS _ 60) }
+    'while' { PT _ (TS _ 61) }
+    'writeChar' { PT _ (TS _ 62) }
+    'writeInt' { PT _ (TS _ 63) }
+    'writeReal' { PT _ (TS _ 64) }
+    'writeString' { PT _ (TS _ 65) }
     L_ident  { PT _ (TV _) }
     L_integ  { PT _ (TI _) }
     L_doubl  { PT _ (TD _) }
@@ -315,9 +316,9 @@ Statement   : Block  {
                     statement_env = E.emptyEnv,
                     statement_errors = []
                 }}
-            | 'for' Assign 'to' RightExp 'do' Statement {
+            | 'for' Assign ForCondition RightExp 'do' Statement {
                 StatementFor  {
-                    condition = $4,
+                    condition = ($3 (left_exp_assignment $2) $4),
                     then_body = $6,
                     for_var = $2,
                     statement_pos = (tokenLineCol $1),
@@ -374,6 +375,32 @@ Statement   : Block  {
                     statement_env = E.emptyEnv, 
                     statement_errors = []
                 }}
+
+ForCondition    :: { LeftExp -> RightExp -> RightExp }
+ForCondition    : 'to' {
+                    \new_sx new_dx -> RightExpLessEqual {
+                        sx = RightExpLeftExp {
+                            left_exp_right_exp = new_sx, right_exp_pos = (left_exp_pos new_sx),
+                            right_exp_type = T.TBDType,
+                            right_exp_env = E.emptyEnv,
+                            right_exp_errors = [] 
+                        }, dx = new_dx, right_exp_pos = (right_exp_pos new_dx),
+                        right_exp_type = T.TBDType,
+                        right_exp_env = E.emptyEnv,
+                        right_exp_errors = []
+                    }}
+                | 'downto' {
+                    \new_sx new_dx -> RightExpGreaterEqual {
+                        sx = RightExpLeftExp {
+                            left_exp_right_exp = new_sx, right_exp_pos = (left_exp_pos new_sx),
+                            right_exp_type = T.TBDType,
+                            right_exp_env = E.emptyEnv,
+                            right_exp_errors = [] 
+                        }, dx = new_dx, right_exp_pos = (right_exp_pos new_dx),
+                        right_exp_type = T.TBDType,
+                        right_exp_env = E.emptyEnv,
+                        right_exp_errors = []
+                    }}
 
 ElseBlock   :: { Maybe ElseBlock }
 ElseBlock   : {- empty -} { Nothing }

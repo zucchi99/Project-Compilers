@@ -20,10 +20,11 @@ data ConstType =
     deriving (Show)
 
 data EnvEntry 
-    = VarEntry      { ty :: T.Type } 
-    | ConstEntry    { ty :: T.Type, const_value :: ConstType }
-    | FunEntry      { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool }
-    | ProcEntry     { params :: [(String, T.Type)], forward :: Bool  }
+    = VarEntry      { ty :: T.Type, pos_decl :: (Int, Int) } 
+    | ConstEntry    { ty :: T.Type, const_value :: ConstType, pos_decl :: (Int, Int) }
+    | ForIterator   { ty :: T.Type, pos_decl :: (Int, Int) }
+    | FunEntry      { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool, pos_decl :: (Int, Int) }
+    | ProcEntry     { params :: [(String, T.Type)], forward :: Bool, pos_decl :: (Int, Int) }
     deriving (Show)
 
 instance Eq EnvEntry where

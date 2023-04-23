@@ -79,11 +79,12 @@ data RightExp
     | RightExpString                        { right_exp_string :: String, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpFuncProcCall                  { call_name_right_exp :: Ident, call_params_right_exp :: [RightExp], right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpLeftExp                       { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-    | RightExpCoercion                      { right_exp_coercion :: RightExp, right_exp_from_type :: T.Type, right_exp_to_type :: T.Type, right_exp_pos :: (Int, Int), right_exp_env :: E.Env, right_exp_errors :: [String] }
+    | RightExpCoercion                      { right_exp_coercion :: RightExp, right_exp_from_type :: T.Type, right_exp_type :: T.Type, right_exp_pos :: (Int, Int), right_exp_env :: E.Env, right_exp_errors :: [String] }
     deriving (Show)
 
 data LeftExp
     = LeftExpIdent                          { left_exp_name :: Ident, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
+    | LeftExpForIterator                    { left_exp_name :: Ident, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
     | LeftExpConst                          { left_exp_name :: Ident, value :: E.ConstType, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
     | LeftExpArrayAccess                    { array_name :: LeftExp, array_pos :: [RightExp], left_exp_type :: T.Type, left_exp_pos  :: (Int, Int), left_exp_env :: E.Env, left_exp_errors :: [String] }
     | LeftExpPointerValue                   { pointer_value :: LeftExp, left_exp_pos  :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }

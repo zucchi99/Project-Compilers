@@ -60,8 +60,9 @@ testami test = do
     putStrLn $ Static.static_semantic_errors static
 
     -- Static Semantic Debug
+    let static = Static.static_semantic_debug par
     let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
-    writeFile out_file $ Printer.pretty_print_ast (ErrM.Ok static) "ident"
+    writeFile out_file $ Printer.pretty_print_ast_debug static "ident"
 
     -- TAC Generation
     -- putStrLn "TAC Generation"
