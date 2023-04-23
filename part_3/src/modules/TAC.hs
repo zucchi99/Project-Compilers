@@ -434,17 +434,17 @@ gen_tac_of_StatementBlock state cur_blck blck_stmt = gen_tac_of_Block state cur_
 
 -- StatementIf { condition :: RightExp, then_body :: Statement, else_body_maybe :: Maybe ElseBlock, statement_pos :: (Int, Int), statement_ :: , statement_errors :: [String] }
 gen_tac_of_StatementIf state cur_blck if_stmt =
-    let --show_stmt        = " if statement declared at " ++ (print_row_col $ AS.statement_pos if_stmt)
+    let show_stmt        = " statement declared at " ++ (print_row_col $ AS.statement_pos if_stmt)
         --s00             = out state cur_blck (Comment $ "start of" ++ show_stmt)
         maybe_else_body = (AS.else_body_maybe if_stmt)
         -- create temp blocks: block-then, block-else (also if there is no else block, easier to code), block-next
         (s10, block_then, block_else, block_next) = add_blocks_then_else_next state cur_blck
-        --s14             = out s10 block_then (Comment $ "start of THEN " ++ block_then ++ " added by" ++ show_stmt)
-        --s15             = out s14 block_else (Comment $ "start of ELSE " ++ block_else ++ " added by" ++ show_stmt)
-        --s16             = out s15 block_next (Comment $ "start of NEXT " ++ block_next ++ " added by" ++ show_stmt)
+        s14             = out s10 block_then (Comment $ "start of IF THEN " ++ block_then ++ " added by" ++ show_stmt)
+        s15             = out s14 block_else (Comment $ "start of IF ELSE " ++ block_else ++ " added by" ++ show_stmt)
+        s16             = out s15 block_next (Comment $ "start of IF NEXT " ++ block_next ++ " added by" ++ show_stmt)
         --s17             = out s16 block_else (Comment $ "is ELSE block empty? " ++ (show $ isNothing maybe_else_body))
         -- generate code for condition 
-        (s20, cur_block10, cond_addr) = gen_tac_of_RightExp s10 cur_blck (AS.condition if_stmt)
+        (s20, cur_block10, cond_addr) = gen_tac_of_RightExp s16 cur_blck (AS.condition if_stmt)
         -- add instruction : if_false cond_addr then goto block_else
         s30              = out s20 cur_block10 (JumpIfFalse block_else cond_addr)
         -- if some blocks has been added between cur_block and block_then ==> add jump to block_then
@@ -464,11 +464,28 @@ gen_tac_of_StatementIf state cur_blck if_stmt =
 gen_tac_of_ElseBlock state cur_blck Nothing          = (state, cur_blck)
 gen_tac_of_ElseBlock state cur_blck (Just else_blck) = gen_tac_of_Statement state cur_blck (AS.else_body else_blck)
 
-gen_tac_of_StatementFor state cur_blck stmt = (state, cur_blck)
+-- { condition :: RightExp, then_body :: Statement, for_var :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+gen_tac_of_StatementFor state cur_blck for_stmt = (state, cur_blck)
+{-    let (s10, cur_blck10, r_addr) = gen_tac_of_RightExp state cur_blck (AS.condition for_stmt)
+    in (s10, cur_blck10)
+-}
 
-gen_tac_of_StatementWhile state cur_blck stmt = (state, cur_blck)
+gen_tac_of_StatementWhile state cur_blck while_stmt = gen_tac_of_unbounded_repetition state cur_blck while_stmt False 
 
-gen_tac_of_StatementRepeatUntil state cur_blck stmt = (state, cur_blck)
+gen_tac_of_StatementRepeatUntil state cur_blck rep_stmt = gen_tac_of_unbounded_repetition state cur_blck rep_stmt True
+
+gen_tac_of_unbounded_repetition state cur_blck unb_stmt is_repeat =
+    let (s10, blck_then, blck_guard, blck_next) = add_blocks_then_else_next state cur_blck
+        show_stmt       = " statement declared at " ++ (print_row_col $ AS.statement_pos unb_stmt)
+        name_stmt       = if is_repeat then "REPEAT UNTIL " else "WHILE DO "
+        s14             = out s10 blck_then  (Comment $ "start of " ++ name_stmt ++ "THEN  " ++ blck_then  ++ " added by" ++ show_stmt)
+        s15             = out s14 blck_guard (Comment $ "start of " ++ name_stmt ++ "GUARD " ++ blck_guard ++ " added by" ++ show_stmt)
+        s16             = out s15 blck_next  (Comment $ "start of " ++ name_stmt ++ "NEXT  " ++ blck_next  ++ " added by" ++ show_stmt)
+        s20                          = if is_repeat then s16 else out s16 cur_blck (Jump { goto = blck_guard })
+        (s30, cur_blck10, cond_addr) = gen_tac_of_RightExp s20 blck_guard (AS.condition unb_stmt)
+        s40                          = out s30 cur_blck10 (JumpIfTrue { goto = blck_guard, cond = cond_addr })
+        (s50, _)                     = gen_tac_of_Statement s40 blck_then (AS.then_body unb_stmt)
+    in  (s50, blck_next)
 
 -- StatementAssign { assign :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
 gen_tac_of_StatementAssign state cur_blck stmt = gen_tac_of_VariableAssignment state cur_blck (AS.assign stmt)
