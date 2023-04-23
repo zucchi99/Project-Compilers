@@ -55,9 +55,11 @@ testami test = do
     putStrLn $ Printer.serializer output
 
     -- Static Semantic
-    putStrLn "Static Semantic"
     let static = Static.static_semantic_check par
+    putStrLn "\nStatic Semantic errors:"
     putStrLn $ Static.static_semantic_errors static
+    putStrLn "Static Semantic data structure:"
+    putStr $ show $ static
 
     -- Static Semantic Debug
     let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
