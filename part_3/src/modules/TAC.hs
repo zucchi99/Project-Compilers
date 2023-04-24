@@ -416,13 +416,33 @@ gen_tac_of_DeclarationVariable state cur_blck decl_var =
             in (s20, cur_blck10)
 
 --make_ident_var_label
---make_block_label (FuncBlockType (AS.declaration_pos decl_fun)  is_start f_name)
+--make_block_label (FuncBlockType (AS.declaration_pos decl_fun) is_start f_name)
 --{ declaration_name :: Ident, declaration_params :: [Declaration], function_type :: T.Type, declaration_body_maybe :: Maybe Block, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
 gen_tac_of_DeclarationFunction :: State -> String -> AS.Declaration -> (State, String)
-gen_tac_of_DeclarationFunction  state cur_blck decl_fun = (state, cur_blck)
+gen_tac_of_DeclarationFunction  state cur_blck decl_fun =
+    let 
+        function_pos = (AS.declaration_pos decl_fun)
+        function_plain_name = (AS.id_name (AS.declaration_name decl_fun))
+        function_type       = (FuncBlockType function_pos True function_plain_name)
+        function_name       = make_block_label function_type
+        s10                 = add_block empty_state function_type []
+        (s20, cur_blck10)   = get_tac_of_ListDeclaration s10 function_name (AS.declaration_params decl_fun)
+        (s30, cur_blck20)   = case AS.declaration_body_maybe decl_fun of
+                                (Just b) -> gen_tac_of_Block s20 cur_blck10 b "" ""
+                                Nothing  -> (s20, cur_blck10)
+        s40   = out s30 cur_blck20 (RetVal { value = (AddressProgramVar (make_ident_var_label function_plain_name function_pos)), return_type = to_primitive_type (AS.function_type decl_fun) })
+        fun_block           = make_block_label (FuncBlockType function_pos False function_plain_name)
+    in  (s40, fun_block)
 
 gen_tac_of_DeclarationProcedure :: State -> String -> AS.Declaration -> (State, String)
 gen_tac_of_DeclarationProcedure state cur_blck decl_prc = (state, cur_blck)
+
+get_tac_of_ListDeclaration :: State -> String -> [AS.Declaration] -> (State, String)
+get_tac_of_ListDeclaration state cur_blck [] = (state, cur_blck)
+get_tac_of_ListDeclaration state cur_blck (d:decls) = 
+    let (s10, cur_blck1) = gen_tac_of_Declaration state cur_blck d
+    in  get_tac_of_ListDeclaration s10 cur_blck1 decls
+
 
 --________________________________ Statement __________________________________________
 
@@ -526,12 +546,18 @@ gen_tac_of_StatementAssign state cur_blck stmt _ _ = gen_tac_of_VariableAssignme
 gen_tac_of_VariableAssignment state cur_blck assgn_stmt = 
     let -- s00                      = out state cur_blck (Comment $ "start of variable assignment declared at " ++ (print_row_col $ AS.assign_pos assgn_stmt))
         -- BEFORE LEFT EXPRESSION
-        (s10, t, l_addr)            = gen_tac_of_LeftExp  state   cur_blck10 (AS.left_exp_assignment assgn_stmt)
+        (s10, prim_type, l_addr)  = gen_tac_of_LeftExp  state   cur_blck10 (AS.left_exp_assignment assgn_stmt) True
         -- AFTER RIGHT EXPRESSION
-        (s20, cur_blck10, r_addr)   = gen_tac_of_RightExp s10 cur_blck   (AS.right_exp_assignment assgn_stmt)
+        (s20, cur_blck10, r_addr) = gen_tac_of_RightExp s10 cur_blck   (AS.right_exp_assignment assgn_stmt)
         -- add assignment code
-        s30                         = out s20 cur_blck10 (NullAssignment { l = l_addr, r = r_addr, assign_type = t })
+        s25                       = out s20 cur_blck10 (Comment $ (show l_addr) ++ " = " ++ (show r_addr) ++ " : " ++ (show prim_type))
+        s30                       = add_assignment_instruction s25 cur_blck10 prim_type l_addr r_addr
     in (s30, cur_blck10)
+
+add_assignment_instruction state cur_blck prim_type l_addr r_addr = 
+    case prim_type of
+        TypeAddr -> out state cur_blck (NullAssignment    { l = l_addr, r = r_addr, assign_type = prim_type })
+        _        -> out state cur_blck (WritePointerValue { l = l_addr, r = r_addr })
 
 -- gen_tac_of_StatementFuncProcCall :: State -> String -> AS.StatementFuncProcCall -> (State, String)
 gen_tac_of_StatementFuncProcCall state cur_blck stmt _ _ = 
@@ -573,8 +599,8 @@ gen_tac_of_Ident ident =
 
 --________________________________ Left Expression __________________________________________
 
-gen_tac_of_LeftExp :: State -> String -> AS.LeftExp -> (State, PrimType, Address)
-gen_tac_of_LeftExp state cur_blck l_exp = 
+gen_tac_of_LeftExp :: State -> String -> AS.LeftExp -> Bool -> (State, PrimType, Address)
+gen_tac_of_LeftExp state cur_blck l_exp is_lexp = 
     let prim_type = to_primitive_type (AS.left_exp_type l_exp)
         --s10       = out state cur_blck (Comment $ show l_exp)
     in case l_exp of 
@@ -583,9 +609,29 @@ gen_tac_of_LeftExp state cur_blck l_exp =
         (AS.LeftExpForIterator {})     -> (state, prim_type, gen_tac_of_Ident (AS.left_exp_name l_exp))
         -- only string-constants (non-string constants has been already substituted by static semantic)
         (AS.LeftExpConst {})           -> (state, prim_type, get_address_from_string_constant state (AS.id_name (AS.left_exp_name l_exp)))
+        -- pointers
         (AS.LeftExpArrayAccess {})     -> gen_tac_of_ArrayAccess state cur_blck prim_type l_exp
-        (AS.LeftExpPointerValue {})    -> (state, prim_type, AddressTempVar "todo")
-        (AS.LeftExpPointerAddress {})  -> (state, prim_type, AddressTempVar "todo")
+        (AS.LeftExpPointerValue {})    -> gen_tac_of_LeftExpPointerValue state cur_blck prim_type l_exp is_lexp
+        (AS.LeftExpPointerAddress {})  -> gen_tac_of_LeftExpPointerAddress state cur_blck l_exp
+
+gen_tac_of_LeftExpPointerAddress state cur_blck ptr_val =
+    let ident_addr      = gen_tac_of_Ident $ get_pointer_ident ptr_val
+        (tmp_addr, s10) = add_temp_var state
+        s20             = out s10 cur_blck (ReadPointerAddress { l = tmp_addr, pointer = ident_addr })
+    in  (s20, TypeAddr, ident_addr)
+
+gen_tac_of_LeftExpPointerValue state cur_blck prim_type ptr_val is_lexp =
+    let ident_addr      = gen_tac_of_Ident $ get_pointer_ident ptr_val
+        (tmp_addr, s10) = add_temp_var state
+        s20             = out s10 cur_blck (ReadPointerValue { l1 = tmp_addr, l2 = ident_addr })
+        (s30, out_addr) = if is_lexp then (state, ident_addr) else (s20, tmp_addr)
+    in  (s30, prim_type, out_addr)
+
+get_pointer_ident l_exp = 
+    case l_exp of
+        (AS.LeftExpPointerValue {})   -> get_pointer_ident (AS.pointer_value   l_exp)
+        (AS.LeftExpPointerAddress {}) -> get_pointer_ident (AS.pointer_address l_exp)
+        _                             -> (AS.left_exp_name l_exp)
     
 gen_tac_of_ArrayAccess :: State -> String -> PrimType -> AS.LeftExp -> (State, PrimType, Address)
 gen_tac_of_ArrayAccess state cur_blck primitive_type array = 
@@ -626,8 +672,9 @@ get_array_indexes_as_rexp l_exp =
 get_multi_array_name_and_length_from_lexp :: AS.LeftExp -> (String, [Int])
 get_multi_array_name_and_length_from_lexp l_exp = 
     case l_exp of
-        (AS.LeftExpArrayAccess {}) -> get_multi_array_name_and_length_from_lexp (AS.array_name l_exp)
-        _                          -> ((AS.id_name (AS.left_exp_name l_exp)), T.get_multi_array_length (AS.left_exp_type l_exp))
+        (AS.LeftExpArrayAccess {})  -> get_multi_array_name_and_length_from_lexp (AS.array_name l_exp)
+        (AS.LeftExpPointerValue {}) -> get_multi_array_name_and_length_from_lexp (AS.pointer_value l_exp)
+        _                           -> ((AS.id_name (AS.left_exp_name l_exp)), T.get_multi_array_length (AS.left_exp_type l_exp))
 
 get_offsets_from_array_lengths :: [Int] -> [Int]
 get_offsets_from_array_lengths []     = [1]
@@ -651,7 +698,6 @@ sum_all_offsets_by_dim state cur_blck addr_arr offset_by_idx =
             sum_all_offsets_by_dim_aux state cur_blck addr_arr (offset:xs) = 
                 let s20 = out state cur_blck (BinaryArithmAssignment { l = addr_arr, r1 = addr_arr, r2 = offset, assign_type = TypeInt, bin_arit_op = (Sum TypeInt) })
                 in  sum_all_offsets_by_dim_aux s20 cur_blck addr_arr xs
-
 
 
 --________________________________ Right Expression __________________________________________
@@ -723,7 +769,7 @@ gen_tac_FuncProcCall state cur_blck params funproc_name env =
 --TODO
 -- RightExpLeftExp { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
 gen_tac_of_RightExpLeftExp state cur_blck r_exp = 
-    let (s10, prim_type, address) = gen_tac_of_LeftExp state cur_blck (AS.left_exp_right_exp r_exp)
+    let (s10, prim_type, address) = gen_tac_of_LeftExp state cur_blck (AS.left_exp_right_exp r_exp) False
     in (s10, cur_blck, address)
 
 --TODO
@@ -842,7 +888,7 @@ gen_tac_of_ReadPrimitive :: State -> String -> AS.ReadPrimitive -> (State, Strin
 gen_tac_of_ReadPrimitive state cur_blck prim_read = 
     let l_exp            = (AS.read_exp prim_read)
         prim_read_name      = AS.make_label_ReadPrimitive prim_read
-        (s10, prim_type, address)   = gen_tac_of_LeftExp state cur_blck l_exp
+        (s10, prim_type, address)   = gen_tac_of_LeftExp state cur_blck l_exp False
         s20              = out s10 cur_blck (Parameter { param = address, param_type = prim_type })
         s30              = out s20 cur_blck (ProcCall { p_name = prim_read_name, num_params = 1 })
     in  (s30, cur_blck)
@@ -882,10 +928,11 @@ pretty_printer_string str = (pretty_printer_string_aux str 0) where
     pretty_printer_string_aux (x:xs) i = (make_block_label $ StringBlockType i) ++ ":\n   " ++ (show x) ++ "\n" ++ (pretty_printer_string_aux xs (i+1))
 
 instance Show PrimType where
-    show TypeInt    = "integer"
+    show TypeInt    = "int"
     show TypeReal   = "real"
     show TypeChar   = "char"
-    show TypeBool   = "boolean"
+    show TypeBool   = "bool"
+    show TypeAddr   = "addr"
 
 instance Show Address where 
     show (AddressInt i)         = show i
@@ -896,24 +943,24 @@ instance Show Address where
     show (AddressTempVar t)     = t
 
 instance Show Instruction where
-    show (BinaryArithmAssignment l r1 r2 _ op)    = (show l) ++ " = " ++ (show r1) ++ " " ++ (show op) ++ " " ++ (show r2) 
-    show (BinaryRelatAssignment l r1 r2 _ op)     = (show l) ++ " = " ++ (show r1) ++ " " ++ (show op) ++ " " ++ (show r2) 
-    show (UnaryAssignment l r _ op)               = (show l) ++ " = " ++ (show op) ++ " " ++ (show r) 
-    show (NullAssignment l r _)                   = (show l) ++ " = " ++ (show r) 
+    show (BinaryArithmAssignment l r1 r2 t op)    = (show l) ++ " =:" ++ (show t) ++ " " ++ (show r1) ++ " " ++ (show op) ++ ":" ++ (show t) ++ " " ++ (show r2) 
+    show (BinaryRelatAssignment l r1 r2 t op)     = (show l) ++ " =:" ++ (show t) ++ " " ++ (show r1) ++ " " ++ (show op) ++ ":" ++ (show t) ++ " " ++ (show r2) 
+    show (UnaryAssignment l r t op)               = (show l) ++ " =:" ++ (show t) ++ " " ++ (show op) ++ " :" ++ (show t) ++ " " ++ (show r) 
+    show (NullAssignment l r t)                   = (show l) ++ " =:" ++ (show t) ++ " " ++ (show r) 
     show (Jump goto)                              = "goto " ++ goto
     show (JumpIfTrue goto cond)                   = "if " ++ (show cond) ++ " == true goto " ++ goto
     show (JumpIfFalse goto cond)                  = "if " ++ (show cond) ++ " == false goto " ++ goto
     --JumpConditional
-    show (ReadFromArray array i l _)              = (show l) ++ " = " ++ (show array) ++ "[" ++ (show i) ++ "]"
-    show (WriteToArray array i r _)               = (show array) ++ "[" ++ (show i) ++ "]" ++ " = " ++ (show r)
+    show (ReadFromArray array i l t)              = (show l) ++ " =:" ++ (show t) ++ " " ++ (show array) ++ "[" ++ (show i) ++ "]"
+    show (WriteToArray array i r t)               = (show array) ++ "[" ++ (show i) ++ "]" ++ " =:" ++ (show t) ++ " " ++ (show r)
     show (ReadPointerAddress l pointer)           = (show l) ++ " = " ++ (show pointer) ++ "@"
     show (ReadPointerValue l1 l2)                 = (show l1) ++ " = " ++ (show l2) ++ "^"
-    show (WritePointerValue l r)                  = (show l) ++ " = " ++ (show r)
-    show (ProcCall p_name num_params)             = "pcall " ++ p_name ++ ", " ++ (show num_params)
-    show (FunCall f_name num_params l _)          = (show l) ++ " = fcall " ++ f_name ++ ", " ++ (show num_params)
-    show (Parameter param param_type)             = "param " ++ (show param)
+    show (WritePointerValue l r)                  = (show l) ++ "^ = " ++ (show r)
+    show (ProcCall ptname numtparams)             = "pcall " ++ ptname ++ ", " ++ (show numtparams)
+    show (FunCall ftname numtparams l _)          = (show l) ++ " = fcall " ++ ftname ++ ", " ++ (show numtparams)
+    show (Parameter param paramttype)             = "param " ++ (show param)
     show (Return)                                 = "return void"
-    show (RetVal value return_type)               = "return " ++ (show value)
+    show (RetVal value returnttype)               = "return " ++ (show value)
     show (Comment comment)                        = "# " ++ comment
 
 instance Show BinaryArithmOp where
