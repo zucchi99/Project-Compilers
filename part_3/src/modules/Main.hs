@@ -65,7 +65,7 @@ testami test = do
     putStrLn $ Static.static_semantic_errors static
     putStrLn "Static Semantic data structure:"
     putStr $ show $ static
-    putStr $ Printer.pretty_print_ast static "ident"
+    --putStr $ Printer.pretty_print_ast static "ident"
 
     -- Static Semantic Debug
     let static_debug = Static.static_semantic_debug par

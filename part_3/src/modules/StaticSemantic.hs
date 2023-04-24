@@ -870,17 +870,17 @@ instance StaticSemanticClass WritePrimitive where
 
 instance StaticSemanticClass ReadPrimitive where
     staticsemanticAux (ReadInt left_exp pos env errors) =
-        let (lexp_checked, errs) = check_read_primitive left_exp T.IntegerType pos env
+        let (lexp_checked, errs) = check_read_primitive left_exp (T.PointerType T.IntegerType) pos env
         in (ReadInt lexp_checked pos env (errors ++ errs))
 
     staticsemanticAux (ReadReal left_exp pos env errors) =
-        let (lexp_checked, errs) = check_read_primitive left_exp T.RealType pos env
+        let (lexp_checked, errs) = check_read_primitive left_exp (T.PointerType T.RealType) pos env
         in (ReadReal lexp_checked pos env (errors ++ errs))
 
     staticsemanticAux (ReadChar left_exp pos env errors) =
-        let (lexp_checked, errs) = check_read_primitive left_exp T.CharType pos env
+        let (lexp_checked, errs) = check_read_primitive left_exp (T.PointerType T.CharType) pos env
         in (ReadChar lexp_checked pos env (errors ++ errs))
             
     staticsemanticAux (ReadString left_exp pos env errors) =
-        let (lexp_checked, errs) = check_read_primitive left_exp T.StringType pos env
+        let (lexp_checked, errs) = check_read_primitive left_exp (T.PointerType T.StringType) pos env
         in (ReadString lexp_checked pos env (errors ++ errs))

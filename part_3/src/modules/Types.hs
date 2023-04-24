@@ -44,6 +44,14 @@ sup t1 t2 = case t1 == t2 of
     True  -> t1
     False -> ErrorType
 
+
+get_multi_array_length (ArrayType t d) = (get_single_array_length d) ++ (get_multi_array_length t)
+get_multi_array_length _                 = []
+
+get_single_array_length []         = []
+get_single_array_length ((l,r):xs) = (r-l+1) : (get_single_array_length xs)
+
+
 -- given two types, return True if them are comparable ( <, >, <=, >= )
 rel :: Type -> Type -> Type
 rel t1 t2 = case sup t1 t2 of
