@@ -83,3 +83,7 @@ all_same_type (x:xs) = all (==x) xs
 need_coerc :: Type -> Type -> Bool
 need_coerc RealType IntegerType = True
 need_coerc _ _ = False
+
+is_array :: Type -> Bool
+is_array (ArrayType{}) = True
+is_array _             = False

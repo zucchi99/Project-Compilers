@@ -370,7 +370,7 @@ generate_tac (AS.ProgramStart _ code pos _ _) =
         (s10, _) = gen_tac_of_Block state main_name_start code "" ""
     in reverse_TAC $ s10
 
--- gen_tac_of_Block :: State -> String -> AS.Block -> (State, String)
+gen_tac_of_Block :: State -> String -> AS.Block -> String -> String -> (State, String)
 gen_tac_of_Block state cur_blck (AS.Block []        []        pos   _   _  ) blck_next blck_guard = (state, cur_blck)
 -- DECLARATIONS
 gen_tac_of_Block state cur_blck (AS.Block (d:decls) stmts     pos env err) blck_next blck_guard = 
@@ -384,13 +384,14 @@ gen_tac_of_Block state cur_blck (AS.Block []        (s:stmts) pos env err) blck_
 
 --________________________________ Declaration __________________________________________
 
+gen_tac_of_Declaration :: State -> String -> AS.Declaration -> (State, String)
 gen_tac_of_Declaration state cur_blck declaration = 
     case declaration of 
             -- only string to be actually treated
             (AS.DeclarationCostant {})      -> gen_tac_of_DeclarationCostant   state cur_blck declaration
             (AS.DeclarationVariable {})     -> gen_tac_of_DeclarationVariable  state cur_blck declaration
-            (AS.DeclarationFunction {})     -> gen_tac_of_DeclarationFunction  state cur_blck declaration
-            (AS.DeclarationProcedure {})    -> gen_tac_of_DeclarationProcedure state cur_blck declaration
+            (AS.DeclarationFunction {})     -> (gen_tac_of_DeclarationFunction  state declaration, cur_blck)
+            (AS.DeclarationProcedure {})    -> (gen_tac_of_DeclarationProcedure state declaration, cur_blck)
 
 gen_tac_of_DeclarationCostant :: State -> String -> AS.Declaration -> (State, String)
 gen_tac_of_DeclarationCostant state cur_blck decl_const = 
@@ -403,12 +404,9 @@ gen_tac_of_DeclarationCostant state cur_blck decl_const =
             in  (s20, cur_blck1)
         _   -> (state, cur_blck)
 
-is_array (T.ArrayType{}) = True
-is_array _               = False
-
 gen_tac_of_DeclarationVariable :: State -> String -> AS.Declaration -> (State, String)
 gen_tac_of_DeclarationVariable state cur_blck decl_var =
-    if (is_array (AS.variable_type decl_var)) || (isNothing (AS.variable_value_maybe decl_var))
+    if (T.is_array (AS.variable_type decl_var)) || (isNothing (AS.variable_value_maybe decl_var))
     -- if no initialization do nothing (array can never be initialized)
     then (state, cur_blck) 
     -- initialize
@@ -419,13 +417,14 @@ gen_tac_of_DeclarationVariable state cur_blck decl_var =
                 s20                       = out s10 cur_blck10 (NullAssignment { l = l_addr, r = r_addr, assign_type = t })
             in (s20, cur_blck10)
 
-gen_tac_of_DeclarationFunction :: State -> String -> AS.Declaration -> (State, String)
-gen_tac_of_DeclarationFunction  state cur_blck decl_fun = gen_tac_of_declaration_fun_proc state cur_blck decl_fun FuncBlockType True
+gen_tac_of_DeclarationFunction :: State -> AS.Declaration -> State
+gen_tac_of_DeclarationFunction  state decl_fun = gen_tac_of_declaration_fun_proc state decl_fun FuncBlockType True
 
-gen_tac_of_DeclarationProcedure state cur_blck decl_prc = gen_tac_of_declaration_fun_proc state cur_blck decl_prc ProcBlockType False
+gen_tac_of_DeclarationProcedure :: State -> AS.Declaration -> State
+gen_tac_of_DeclarationProcedure state decl_prc = gen_tac_of_declaration_fun_proc state decl_prc ProcBlockType False
 
-
-gen_tac_of_declaration_fun_proc state cur_blck decl constructor is_fun = 
+gen_tac_of_declaration_fun_proc :: State -> AS.Declaration -> ((Int, Int) -> Bool -> String -> BlockType) -> Bool -> State
+gen_tac_of_declaration_fun_proc state decl constructor is_fun = 
     let function_pos        = (AS.declaration_pos decl)
         function_plain_name = (AS.id_name (AS.declaration_name decl))
         block_type_start    = (constructor function_pos True function_plain_name)
@@ -442,7 +441,7 @@ gen_tac_of_declaration_fun_proc state cur_blck decl constructor is_fun =
         s50                 = if is_fun 
                                 then out s40 block_name_end (RetVal { value = return_addr, return_type = to_primitive_type (AS.function_type decl) })
                                 else out s40 block_name_end Return
-    in  (s50, cur_blck)
+    in  s50
 
 get_tac_of_ListDeclaration :: State -> String -> [AS.Declaration] -> (State, String)
 get_tac_of_ListDeclaration state cur_blck [] = (state, cur_blck)
@@ -454,7 +453,7 @@ get_tac_of_ListDeclaration state cur_blck (d:decls) =
 --________________________________ Statement __________________________________________
 
 -- Statement wrapper
---gen_tac_of_Statement :: State -> String -> AS.Statement -> (State, String)
+gen_tac_of_Statement :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_Statement state cur_blck stmt blck_next blck_guard = gen_tac_fun state cur_blck stmt blck_next blck_guard
     where gen_tac_fun = case stmt of
             (AS.StatementBlock {})          -> gen_tac_of_StatementBlock
@@ -469,10 +468,10 @@ gen_tac_of_Statement state cur_blck stmt blck_next blck_guard = gen_tac_fun stat
             (AS.StatementContinue {})       -> gen_tac_of_StatementContinue
             (AS.StatementRead {})           -> gen_tac_of_StatementRead
 
---gen_tac_of_StatementBlock :: State -> String -> AS.Statement -> (State, String)
+gen_tac_of_StatementBlock :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementBlock state cur_blck blck_stmt blck_next blck_guard = gen_tac_of_Block state cur_blck (AS.block blck_stmt) blck_next blck_guard
 
--- StatementIf { condition :: RightExp, then_body :: Statement, else_body_maybe :: Maybe ElseBlock, statement_pos :: (Int, Int), statement_ :: , statement_errors :: [String] }
+gen_tac_of_StatementIf :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementIf state cur_blck if_stmt blck_next blck_guard =
     let show_stmt        = " statement declared at " ++ (print_row_col $ AS.statement_pos if_stmt)
         --s00             = out state cur_blck (Comment $ "start of" ++ show_stmt)
@@ -500,11 +499,11 @@ gen_tac_of_StatementIf state cur_blck if_stmt blck_next blck_guard =
         s80              = if block_else == cur_blck_else then s70 else out s70 block_else (Jump { goto = block_next })
     in (s70, block_next)
 
--- data ElseBlock = ElseBlock { else_body :: Statement, else_block_pos :: (Int, Int), else_block_env :: E.Env, else_block_errors :: [String] }}
+gen_tac_of_ElseBlock :: State -> String -> Maybe AS.ElseBlock -> String -> String -> (State, String)
 gen_tac_of_ElseBlock state cur_blck Nothing          _         _          = (state, cur_blck)
 gen_tac_of_ElseBlock state cur_blck (Just else_blck) blck_next blck_guard = gen_tac_of_Statement state cur_blck (AS.else_body else_blck) blck_next blck_guard
 
--- { condition :: RightExp, then_body :: Statement, for_var :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+gen_tac_of_StatementFor :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementFor state cur_blck for_stmt blck_next blck_guard = 
     let
         (s11, cur_blck10) = gen_tac_of_VariableAssignment state cur_blck (AS.for_var for_stmt) -- blck_next blck_guard
@@ -529,10 +528,13 @@ get_op_for :: AS.RightExp -> BinaryArithmOp
 get_op_for (AS.RightExpLessEqual {}) = Sum      {binary_type = TypeInt}
 get_op_for _                         = Subtract {binary_type = TypeInt}
 
+gen_tac_of_StatementWhile :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementWhile state cur_blck while_stmt _ _ = gen_tac_of_unbounded_repetition state cur_blck while_stmt False 
 
+gen_tac_of_StatementRepeatUntil :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementRepeatUntil state cur_blck rep_stmt _ _ = gen_tac_of_unbounded_repetition state cur_blck rep_stmt True
 
+gen_tac_of_unbounded_repetition :: State -> String -> AS.Statement -> Bool -> (State, String)
 gen_tac_of_unbounded_repetition state cur_blck unb_stmt is_repeat =
     let (s10, blck_then, blck_guard, blck_next) = add_blocks_then_else_next state cur_blck
         show_stmt       = " statement declared at " ++ (print_row_col $ AS.statement_pos unb_stmt)
@@ -546,10 +548,10 @@ gen_tac_of_unbounded_repetition state cur_blck unb_stmt is_repeat =
         (s50, _)                     = gen_tac_of_Statement s40 blck_then (AS.then_body unb_stmt) blck_next blck_guard
     in  (s50, blck_next)
 
--- StatementAssign { assign :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
+gen_tac_of_StatementAssign :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementAssign state cur_blck stmt _ _ = gen_tac_of_VariableAssignment state cur_blck (AS.assign stmt)
 
--- data Assign = VariableAssignment { left_exp_assignment :: LeftExp, right_exp_assignment :: RightExp, assign_pos :: (Int, Int), assign_env :: E.Env, assign_errors :: [String] }
+gen_tac_of_VariableAssignment :: State -> String -> AS.Assign -> (State, String)
 gen_tac_of_VariableAssignment state cur_blck assgn_stmt = 
     let -- s00                      = out state cur_blck (Comment $ "start of variable assignment declared at " ++ (print_row_col $ AS.assign_pos assgn_stmt))
         -- BEFORE LEFT EXPRESSION
@@ -561,12 +563,13 @@ gen_tac_of_VariableAssignment state cur_blck assgn_stmt =
         s30                       = add_assignment_instruction s20 cur_blck10 prim_type l_addr r_addr
     in (s30, cur_blck10)
 
+add_assignment_instruction :: State -> String -> PrimType -> Address -> Address -> State
 add_assignment_instruction state cur_blck prim_type l_addr r_addr = 
     case prim_type of
         TypeAddr -> out state cur_blck (NullAssignment    { l = l_addr, r = r_addr, assign_type = prim_type })
         _        -> out state cur_blck (WritePointerValue { l = l_addr, r = r_addr })
 
--- gen_tac_of_StatementFuncProcCall :: State -> String -> AS.StatementFuncProcCall -> (State, String)
+gen_tac_of_StatementFuncProcCall :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementFuncProcCall state cur_blck stmt _ _ = 
     let params = AS.call_params stmt
         funproc_name = AS.id_name (AS.call_name stmt)
@@ -579,21 +582,21 @@ gen_tac_of_list_RightExp state cur_blck [] addrs = (state, cur_blck, addrs)
 gen_tac_of_list_RightExp state cur_blck (x:xs) addrs = gen_tac_of_list_RightExp new_state cur_blck1 xs (addr:addrs)
     where (new_state, cur_blck1, addr) = gen_tac_of_RightExp state cur_blck x
 
---out_params :: State -> String -> [Address] -> [PrimType] -> State
+out_params :: State -> [Char] -> [Address] -> [PrimType] -> State
 out_params state cur_blck10 [] [] = state
 out_params state cur_blck10 (addr:addrs) (taddr:taddrs) = out_params new_state cur_blck10 addrs taddrs
     where new_state = out state cur_blck10 (Parameter { param = addr, param_type = taddr })
 
---TODO
+gen_tac_of_StatementRead :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementRead state cur_blck read_stmt _ _ = gen_tac_of_ReadPrimitive state cur_blck (AS.read_primitive read_stmt)
 
--- OK
+gen_tac_of_StatementWrite :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementWrite state cur_blck wrt_stmt _ _ = gen_tac_of_WritePrimitive state cur_blck (AS.write_primitive wrt_stmt)
 
---TODO
+gen_tac_of_StatementBreak :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementBreak state cur_blck stmt blck_next _ = (out state cur_blck (Jump { goto = blck_next }), cur_blck)
 
---TODO
+gen_tac_of_StatementContinue :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementContinue state cur_blck stmt _ blck_guard = (out state cur_blck (Jump { goto = blck_guard }), cur_blck)
 
 --________________________________ Identifier ________________________________________
@@ -621,12 +624,14 @@ gen_tac_of_LeftExp state cur_blck l_exp is_lexp =
         (AS.LeftExpPointerValue {})    -> gen_tac_of_LeftExpPointerValue state cur_blck prim_type l_exp is_lexp
         (AS.LeftExpPointerAddress {})  -> gen_tac_of_LeftExpPointerAddress state cur_blck l_exp
 
+gen_tac_of_LeftExpPointerAddress :: State -> String -> AS.LeftExp -> (State, PrimType, Address)
 gen_tac_of_LeftExpPointerAddress state cur_blck ptr_val =
     let ident_addr      = gen_tac_of_Ident $ get_pointer_ident ptr_val
         (tmp_addr, s10) = add_temp_var state
         s20             = out s10 cur_blck (ReadPointerAddress { l = tmp_addr, pointer = ident_addr })
     in  (s20, TypeAddr, ident_addr)
 
+gen_tac_of_LeftExpPointerValue :: State -> String -> PrimType -> AS.LeftExp -> Bool -> (State, PrimType, Address)
 gen_tac_of_LeftExpPointerValue state cur_blck prim_type ptr_val is_lexp =
     let ident_addr      = gen_tac_of_Ident $ get_pointer_ident ptr_val
         (tmp_addr, s10) = add_temp_var state
@@ -634,6 +639,7 @@ gen_tac_of_LeftExpPointerValue state cur_blck prim_type ptr_val is_lexp =
         (s30, out_addr) = if is_lexp then (state, ident_addr) else (s20, tmp_addr)
     in  (s30, prim_type, out_addr)
 
+get_pointer_ident :: AS.LeftExp -> AS.Ident
 get_pointer_ident l_exp = 
     case l_exp of
         (AS.LeftExpPointerValue {})   -> get_pointer_ident (AS.pointer_value   l_exp)
@@ -710,7 +716,7 @@ sum_all_offsets_by_dim state cur_blck addr_arr offset_by_idx =
 --________________________________ Right Expression __________________________________________
 
 -- Right Expression wrapper
---gen_tac_of_RightExp :: State -> String -> String -> String -> AS.RightExp -> (State, String, Address)
+gen_tac_of_RightExp :: State -> String -> AS.RightExp -> (State, String, Address)
 gen_tac_of_RightExp state cur_blck r_exp =
     case r_exp of
         -- base case : literals
@@ -749,9 +755,7 @@ gen_tac_of_RightExp state cur_blck r_exp =
         -- coerce a rightexp to make it compatible with expected type TODO
         (AS.RightExpCoercion {})        -> gen_tac_of_RightExpCoercion            state cur_blck r_exp
 
-
---TODO
--- { call_name_right_exp :: Ident, call_params_right_exp :: [RightExp], right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+gen_tac_of_RightExpFuncProcCall :: State -> String -> AS.RightExp -> (State, String, Address)
 gen_tac_of_RightExpFuncProcCall state cur_blck r_exp = 
     let params = AS.call_params_right_exp r_exp
         funproc_name = AS.id_name (AS.call_name_right_exp r_exp)
@@ -760,6 +764,7 @@ gen_tac_of_RightExpFuncProcCall state cur_blck r_exp =
     in (s40, cur_blck10, tmp_addr)
 
 -- This function is used to generate the TAC for a function or procedure call in both statements and right expressions
+--gen_tac_FuncProcCall :: State -> String -> AS.RightExp -> String -> E.Env -> (State, String, Address)
 gen_tac_FuncProcCall state cur_blck params funproc_name env =
     let types                       = map (\x -> to_primitive_type (AS.right_exp_type x)) params
         (s10, cur_blck10, addrs)    = gen_tac_of_list_RightExp state cur_blck params []
@@ -773,14 +778,11 @@ gen_tac_FuncProcCall state cur_blck params funproc_name env =
     in (s40, cur_blck10, tmp_addr)
 
 
---TODO
--- RightExpLeftExp { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
+gen_tac_of_RightExpLeftExp :: State -> String -> AS.RightExp -> (State, String, Address)
 gen_tac_of_RightExpLeftExp state cur_blck r_exp = 
     let (s10, prim_type, address) = gen_tac_of_LeftExp state cur_blck (AS.left_exp_right_exp r_exp) False
     in (s10, cur_blck, address)
 
---TODO
--- RightExpCoercion { right_exp_coercion :: RightExp, right_exp_from_type :: T.Type, right_exp_to_type :: T.Type, right_exp_pos :: (Int, Int), right_exp_env :: E.Env, right_exp_errors :: [String] }
 gen_tac_of_RightExpCoercion :: State -> String -> AS.RightExp -> (State, String, Address)
 gen_tac_of_RightExpCoercion state cur_blck r_exp =
     let (s10, cur_blck1, address) = gen_tac_of_RightExp state cur_blck (AS.right_exp_coercion r_exp)
@@ -811,7 +813,7 @@ gen_tac_of_string state cur_blck r_exp =
     let s10 = add_string state (AS.right_exp_string r_exp)
     in (s10, cur_blck, AddressTempVar $ make_block_label $ StringBlockType (str_idx state))
 
---gen_tac_of_RightExpNot :: State -> String -> AS.RightExp -> (State, String, Address)
+gen_tac_of_RightExpNot :: State -> String -> AS.RightExp -> (State, String, Address)
 gen_tac_of_RightExpNot state cur_blck not_exp = 
     let --s00         = out state cur_blck (Comment $ "start of NOT assignment declared at " ++ (print_row_col $ AS.right_exp_pos not_exp))
         r_exp       = (AS.dx not_exp)
@@ -846,7 +848,7 @@ gen_tac_of_binary_operators state cur_blck r_exp to_primitive_op constructor =
     in (s40, cur_blck, tmp_var)
 
 -- binary logical operator: AND, OR
---gen_tac_of_binary_logical_operators :: State -> String -> AS.RightExp -> (State, String, Address)
+gen_tac_of_binary_logical_operators :: State -> String -> AS.RightExp -> (State, String, Address)
 gen_tac_of_binary_logical_operators state cur_blck r_exp =
     let -- case AND/OR ==> create 3 blocks and a temp var to store output
         (s00, blck_true, blck_false, blck_next) = add_blocks_then_else_next state cur_blck
