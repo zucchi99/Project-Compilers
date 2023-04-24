@@ -132,7 +132,7 @@ Program : 'program' Ident ';' Block '.' {
 Block   :: { Block }
 Block   : ListDeclaration 'begin' NonMandatoryTerminator ListStatement 'end' {
     Block  {
-        block_declarations = (reverse $1),
+        block_declarations = $1,
         statements = $4,
         block_pos = if (null $1) then (tokenLineCol $2) else (declaration_pos (head $1)),
         block_env = E.emptyEnv,
@@ -141,7 +141,7 @@ Block   : ListDeclaration 'begin' NonMandatoryTerminator ListStatement 'end' {
 
 ListDeclaration :: { [Declaration] }
 ListDeclaration : {- empty -}                 { [] }
-                | ListDeclaration Declaration { $2 ++ $1 }
+                | ListDeclaration Declaration { $1 ++ $2 }
 
 NonMandatoryTerminator  :: {}
 NonMandatoryTerminator  : {- empty -} {}
@@ -230,7 +230,7 @@ VariableDeclFunc    : ListIdent ':' Type    {
 
 ListIdent   :: { [Ident] }
 ListIdent   : Ident                 { (:[]) $1 } 
-            | Ident ',' ListIdent   { (++) $3 [$1] }
+            | Ident ',' ListIdent   { (:) $1 $3 }
 
 FunctionSign    :: { Declaration }
 FunctionSign    : 'function' Ident DeclarationFunc ':' Type ';' {
@@ -681,7 +681,7 @@ ListArrayDeclarationDim : {- empty -}                                     { [] }
                         | ArrayDeclarationDim ',' ListArrayDeclarationDim { (:) $1 $3 }
 
 ArrayDeclarationDim :: { (Int, Int) }
-ArrayDeclarationDim : Integer '..' Integer { (fst $1, fst $3) }
+ArrayDeclarationDim : Integer '..' Integer { if fst $1 <= fst $3 then (fst $1, fst $3) else (fst $3, fst $1) }
 
 WritePrimitive :: { WritePrimitive }
 WritePrimitive  : 'writeInt' '(' RightExp ')' {

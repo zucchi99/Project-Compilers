@@ -354,7 +354,7 @@ instance PrettyPrinterClass Type where
         show (fst dimension)                                                       ++
         ".."                                                                ++
         show (snd dimension)                                                       ++
-        foldl (\a (x,y) -> ", " ++ show x ++ ".." ++ show y) "" dimensions                ++
+        foldl (\a (x,y) -> a ++ ", " ++ show x ++ ".." ++ show y) "" dimensions                ++
         "] of "                                                             ++
         pretty_printer False numtabs array_type
     pretty_printer newline numtabs (PointerType pointer_type) =

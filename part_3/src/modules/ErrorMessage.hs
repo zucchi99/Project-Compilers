@@ -114,5 +114,11 @@ errMsgCostNotPointArray id pos = printPos pos ++ (show id) ++ ": A costant can't
 errMsgForIteratorNotPointArray :: String -> (Int, Int) -> String
 errMsgForIteratorNotPointArray id pos = printPos pos ++ (show id) ++ ": A for iterator can't be an array or a pointer"
 
+errMsgPointerError :: String -> (Int, Int) -> String
+errMsgPointerError error pos = printPos pos ++ "Pointer error : " ++ error
+
+errMsgFunctionError :: String -> String -> (Int, Int) -> String
+errMsgFunctionError id error pos = printPos pos ++ "Function error " ++ (show id) ++ " : " ++ error
+
 printPos :: (Int, Int) -> [Char]
 printPos (l, c) = "At line " ++ (show l) ++ ", column " ++ (show c) ++ ": \n\t"

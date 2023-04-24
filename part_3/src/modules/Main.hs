@@ -8,9 +8,13 @@ import qualified Parser             as Par
 import qualified LexGrammar         as Lex
 import qualified PrettyPrinter      as Printer
 import qualified StaticSemantic     as Static
+import System.Directory
+import Data.List
 import ErrM
 import TAC
 
+-- mostra a schermo gli errori della compilazione 
+-- mostra a schermo la posizione del file in cui scrive tutti i dettagli della compilazione ()
 testami test = do
 
     -- Read file
@@ -78,10 +82,9 @@ testami test = do
 
     putStrLn "end"
 
+
 main = do
-
-    putStrLn "Insert test name: \n"
+    putStrLn "Inserisci il nome di un file:"
     test <- getLine
-    
-    testami test
 
+    testami test

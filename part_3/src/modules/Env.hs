@@ -20,11 +20,11 @@ data ConstType =
     deriving (Show)
 
 data EnvEntry 
-    = VarEntry      { ty :: T.Type, pos_decl :: (Int, Int) } 
-    | ConstEntry    { ty :: T.Type, const_value :: ConstType, pos_decl :: (Int, Int) }
-    | ForIterator   { ty :: T.Type, pos_decl :: (Int, Int) }
-    | FunEntry      { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool, pos_decl :: (Int, Int) }
-    | ProcEntry     { params :: [(String, T.Type)], forward :: Bool, pos_decl :: (Int, Int) }
+    = VarEntry      { ty :: T.Type, parent_env :: Bool, pos_decl :: (Int, Int) } 
+    | ConstEntry    { ty :: T.Type, const_value :: ConstType, parent_env :: Bool, pos_decl :: (Int, Int) }
+    | ForIterator   { ty :: T.Type, parent_env :: Bool, pos_decl :: (Int, Int) }
+    | FunEntry      { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool, parent_env :: Bool, pos_decl :: (Int, Int) }
+    | ProcEntry     { params :: [(String, T.Type)], forward :: Bool, parent_env :: Bool, pos_decl :: (Int, Int) }
     deriving (Show)
 
 instance Eq EnvEntry where
@@ -49,10 +49,24 @@ addVar (Env e) id ty = Env { env = Map.insert id ty e }
 
 -- The function "lookupEnv" returns the value associated with a key in the environment
 -- If the key is not present, it recursively searches in the parent environment
+lookup_override :: Env -> String -> Maybe EnvEntry
+lookup_override e name = case Map.lookup name (env e) of
+            Just t  -> if (parent_env t) then Nothing else Just t
+            Nothing -> Nothing
+
 lookup :: Env -> String -> Maybe EnvEntry
 lookup e name = case Map.lookup name (env e) of
-    Just t  -> Just t
-    Nothing -> Nothing
+            Just t  -> Just t
+            Nothing -> Nothing
+            
+-- once we enter in a nested block change all entry to parent_env = True
+-- this is not done to ConstEntry and ForIterator, we don't permit overriding of const and for iterator
+change_parent_env :: Env -> Env
+change_parent_env (Env e) = Env { env = Map.map change_parent_env_aux e } where
+    change_parent_env_aux var@(VarEntry {}) = var { parent_env = True }
+    change_parent_env_aux fun@(FunEntry {}) = fun { parent_env = True }
+    change_parent_env_aux pro@(ProcEntry {}) = pro { parent_env = True }
+    change_parent_env_aux x = x
 
 -- The function "merge" merges two environments
 -- If the two environments have a common key, the function keeps the value of the first environment
