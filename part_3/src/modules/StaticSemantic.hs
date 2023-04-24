@@ -15,6 +15,7 @@ import Data.List
 import ErrM
 
 -- __________________________ AUXILIAR CLASSES AND FUNCTIONS
+-- check if a variable is in the environment for the declaration of a variable
 checkPresenceDecl :: Ident -> E.Env -> (Int, Int) -> [[Char]]
 checkPresenceDecl id env pos = 
     case E.lookup_override env (id_name id) of
@@ -22,18 +23,17 @@ checkPresenceDecl id env pos =
         Nothing -> []
 
 -- check if the function or procedure is already in the environment
--- if it is, check if it's a forward declaration and if the parameters and return type are the same
--- if it's not, add it to the environment
 checkPresenceDeclFuncProc :: E.EnvEntry -> String -> E.Env -> (Int, Int) -> (E.Env, [String])
 checkPresenceDeclFuncProc new_entry id env pos = 
     case E.lookup_override env id of
+        -- if it is in the enviroment, check if it's a forward declaration and if the parameters and return type are the same
         Just old_entry  -> case E.checkSignature old_entry new_entry id pos of
             []      -> (E.addVar env id new_entry, []) 
             errors  -> (env, errors)
+        -- if it's not in the enviroment, add it 
         Nothing         -> (E.addVar env id new_entry, [])
 
--- mkArrTy(E1.type, E2.type)
--- Controllo di indice dell'array (deve essere int)
+-- check that array dimensions are integers and of the same dimensions
 mkArrTy :: [(Int,Int)] -> [RightExp] -> (Int, Int) -> [String]
 mkArrTy dim locs pos =
     let error_dim = case (length locs) == (length dim) of
@@ -44,18 +44,7 @@ mkArrTy dim locs pos =
             False -> [ Err.errMsgWrongArrayIndex pos ]
     in error_dim ++ error_types
 
--- mkAssignErrs(E1.type, E2.type)
--- Controllo durante l'assegnamento
-mkAssignErrs :: T.Type -> T.Type -> (Int, Int) -> [String]
-mkAssignErrs lhs rhs pos =  
-    case (T.areErrors lhs rhs) of                    -- lhs or rhs are errors?
-        True  -> []                                -- yes ==> error already found before, do not add new errors
-        False -> case (T.sup lhs rhs) == lhs of    -- no  ==> check if rhs is compatible with lhs
-            True  -> []                               -- yes ==> no errors
-            False -> [ Err.errMsgAssign lhs rhs pos ] -- no ==> return assign error for incompatible types
-
--- mkIfErrs(E.type, S1.errs)
--- Controllo della guardia dell'if
+-- check of guard to see if it's a boolean
 mkIfErrs :: T.Type -> (Int, Int) -> [String]
 mkIfErrs guard_type pos = 
     case guard_type of
@@ -63,15 +52,14 @@ mkIfErrs guard_type pos =
         (T.BooleanType) -> []
         t               -> [ (Err.errMsgUnexpectedType "Guard" T.BooleanType t pos) ]
 
--- mkIdDeclErrs(id, E.type, T.type)
--- Controllo durante inizializzazione
--- etype = declaration type, ttype = expression type
+-- check if expected_type is compatible with found_type
 mkIdDeclErrs :: String -> T.Type -> T.Type -> (Int, Int) -> [String]
-mkIdDeclErrs id etype ttype pos = 
-    case (T.sup etype ttype) == T.ErrorType of      -- etype is compatible with ttype?
-        True  -> [ Err.errMsgUnexpectedType ("The variable named '" ++ id ++ "'") etype ttype pos ]
+mkIdDeclErrs obj expected_type found_type pos = 
+    case (T.sup expected_type found_type) == T.ErrorType of
+        True  -> [ Err.errMsgUnexpectedType obj expected_type found_type pos ]
         False -> []
 
+-- check sx and dx of a binary operation and return the merged errors
 check_sx_dx :: RightExp -> RightExp -> E.Env -> (RightExp, RightExp, [String])
 check_sx_dx sx dx p_env = 
     let new_sx = staticsemanticAux (sx {right_exp_env = p_env})
@@ -79,6 +67,7 @@ check_sx_dx sx dx p_env =
         errors = (right_exp_errors new_sx) ++ (right_exp_errors new_dx)
     in (new_sx, new_dx, errors)
 
+-- encapsulate the right expression in a coercion expression
 apply_coercion :: T.Type -> RightExp -> RightExp
 apply_coercion to_type main_r = 
     let pos = right_exp_pos main_r
@@ -86,6 +75,7 @@ apply_coercion to_type main_r =
         errs = right_exp_errors main_r
     in RightExpCoercion main_r (right_exp_type main_r) to_type pos env errs
 
+-- encapsulate the right expression in a not expression
 apply_not ::  RightExp -> RightExp
 apply_not main_r = 
     let ty = right_exp_type main_r
@@ -94,6 +84,7 @@ apply_not main_r =
         errs = right_exp_errors main_r
     in RightExpNot main_r pos ty env errs
 
+-- given list of params declarations, create a list of (name, type) for the function or procedure definition
 create_params_for_func_proc :: [Declaration] -> [(String, T.Type)]
 create_params_for_func_proc params = map (\decl -> (id_name (variable_name decl), variable_type decl)) params
 
@@ -104,7 +95,7 @@ add_break_continue env pos =
         env_break_continue = E.addVar env_break "continue" (E.ConstEntry T.TBDType (E.StringConst "continue") True pos)
     in E.merge env_break_continue env
 
--- controllo per and/or
+-- check for and, or
 check_rel_op_bool :: RightExp -> RightExp -> (Int, Int) -> E.Env -> (RightExp, RightExp, [String])
 check_rel_op_bool sx dx pos parent_env =
         -- Checking if both sx and dx are boolean
@@ -116,7 +107,7 @@ check_rel_op_bool sx dx pos parent_env =
         errors_tot = merged_errors ++ errs_rel_not_bool
     in (sx_checked, dx_checked, errors_tot)
 
--- controllo per greater than, less than, greater than or equal, less than or equall
+-- check for <, >, <=, =>
 check_rel_op :: RightExp -> RightExp -> (Int, Int) -> E.Env -> String -> (RightExp, RightExp, [String])
 check_rel_op sx dx pos parent_env name_op =
     -- Checking if both sx and dx are compatibile for a relation operation
@@ -129,6 +120,7 @@ check_rel_op sx dx pos parent_env name_op =
         errors_tot = merged_errors ++ errs_rel_not_bool
     in (sx_checked, dx_checked, errors_tot)
 
+-- check for +, -, *, /
 check_math_op :: RightExp -> RightExp -> (Int, Int) -> E.Env -> String -> (RightExp, RightExp, T.Type, [String])
 check_math_op sx dx pos parent_env name_op =
     let (sx_checked, dx_checked, merged_errors) = check_sx_dx sx dx parent_env
@@ -150,10 +142,7 @@ check_math_op sx dx pos parent_env name_op =
         errors_tot = merged_errors ++ errs_plus_not_permitted
     in (sx_coerc, dx_coerc, math_type, errors_tot)
 
-need_coerc :: T.Type -> T.Type -> Bool
-need_coerc T.RealType T.IntegerType = True
-need_coerc _ _ = False
-
+-- used to convert a ident representing a constant to a right expression
 from_leftexpconst_to_rightexp :: LeftExp -> (Int, Int) -> E.Env -> [String] -> RightExp
 from_leftexpconst_to_rightexp (LeftExpConst ident value l_pos ty l_env l_errs) pos env errs = 
     case value of
@@ -163,6 +152,7 @@ from_leftexpconst_to_rightexp (LeftExpConst ident value l_pos ty l_env l_errs) p
         E.CharConst c   -> RightExpChar c pos ty env errs
         E.StringConst s -> RightExpLeftExp (LeftExpConst ident value l_pos ty l_env l_errs) pos ty env errs
 
+-- check every Read type of Read...()
 check_read_primitive :: LeftExp -> T.Type -> (Int, Int) -> E.Env -> (LeftExp, [String])
 check_read_primitive left_exp read_type pos env = 
     let lexp_checked = staticsemanticAux left_exp {left_exp_env = env}
@@ -183,6 +173,7 @@ check_read_primitive left_exp read_type pos env =
         errors_tot = l_err ++ err_const ++ err_read
     in (lexp_checked, errors_tot)
 
+-- check every Read type of Write...()
 check_write_primitive :: RightExp -> T.Type -> (Int, Int) -> E.Env -> (RightExp, [String])
 check_write_primitive right_exp write_type pos env = 
     let rexp_checked = staticsemanticAux right_exp {right_exp_env = env}
@@ -195,6 +186,7 @@ check_write_primitive right_exp write_type pos env =
         errors_tot = r_err ++ err_write
     in (rexp_checked, errors_tot)
 
+-- add costant to env if it's a specific type (integer, real, boolean, char, string) else error
 add_const_to_env :: E.Env -> String -> RightExp -> (Int, Int) -> (E.Env, [String])
 add_const_to_env env name value pos = 
     let (new_env, errs) = case value of
@@ -242,7 +234,6 @@ class StaticSemanticClass a where
 
 instance StaticSemanticClass Program where
     staticsemanticAux (ProgramStart name block pos env errors) =
-        -- l'env di block sarà sicuramente vuoto dato che è il primo blocco
         let block_checked = staticsemanticAux block
         in (ProgramStart name block_checked pos env (errors ++ (block_errors block_checked)))
 
@@ -255,36 +246,24 @@ instance StaticSemanticClass [Ident] where
 
 instance StaticSemanticClass Block where
     staticsemanticAux (Block decls stmts pos env errors) =
-            --                               ^^^
-            -- env in questo caso è l'enviroment da cui vogliamo iniziare a fare il merge
-            -- così facendo è possibile aggiungere le dichiarazioni dei parametri o aggiungere i break e i continue
-
             -- prendo tutto quello presente nell'env e lo aggiungo al blocco facendo presente che siamo nel blocco innestato
         let nested_env = E.change_parent_env env
-            
             -- parto dall'env e aggiungo le dichiarazioni
             decls_checked = staticsemanticAux $ map (\x -> x {declaration_env = nested_env}) decls
             (env_aft_decls, errs_aft_decls) = case decls_checked of
                 []  -> (nested_env, [])
                 xs  -> (declaration_env (last xs), foldl (\acc x -> acc ++ (declaration_errors x)) [] xs)
-
-            -- controllo che tutte le forward declaration siano state definite -> altrimenti errore
+            -- controllo che tutte le forward declaration nel blocco corrente siano state definite -> altrimenti errore
             errs_forw_decls = map (\x -> Err.errMsgNotImplemented x pos) (E.getForward env_aft_decls)
             -- dopo le segno come definite, altrimenti ogni blocco innestato le riconosce come forward e ritorna errore
             env_aft_update = E.updateForward env_aft_decls
-
-            -- una volta finite le dichiarazioni del blocco, faccio il merge con il blocco padre 
-            -- conserva le dichiarazioni di ambo i blocchi, ma se ci sono dichiarazioni con lo stesso id tiene quelle del blocco figlio
             -- Ogni statement può modificare l'env, ma non può aggiugnere nuove dichiarazioni
-            env_before_stmts = E.merge env_aft_update nested_env
-            stmts_checked = staticsemanticAux $ map (\x -> x {statement_env = env_before_stmts}) stmts
+            stmts_checked = staticsemanticAux $ map (\x -> x {statement_env = env_aft_update}) stmts
             (env_aft_stmts, errs_aft_stmts) = case stmts_checked of
                 []  -> (nested_env, [])
                 xs  -> (statement_env (last xs), foldl (\acc x -> acc ++ (statement_errors x)) [] xs)
-
             -- concat all errors
             tot_errors = errors ++ errs_aft_decls ++ errs_forw_decls ++ errs_aft_stmts
-
         in (Block decls_checked stmts_checked pos env_aft_stmts tot_errors)
 
 instance StaticSemanticClass Declaration where
@@ -294,7 +273,7 @@ instance StaticSemanticClass Declaration where
             -- se il tipo dichiarato è diverso dal tipo del valore -> ritorno errore
             (type_aft_decl, err_type) = case maybe_type of
                 Nothing -> (Just (right_exp_type value_checked), [])
-                Just t  -> (Just t, mkIdDeclErrs (id_name id) t (right_exp_type value_checked) pos)
+                Just t  -> (Just t, mkIdDeclErrs ("The variable \"" ++ (id_name id) ++ "\"") t (right_exp_type value_checked) pos)
             -- se l'id è già nell'env -> ritorno errore
             (env_aft_decl, err_aft_decl) = case checkPresenceDecl id env pos of
                 -- SISTEMARE QUESTO
@@ -311,7 +290,7 @@ instance StaticSemanticClass Declaration where
             -- se il tipo dichiarato è diverso dal tipo del valore -> ritorno errore
             err_type = case value_checked of
                 Nothing -> []
-                Just var_value ->  mkIdDeclErrs (id_name id) var_type (right_exp_type var_value) pos
+                Just var_value ->  mkIdDeclErrs ("The variable \"" ++ (id_name id) ++ "\"") var_type (right_exp_type var_value) pos
 
             -- se l'id è già nell'env -> ritorno errore
             (env_aft_decl, err_aft_decl) = case checkPresenceDecl id env pos of
@@ -460,11 +439,11 @@ instance StaticSemanticClass Statement where
                 T.IntegerType   -> []
                 _               -> [Err.errMsgUnexpectedType "The for condition " "integer" (right_exp_type cond_checked) (right_exp_pos cond_checked)]
 
-            -- metto l'iteratore del for nell'env come ForIterator immutabile
-            env_with_iterator = E.addVar env (id_name (left_exp_name left_exp_iterator)) (E.ForIterator T.IntegerType False pos)
+            -- metto l'iteratore del for nell'env come ForIteratorEntry immutabile
+            env_with_iterator = E.addVar env (id_name (left_exp_name left_exp_iterator)) (E.ForIteratorEntry T.IntegerType False pos)
 
             -- Controllo che il then_body sia corretto, aggiungendo break e continue all'env
-            -- Il ForIterator è immutabile, quindi non può essere modificato, altrimenti ritorna un errore
+            -- Il ForIteratorEntry è immutabile, quindi non può essere modificato, altrimenti ritorna un errore
             then_body_checked = staticsemanticAux (then_body {statement_env = (add_break_continue env_with_iterator pos)})
             then_errors = statement_errors then_body_checked
             
@@ -655,7 +634,7 @@ instance StaticSemanticClass RightExp where
         let dx_old = staticsemanticAux (dx {right_exp_env = parent_env})
             
             -- Gestione del NOT per il TAC: per evitare di valutare i booleani lazy con not(x op.bool y) nel TAC, eliminamo il not e invertiamo l'operatore
-            -- (not ( x or y ))  ----> ((not x) and (not y))
+            -- (not ( x  or y )) ----> ((not x) and (not y))
             -- (not ( x and y )) ----> ((not x)  or (not y))
             dx_new = case dx of
                 RightExpOr  sx_or  dx_or  p t e er  -> RightExpAnd (apply_not sx_or)  (apply_not dx_or)  p t e er
@@ -667,6 +646,7 @@ instance StaticSemanticClass RightExp where
             -- Controllo che dx_new sia booleano
             err_unary_not_permitted = case right_exp_type dx_checked of
                 T.BooleanType   -> []
+                T.ErrorType     -> []   -- Se dx_checked ha errori, non devo aggiungere un altro errore
                 res_type        -> [Err.errMsgUnaryOperationNotPermitted res_type [T.BooleanType] "not" pos]
 
             -- concateno gli errori
@@ -682,10 +662,11 @@ instance StaticSemanticClass RightExp where
     staticsemanticAux (RightExpMinusUnary dx pos ty parent_env errors) =
             -- Controllo che dx sia un math type permesso
         let dx_checked = staticsemanticAux (dx {right_exp_env = parent_env})
-
             (res_type, err_unary_not_permitted) = case right_exp_type dx_checked of
-                T.ErrorType -> (T.ErrorType, [Err.errMsgUnaryOperationNotPermitted (right_exp_type dx_checked) [T.IntegerType, T.RealType] "minus" pos])
-                res_type    -> (res_type, [])
+                T.IntegerType   -> (T.IntegerType, [])
+                T.RealType      -> (T.RealType, [])
+                T.ErrorType     -> (T.ErrorType, [])    -- Se dx_checked ha errori, non devo aggiungere un altro errore
+                _               -> (T.ErrorType, [Err.errMsgUnaryOperationNotPermitted (right_exp_type dx_checked) [T.IntegerType, T.RealType] "minus" pos])
             -- concateno gli errori
             errors_tot = errors ++ (right_exp_errors dx_checked) ++ err_unary_not_permitted
         in (RightExpMinusUnary dx_checked pos res_type parent_env errors_tot)
@@ -693,27 +674,23 @@ instance StaticSemanticClass RightExp where
     staticsemanticAux (RightExpPlusUnary dx pos ty parent_env errors) =
             -- Controllo che dx sia un math type permesso
         let dx_checked = staticsemanticAux (dx {right_exp_env = parent_env})
-
             (res_type, err_unary_not_permitted) = case right_exp_type dx_checked of
-                T.ErrorType -> (T.ErrorType, [Err.errMsgUnaryOperationNotPermitted (right_exp_type dx_checked) [T.IntegerType, T.RealType] "plus" pos])
-                res_type    -> (res_type, [])
+                T.IntegerType   -> (T.IntegerType, [])
+                T.RealType      -> (T.RealType, [])
+                T.ErrorType     -> (T.ErrorType, [])    -- Se dx_checked ha errori, non devo aggiungere un altro errore
+                _               -> (T.ErrorType, [Err.errMsgUnaryOperationNotPermitted (right_exp_type dx_checked) [T.IntegerType, T.RealType] "plus" pos])
             -- concateno gli errori
             errors_tot = errors ++ (right_exp_errors dx_checked) ++ err_unary_not_permitted
         in (RightExpPlusUnary dx_checked pos res_type parent_env errors_tot)
 
-    -- Tutto viene già inizializzato da Parser.y (valore, tipo, env, ...)
     staticsemanticAux right_exp@(RightExpInteger dx pos ty parent_env errors) = right_exp
 
-    -- Tutto viene già inizializzato da Parser.y (valore, tipo, env, ...)
     staticsemanticAux right_exp@(RightExpReal dx pos ty parent_env errors) = right_exp
 
-    -- Tutto viene già inizializzato da Parser.y (valore, tipo, env, ...)
     staticsemanticAux right_exp@(RightExpBoolean dx pos ty parent_env errors) = right_exp
 
-    -- Tutto viene già inizializzato da Parser.y (valore, tipo, env, ...)
     staticsemanticAux right_exp@(RightExpChar dx pos ty parent_env errors) = right_exp
 
-    -- Tutto viene già inizializzato da Parser.y (valore, tipo, env, ...)
     staticsemanticAux right_exp@(RightExpString dx pos ty parent_env errors) = right_exp
 
     staticsemanticAux (RightExpFuncProcCall id params pos ty parent_env errors) =
@@ -726,7 +703,7 @@ instance StaticSemanticClass RightExp where
 
             (checked_type, errs_fun) = case E.lookup parent_env function_name of
                     -- Non è stato trovato nulla con quel nome nell'env
-                Nothing                                     -> (T.ErrorType, [Err.errMsgNotDeclared function_name pos])
+                Nothing                                         -> (T.ErrorType, [Err.errMsgNotDeclared function_name pos])
                     -- Tutto ok, la funzione è stata dichiarata e i parametri sono corretti
                 Just (E.FunEntry entry_params ty_ret _ _ _ _ _) |   map snd entry_params == map right_exp_type params_checked   -> (ty_ret, [])
                     -- La funzione è dichiarata nell'enviroment, ma i parametri non corrispondono 
@@ -735,7 +712,7 @@ instance StaticSemanticClass RightExp where
                     -- La funzione è dichiarata nell'enviroment, ma è una procedura
                 Just (E.ProcEntry _ _ _ _)                      -> (T.ErrorType, [Err.errMsgAssignToProc function_name pos])
                     -- Si è trovata una variabile o una costante con quel nome (non dovrebbe mai succedere)
-                _                                           -> (T.ErrorType, [Err.errMsgNotFunctionProcedure (id_name id) pos])
+                _                                               -> (T.ErrorType, [Err.errMsgNotFunctionProcedure (id_name id) pos])
 
             -- concateno gli errori
             errors_tot = errors ++ errs_params ++ errs_fun
@@ -746,8 +723,8 @@ instance StaticSemanticClass RightExp where
         let left_exp_checked = staticsemanticAux (left_exp {left_exp_env = parent_env})
             -- se la left_exp è una costante -> sostituisco la right_exp_copy con un right_exp col corretto valore/tipo
             new_right_exp = case left_exp_checked of
-                const@(LeftExpConst _ _ _ _ _ _)              -> from_leftexpconst_to_rightexp const pos parent_env (errors ++ (left_exp_errors left_exp_checked))
-                _                                             -> (RightExpLeftExp left_exp_checked pos (left_exp_type left_exp_checked) parent_env (errors ++ (left_exp_errors left_exp_checked)))
+                const@(LeftExpConst _ _ _ _ _ _)    -> from_leftexpconst_to_rightexp const pos parent_env (errors ++ (left_exp_errors left_exp_checked))
+                _                                   -> (RightExpLeftExp left_exp_checked pos (left_exp_type left_exp_checked) parent_env (errors ++ (left_exp_errors left_exp_checked)))
         in new_right_exp
 
     -- staticsemanticAux coerc@(RightExpCoercion main_re from_type to_type pos ty parent_env errors) = coerc
@@ -762,21 +739,16 @@ instance StaticSemanticClass LeftExp where
     staticsemanticAux (LeftExpIdent id pos ty env errors) = 
             -- Controllo che l'id sia presente nell'env
         let (left_type, left_value, new_env, error_type, env_type) = case E.lookup env (id_name id) of
-                -- Se non esiste ritorno errore
-                Nothing                                                 -> (T.ErrorType, Nothing, env, [Err.errMsgNotDeclared (id_name id) pos], "nothing")
-                -- Se esiste una variabile ne ritorno il tipo 
-                Just (E.VarEntry ty_ret _ _)                            -> (ty_ret, Nothing, env, [], "var")
-                -- Se esiste una costante ritorno il tipo e il valore
-                -- Non è la soluzione ideale per ottenere un valore da una costante, ma a questo punto non si poteva snaturare il tutto
-                Just (E.ConstEntry ty_ret value _ _)                    -> (ty_ret, Just value, env, [], "const")
-                -- Soluzione simile per l'iteratore del for
-                Just (E.ForIterator ty_ret _ _)                         -> (ty_ret, Nothing, env, [], "for")
+                Nothing                                                 -> (T.ErrorType, Nothing, env, [Err.errMsgNotDeclared (id_name id) pos], "nothing") -- ritorno errore
+                Just (E.VarEntry ty_ret _ _)                            -> (ty_ret, Nothing, env, [], "var")        -- ritorna tipo
+                Just (E.ConstEntry ty_ret value _ _)                    -> (ty_ret, Just value, env, [], "const")   -- ritorna tipo e valore
+                Just (E.ForIteratorEntry ty_ret _ _)                    -> (ty_ret, Nothing, env, [], "for")        -- ritorna tipo
                 -- Posso cambiare qua dentro lo stato di changed, visto che sto sicuramente sovrascrivvendo il valore nell'env SOLO IN CASO DI ASSIGN
                 -- Infatti, dalle altre parti in cui viene valutato LeftExpIdent, l'env non viene passato al blocco padre
                 Just fun_entry@(E.FunEntry _ ty_ret _ True _ _ _)       -> (ty_ret, Nothing, E.addVar env (id_name id) (fun_entry {E.changed = True}), [], "fun")
                 -- Non posso assegnare al nome di una procedura se sono fuori dal suo blocco
                 Just fun_entry@(E.FunEntry _ ty_ret _ False _ _ _)      -> (T.ErrorType, Nothing, env, [Err.errMsgReturnOutsideFunction (id_name id) pos], "fun")
-                -- Se è una procedure, non posso usarla come left_exp
+                -- Se è altro, non posso usarlo come left_exp
                 _                                                       -> (T.ErrorType, Nothing, env, [Err.errAssignToLeftExpr (id_name id) pos], "proc")
 
             -- concateno gli errori
@@ -785,11 +757,10 @@ instance StaticSemanticClass LeftExp where
             -- aggiorno l'env dell'identificatore
             new_id = id { ident_env = new_env }
 
-            -- controllo se l'ident corrisponde a una costante
             new_leftexp_ident = case (left_value, env_type) of
-                (Just val, _)       -> (LeftExpConst new_id val pos left_type new_env errors_tot)
-                (Nothing, "for")    -> (LeftExpForIterator new_id pos left_type new_env errors_tot)
-                (Nothing, _)         -> (LeftExpIdent new_id pos left_type new_env errors_tot)
+                (Just val, _)       -> (LeftExpConst new_id val pos left_type new_env errors_tot)   -- costante     -> immutabile
+                (Nothing, "for")    -> (LeftExpForIterator new_id pos left_type new_env errors_tot) -- for iterator -> immutabile
+                (Nothing, _)        -> (LeftExpIdent new_id pos left_type new_env errors_tot)       -- variabile    -> mutabile
         in new_leftexp_ident
 
     -- staticsemanticAux for_iter@(LeftExpForIterator id value pos ty env errors) = for_iter
@@ -805,10 +776,8 @@ instance StaticSemanticClass LeftExp where
         let loc_checked = staticsemanticAux $ map (\x -> x {right_exp_env = env}) array_locations
             -- estrapolo tutti gli errori delle right_exp
             array_loc_types_errors = concat $ map right_exp_errors loc_checked
-            
             -- Controllo che la left_exp sia corretta
             lexp_checked = staticsemanticAux array_name {left_exp_env = env} 
-
             -- controllo che lexp_checked non sia una costante
             err_const = case lexp_checked of
                 LeftExpConst id _ _ _ _ _       -> [Err.errMsgCostNotPointArray (id_name id) pos]
@@ -818,14 +787,12 @@ instance StaticSemanticClass LeftExp where
             -- controllo che sia un array e ritorno il tipo, la dimensione e il tipo degli elementi
             -- prendiamo il tipo dell'array per poter fare il controllo sull'assignment
             (arr_type, arr_dim, err_not_array) = case (left_exp_type lexp_checked, (length err_const) == 0) of
-                (T.ArrayType ty dim, True)  -> (ty, dim, mkArrTy dim loc_checked pos)
-                -- [] non potrà mai essere una dimensione di un array
-                (_, True)                   -> (T.ErrorType, [], [Err.errMsgNotArray pos])
-                -- ho già l'errore della costante, non voglio errore ridondanti
-                _                           -> (T.ErrorType, [], [])
+                (T.ArrayType ty dim, True)  -> (ty, dim, mkArrTy dim loc_checked pos)       -- ritorno il tipo degli elementi e la dimensione
+                (_, True)                   -> (T.ErrorType, [], [Err.errMsgNotArray pos])  -- [] non potrà mai essere una dimensione di un array
+                _                           -> (T.ErrorType, [], [])                        -- non voglio errore ridondanti
 
             -- concateno gli errori
-            errors_tot = errors ++ array_loc_types_errors ++ err_const ++ err_not_array
+            errors_tot = errors ++ array_loc_types_errors ++ (left_exp_errors lexp_checked) ++ err_const ++ err_not_array
 
         in (LeftExpArrayAccess lexp_checked loc_checked arr_type pos env errors_tot)
 
@@ -842,6 +809,7 @@ instance StaticSemanticClass LeftExp where
             -- controllo che type_aft sia un pointer
             (type_extract, err_not_pointer) = case type_aft of
                 T.PointerType ty    -> (ty, [])
+                T.ErrorType         -> (T.ErrorType, [])    -- non voglio errori ridondanti
                 _                   -> (T.ErrorType, [Err.errMsgPointerError "The element is not a pointer " pos])
         in (LeftExpPointerValue lexp_checked pos type_extract env (errors ++ (left_exp_errors lexp_checked) ++ err_const ++ err_not_pointer))
 
@@ -867,13 +835,16 @@ instance StaticSemanticClass Assign where
             (type_aft, err_const) = case lexp_checked of
                 LeftExpConst id _ _ _ _ _       -> (T.ErrorType, [Err.errMsgAssignToConst (id_name id) pos])
                 LeftExpForIterator id _ _ _ _   -> (T.ErrorType, [Err.errMsgAssignToForIterator (id_name id) pos])
+                LeftExpPointerAddress _ _ _ _ _ -> (T.ErrorType, [Err.errMsgPointerError "The left expression is a pointer address" pos])
                 _                               -> (left_exp_type lexp_checked, [])
             -- Controllo che la right_exp sia corretta
             rexp_checked = staticsemanticAux (right_exp {right_exp_env = env})
             -- Controllo che left_exp e right_exp abbiano lo stesso tipo
-            err_different_types = mkAssignErrs type_aft (right_exp_type rexp_checked) pos
+            err_different_types = case type_aft == T.ErrorType || right_exp_type rexp_checked == T.ErrorType of
+                True    -> []
+                False   -> mkIdDeclErrs "The assignment" type_aft (right_exp_type rexp_checked) pos
             -- controllo se right_exp ha bisogno di una coercion
-            rexp_checked_coerced = case need_coerc type_aft (right_exp_type rexp_checked) of
+            rexp_checked_coerced = case T.need_coerc type_aft (right_exp_type rexp_checked) of
                 True    -> apply_coercion (T.sup type_aft (right_exp_type rexp_checked)) rexp_checked
                 False   -> rexp_checked
             -- Concateno gli errori

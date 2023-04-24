@@ -29,7 +29,7 @@ rules                           Declaration   ::= CostantsBlock | VariablesBlock
 
 -- __________ COSTANTS DECLARATIONS __________
 
--- costants block declaration (cannot be empty)
+-- constants block declaration (cannot be empty)
 rules                           CostantsBlock ::= "const" [ConstantDecl] ; -- CostantsBlock
 terminator nonempty ConstantDecl ";" ;
 ConstantDeclaration.            ConstantDecl  ::= Ident "=" RightExp ;

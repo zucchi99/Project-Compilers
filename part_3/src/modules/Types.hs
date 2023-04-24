@@ -1,14 +1,7 @@
--- Implementazione del typesystem
--- Nota: Teoria principale --> lezione-LC-2022-04-26.pdf
-
--- compile with
--- ghci TypeSys.hs -o TypeSys.o Errors.hs
-
 module Types where
 
 import qualified ErrorMessage as Err
 
--- any type definition
 data Type = 
     BooleanType
     | IntegerType
@@ -43,91 +36,42 @@ instance Show Type where
     show ErrorType             = "error"
     show TBDType               = "TBD"
 
-listToString :: Foldable t => t [Char] -> [Char] -> [Char]
-listToString xs sep = foldr (\a b -> a ++ if b == "" then b else sep ++ b) "" xs
-
--- Definition of "mathType" and "sup"
--- "mathType" is used to make inference of unary expressions
--- In Pascal, char, string and boolean are not allowed in unary math expressions
--- f.e. -'a' -true are not allowed 
-mathType :: Type -> Type
-mathType IntegerType = IntegerType
-mathType RealType    = RealType
-mathType t           = ErrorType -- { messages = [Err.errMsgNotMathType t] }
-
--- "sup" is used to make inference of binary expressions
--- TODO:
--- 1. Posso sommare due string/char, ma non posso moltiplcarle. Come fare?
-
--- In Pascal, char, integer and boolean are not allowed in binary math expressions
--- f.e. 1 + true are not allowed
+-- given two types, returns the superior type ( IntegerType < RealType )
 sup :: Type -> Type -> Type
 sup IntegerType RealType = RealType
 sup RealType IntegerType = RealType
 sup t1 t2 = case t1 == t2 of
-    True  -> t1 -- ok
-    False -> ErrorType -- { messages = [Err.errMsgNotCompatible t1 t2] } -- error
+    True  -> t1
+    False -> ErrorType
 
-areErrors t1 t2 = (t1 == ErrorType || t2 == ErrorType)
-
--- Function that handles the comparison of two types
+-- given two types, return True if them are comparable ( <, >, <=, >= )
 rel :: Type -> Type -> Type
 rel t1 t2 = case sup t1 t2 of
     ErrorType       -> ErrorType
     BooleanType     -> ErrorType
     ArrayType _ _   -> ErrorType
     PointerType _   -> ErrorType
-    _               -> BooleanType -- ok
+    _               -> BooleanType  -- if not error, then boolean
 
+-- given two types, return True if them are equal ( ==, <> )
+comparable :: Type -> Type -> Bool
+comparable t1 t2 = case sup t1 t2 of
+    ArrayType _ _   -> False
+    _               -> True  -- if not error, then boolean
+
+-- given two types, return the type of the result of a math operation ( +, -, *, / )
 math_op :: Type -> Type -> Type
 math_op t1 t2 = case sup t1 t2 of
     RealType    -> RealType
     IntegerType -> IntegerType
-    _           -> ErrorType
+    _           -> ErrorType    -- ErrorType -> if not the two types can not be used in math operations
 
--- Helper function to compare all the types in a list and return true if they are all the same type
+-- ccompare all the types in a list and return true if they are all the same type
 all_same_type :: [Type] -> Bool
 all_same_type [] = False
 all_same_type (x:xs) = all (==x) xs
 
-{-
------------------ test
-main :: IO ()
-main = do
-    putStrLn "Test TypeSys.hs"
-
-    putStrLn "bool var"
-    let bool = BooleanType
-    putStrLn $ show bool
-
-    putStrLn "int var"
-    let int = IntegerType
-    putStrLn $ show int
-
-    putStrLn "real var"
-    let real = RealType
-    putStrLn $ show real
-
-    let sup_ok = sup int real
-    putStrLn "superior ok: int and real = real"
-    putStrLn $ show sup_ok
-    
-    let sup_err1 = sup int bool
-    putStrLn "superior err 1: int and bool = error"
-    putStrLn $ show sup_err1
-
-    let sup_err2 = sup real bool
-    putStrLn "superior err 2: real and bool = error"
-    putStrLn $ show sup_err2
-
-    putStrLn "cmb err sup_ok sup_err1"
-    putStrLn $ show $ combineTypeErrors sup_ok sup_err1
-    
-    putStrLn "cmb err sup_ok sup_err2"
-    putStrLn $ show $ combineTypeErrors sup_ok sup_err2
-    
-    putStrLn "cmb err sup_err1 sup_err2"
-    putStrLn $ show $ combineTypeErrors sup_err1 sup_err2
-
-
--}
+-- given two types, return True if the one on the right can be coerced to the one on the left
+need_coerc :: Type -> Type -> Bool
+need_coerc RealType IntegerType = True
+need_coerc _ _ = False
