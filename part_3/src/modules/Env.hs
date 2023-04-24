@@ -81,15 +81,15 @@ getClashes (Env e1) (Env e2) pos = Map.foldrWithKey (\k v acc -> if Map.member k
 -- Function that checks if there are FunEntry or ProcEntry with forward = True and if there are returns their key
 getForward :: Env -> [String]
 getForward (Env e) = Map.foldrWithKey (\k v acc -> if (isForward v) then k : acc else acc) [] e where
-    isForward (FunEntry { forward = True }) = True
-    isForward (ProcEntry { forward = True }) = True
+    isForward (FunEntry { forward = True, parent_env = False }) = True
+    isForward (ProcEntry { forward = True, parent_env = False }) = True
     isForward _ = False
 
 -- create the function updateForward that foreach FunEntry or ProcEntry with forward = True, set forward = False
 updateForward :: Env -> Env
 updateForward (Env e) = Env { env = Map.map updateForwardAux e } where
-    updateForwardAux fun@(FunEntry { forward = True }) = fun { forward = False }
-    updateForwardAux pro@(ProcEntry { forward = True }) = pro { forward = False }
+    updateForwardAux fun@(FunEntry { forward = True, parent_env = False }) = fun { forward = False }
+    updateForwardAux pro@(ProcEntry { forward = True, parent_env = False }) = pro { forward = False }
     updateForwardAux x = x
 
 -- Function that given the old entry and the new entry, checks if they have the same signature
@@ -105,29 +105,3 @@ checkSignature (ProcEntry { params = oldParams, forward = oldForw }) (ProcEntry 
         err_diff_params = if (oldParams /= newParams) then [Err.errMsgDifferentParams id (show oldParams) (show newParams) pos] else []
     in err_already_declared ++ err_diff_params
 checkSignature _ _ id pos = [Err.errMsgAlreadyDeclared id pos]
-
--- mainEnv = do
---     putStrLn "Test - Env.hs"
-
---     putStrLn "Creazione env (empty)"
---     let env1 = emptyEnv
-
---     putStrLn "Creazione env (singleton)"
---     let env2 = mkSingletonEnv "x" VarEntry { ty = T.RealType }
---         env3 = addVar env2 "y"  VarEntry { ty = T.IntegerType }
---         env4 = addVar env3 "z"  VarEntry { ty = T.BooleanType }
---     putStrLn $ show env4
-
---     putStrLn "Creazione env (singleton)"
---     let env5 = mkSingletonEnv "a"  VarEntry { ty = T.RealType }
---         env6 = addVar env5 "x"  VarEntry { ty = T.IntegerType }
---     putStrLn $ show env6
-
---     putStrLn "Merge envs"
---     let env7 = merge env1 env4
---     putStrLn $ show env7
-
---     putStrLn "Merge envs"
---     let env8 = merge env6 env7 
---     putStrLn $ show env8
-

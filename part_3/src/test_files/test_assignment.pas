@@ -7,35 +7,39 @@ procedure f();
     var a : integer;
     begin 
         a := -1;
-        writeln(a);         
-        writeln('g'); 
+        writeInt(a);         
+        writeChar('g'); 
+        f();
     end; 
 begin;
     g();
-    writeln('f');
+    writeChar('f');
 end;
 begin
   a := 2;
   if x > 2 then
   begin
-  writeln ("Hello World 2");
+  writeString ("Hello World 2");
   end
   else
   begin
-      writeln(a);
+      writeInt(a);
       begin
           a := 4;
           f();
       end;
-      writeln(a);
+      writeInt(a);
   end;
   for j := 0 to 5 do
   begin
-    writeln(j);
+    writeInt(j);
   end;
   for j := 0 to 5 do
   begin
-    writeln(j);
+    for j := 0 to 5 do
+    begin
+      writeInt(j);
+    end
   end
 end.
 

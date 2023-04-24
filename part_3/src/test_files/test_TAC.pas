@@ -33,30 +33,3 @@ begin
 
 
 end.
-
-
-(*
-program TAC;
-
-//procedure p(); forward;
-
-//procedure p (); begin end;
-
-const x = 3;
-
-begin
-
-   //procedure p (); begin end;
-   var
-      x : integer = 5;
-   begin
-      x := 7;
-      writeInt(x);
-   end;
-
-   writeInt(x);
-
-
-   
-end.
-*)

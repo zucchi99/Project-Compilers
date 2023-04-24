@@ -6,6 +6,6 @@ begin
    for a := 10  to 20 do
    
    begin
-      writeln("value of a: ", a);
+      writeString("value of a: ");
    end;
 end.
