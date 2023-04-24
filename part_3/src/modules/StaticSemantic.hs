@@ -122,9 +122,9 @@ check_rel_op sx dx pos parent_env name_op =
     -- Checking if both sx and dx are compatibile for a relation operation
     let (sx_checked, dx_checked, merged_errors) = check_sx_dx sx dx parent_env 
         -- Checking if both sx and dx are boolean
-        errs_rel_not_bool = case T.rel (right_exp_type sx_checked) (right_exp_type dx_checked) of 
-            T.ErrorType -> [Err.errMsgOperationNotPermitted (right_exp_type sx_checked) (right_exp_type dx_checked) name_op pos] -- Something's wrong
-            _           -> [] -- Nothing's wrong
+        errs_rel_not_bool = case T.rel (right_exp_type sx_checked) (right_exp_type dx_checked) of
+            T.ErrorType     -> [Err.errMsgOperationNotPermitted (right_exp_type sx_checked) (right_exp_type dx_checked) name_op pos]
+            _               -> [] -- Nothing's wrong
         -- concateno gli errori
         errors_tot = merged_errors ++ errs_rel_not_bool
     in (sx_checked, dx_checked, errors_tot)
@@ -136,15 +136,15 @@ check_math_op sx dx pos parent_env name_op =
         dx_type = right_exp_type dx_checked
 
         (sx_coerc, dx_coerc, math_type, errs_plus_not_permitted) = 
-            case T.sup sx_type dx_type of
-                    -- Something's wrong. We have to return an ErrorType, because we can't understand where the mistake actaully is
-                T.ErrorType -> (sx_checked, dx_checked, T.ErrorType, [Err.errMsgOperationNotPermitted sx_type dx_type name_op pos])
-                            -- Se sono tutti dello stesso tipo, allora si può semplicemente ritornare il nodo
-                sup_type    |  (T.all_same_type [sup_type, dx_type, sx_type]) -> (sx_checked, dx_checked, sup_type, [])
-                            -- Altrimenti, bisogna fare il cast del nodo con il tipo "non T.sup"
-                            -- In questo caso il nodo dx è quello che deve essere castato
-                            |  sup_type /= dx_type -> (sx_checked, (apply_coercion sup_type dx_checked), sup_type, [])
-                            |  otherwise           -> ((apply_coercion sup_type sx_checked), dx_checked, sup_type, [])
+            case T.math_op sx_type dx_type of
+                                    -- Se sono tutti Real, allora si può semplicemente ritornare il nodo
+                T.RealType      |  (T.all_same_type [T.RealType, dx_type, sx_type]) -> (sx_checked, dx_checked, T.RealType, [])
+                                    -- Altrimenti, bisogna fare il cast del nodo con il tipo "non T.sup"
+                                |  T.RealType /= dx_type    -> (sx_checked, (apply_coercion T.RealType dx_checked), T.RealType, [])
+                                |  otherwise                -> ((apply_coercion T.RealType sx_checked), dx_checked, T.RealType, [])
+                T.IntegerType   -> (sx_checked, dx_checked, T.IntegerType, [])
+                                    -- Non è possibile fare operazioni matematiche su altri tipi -> errore
+                T.ErrorType     -> (sx_checked, dx_checked, T.RealType, [Err.errMsgOperationNotPermitted sx_type dx_type name_op pos])
 
         -- concateno gli errori
         errors_tot = merged_errors ++ errs_plus_not_permitted

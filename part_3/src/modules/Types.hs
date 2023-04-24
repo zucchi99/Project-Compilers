@@ -68,15 +68,22 @@ sup t1 t2 = case t1 == t2 of
     True  -> t1 -- ok
     False -> ErrorType -- { messages = [Err.errMsgNotCompatible t1 t2] } -- error
 
-
 areErrors t1 t2 = (t1 == ErrorType || t2 == ErrorType)
-
 
 -- Function that handles the comparison of two types
 rel :: Type -> Type -> Type
 rel t1 t2 = case sup t1 t2 of
-    ErrorType -> ErrorType -- { messages = (("Relation operation not permitted"):m) } -- error
-    _         -> BooleanType -- ok
+    ErrorType       -> ErrorType
+    BooleanType     -> ErrorType
+    ArrayType _ _   -> ErrorType
+    PointerType _   -> ErrorType
+    _               -> BooleanType -- ok
+
+math_op :: Type -> Type -> Type
+math_op t1 t2 = case sup t1 t2 of
+    RealType    -> RealType
+    IntegerType -> IntegerType
+    _           -> ErrorType
 
 -- Helper function to compare all the types in a list and return true if they are all the same type
 all_same_type :: [Type] -> Bool

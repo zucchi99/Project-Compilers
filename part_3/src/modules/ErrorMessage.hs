@@ -1,9 +1,6 @@
-
-
 module ErrorMessage where
 
 import Data.List
-
 
 errMsgFunctionAlreadyImpl :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgFunctionAlreadyImpl varname pos = printPos pos ++ "The function/procedure " ++ (show varname) ++ " is already implemented"
@@ -49,9 +46,6 @@ errMsgNotDeclared id pos = printPos pos ++ "The name " ++ (show id) ++ " is not 
 
 errMsgNotFunctionProcedure :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgNotFunctionProcedure id pos = printPos pos ++ "The object " ++ (show id) ++ " is not a function or procedure"
-
---errMsgArrIdxNotInt t = errMsgUnexpectedType "Array indexes" T.IntegerType t
---errMsgGuardNotBool t = errMsgUnexpectedType "Guard" T.BooleanType t
 
 errMsgUnexpectedType :: (Show a1, Show a2) => [Char] -> a1 -> a2 -> (Int, Int) -> [Char]
 errMsgUnexpectedType obj t_exp t_found pos = printPos pos ++ obj ++ " must be of type " ++ (show t_exp)  ++ " but type " ++ (show t_found) ++ " is given"
