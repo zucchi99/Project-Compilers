@@ -399,11 +399,34 @@ gen_tac_of_DeclarationVariable state cur_blck decl_var =
                 s20                       = out s10 cur_blck10 (NullAssignment { l = l_addr, r = r_addr, assign_type = t })
             in (s20, cur_blck10)
 
+--make_ident_var_label
+--make_block_label (FuncBlockType (AS.declaration_pos decl_fun) is_start f_name)
+--{ declaration_name :: Ident, declaration_params :: [Declaration], function_type :: T.Type, declaration_body_maybe :: Maybe Block, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
 gen_tac_of_DeclarationFunction :: State -> String -> AS.Declaration -> (State, String)
-gen_tac_of_DeclarationFunction  state cur_blck decl_fun = (state, cur_blck)
+gen_tac_of_DeclarationFunction  state cur_blck decl_fun =
+    let 
+        function_pos = (AS.declaration_pos decl_fun)
+        function_plain_name = (AS.id_name (AS.declaration_name decl_fun))
+        function_type       = (FuncBlockType function_pos True function_plain_name)
+        function_name       = make_block_label function_type
+        s10                 = add_block empty_state function_type []
+        (s20, cur_blck10)   = get_tac_of_ListDeclaration s10 function_name (AS.declaration_params decl_fun)
+        (s30, cur_blck20)   = case AS.declaration_body_maybe decl_fun of
+                                (Just b) -> gen_tac_of_Block s20 cur_blck10 b "" ""
+                                Nothing  -> (s20, cur_blck10)
+        s40   = out s30 cur_blck20 (RetVal { value = (AddressProgramVar (make_ident_var_label function_plain_name function_pos)), return_type = to_primitive_type (AS.function_type decl_fun) })
+        fun_block           = make_block_label (FuncBlockType function_pos False function_plain_name)
+    in  (s40, fun_block)
 
 gen_tac_of_DeclarationProcedure :: State -> String -> AS.Declaration -> (State, String)
 gen_tac_of_DeclarationProcedure state cur_blck decl_prc = (state, cur_blck)
+
+get_tac_of_ListDeclaration :: State -> String -> [AS.Declaration] -> (State, String)
+get_tac_of_ListDeclaration state cur_blck [] = (state, cur_blck)
+get_tac_of_ListDeclaration state cur_blck (d:decls) = 
+    let (s10, cur_blck1) = gen_tac_of_Declaration state cur_blck d
+    in  get_tac_of_ListDeclaration s10 cur_blck1 decls
+
 
 --________________________________ Statement __________________________________________
 
