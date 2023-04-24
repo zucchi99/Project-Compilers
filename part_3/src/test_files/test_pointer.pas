@@ -1,14 +1,16 @@
 program exPointers;
 var
    number: integer;
-   iptr: ^integer;
+   x: ^integer;
+   y: ^integer;
 
 begin
    number := 100;
    
-   iptr := number@;
-
-   iptr@ := 200;
+   x := number@;
    
-   iptr^ := 200;
+   y^ := 200;
+
+   x := y;
+
 end.
