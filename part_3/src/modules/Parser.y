@@ -165,9 +165,9 @@ ListConstantDecl    : ConstantDecl ';'                  { (:[]) $1 }
 ConstantDecl    :: { Declaration }
 ConstantDecl    : Ident '=' RightExp {
     DeclarationCostant   {
-        costant_name = $1,
-        costant_type_maybe = Nothing,
-        costant_value = $3,
+        constant_name = $1,
+        constant_type_maybe = Nothing,
+        constant_value = $3,
         declaration_pos = (ident_pos $1),
         declaration_env = E.emptyEnv,
         declaration_errors = []

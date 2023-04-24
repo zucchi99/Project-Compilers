@@ -17,6 +17,10 @@ import TAC
 -- mostra a schermo la posizione del file in cui scrive tutti i dettagli della compilazione ()
 testami test = do
 
+    let out_dir = "src/test_files/temp/"
+    let pretty_out_file = out_dir ++ "pretty_print_" ++ test ++ ".pas"
+    let static_out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
+
     -- Read file
     input <- readFile $ concat ["src/test_files/test_", test, ".pas"]
 
@@ -45,16 +49,13 @@ testami test = do
     putStrLn pretty
     putStrLn ""
 
-    let out_dir = "src/test_files/temp/"
-    let out_file = out_dir ++ "pretty_print_" ++ test ++ ".pas"
-
     -- PrettyPrinter to file
     putStrLn "checking if output of pretty printer is correctly lexed and parser..."
-    writeFile out_file pretty
+    writeFile pretty_out_file pretty
 
     -- Repeat for test PrettyPrinter
     putStrLn "Repeat for test PrettyPrinter"
-    input <- readFile out_file
+    input <- readFile pretty_out_file
     let output = Par.pProgram $ Lex.tokens input
     putStrLn $ Printer.serializer output
 
@@ -68,8 +69,7 @@ testami test = do
 
     -- Static Semantic Debug
     let static_debug = Static.static_semantic_debug par
-    let out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
-    writeFile out_file $ Printer.pretty_print_ast_debug static_debug "ident"
+    writeFile static_out_file $ Printer.pretty_print_ast_debug static_debug "ident"
 
     -- TAC Generation
     putStrLn "TAC Generation"
@@ -82,6 +82,30 @@ testami test = do
         Just tac  -> TAC.pretty_printer_tac tac
 
     putStrLn "end"
+
+
+testami_2 test = do
+
+    let out_dir = "src/test_files/temp/"
+    let parsing_out_file = out_dir ++ test ++ ".parsing"
+    let pretty_out_file = out_dir ++ test ++ ".pas"
+    let static_out_file = out_dir ++ test ++ ".static"
+    let tac_out_file = out_dir ++ test ++ ".tac"
+
+    -- Read file
+    input <- readFile $ concat ["src/test_files/test_", test, ".pas"]
+
+    -- Parsing & Lexing
+    let parsed = Par.pProgram $ Lex.tokens input
+    writeFile parsing_out_file ("Parsing & Lexing \n\n" ++ Printer.pretty_print_ast parsed "ident" ++ "\n\n")
+    
+    -- PrettyPrinter
+    writeFile pretty_out_file ("Pretty Printer \n\n" ++ Printer.serializer parsed ++ "\n\n")
+
+    -- Static Semantic
+    let static = Static.static_semantic_check parsed
+    writeFile static_out_file ("Static Semantic errors: \n\n" ++ Printer.pretty_print_ast static "ident" ++ "\n\n")
+    putStrLn $ Static.static_semantic_errors static
 
 
 main = do

@@ -390,11 +390,11 @@ gen_tac_of_Declaration state cur_blck declaration =
 
 gen_tac_of_DeclarationCostant :: State -> String -> AS.Declaration -> (State, String)
 gen_tac_of_DeclarationCostant state cur_blck decl_const = 
-    let value = (AS.costant_value decl_const)
+    let value = (AS.constant_value decl_const)
     in  case value of
         (AS.RightExpString{}) -> 
             let (s10, cur_blck1, address) = gen_tac_of_string state cur_blck value
-                ident_name                = (AS.id_name (AS.costant_name decl_const))
+                ident_name                = (AS.id_name (AS.constant_name decl_const))
                 s20                       = add_to_string_constants_list s10 ident_name address
             in  (s20, cur_blck1)
         _   -> (state, cur_blck)

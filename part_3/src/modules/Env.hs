@@ -20,11 +20,11 @@ data ConstType =
     deriving (Show)
 
 data EnvEntry 
-    = VarEntry      { ty :: T.Type, parent_env :: Bool, pos_decl :: (Int, Int) } 
-    | ConstEntry    { ty :: T.Type, const_value :: ConstType, parent_env :: Bool, pos_decl :: (Int, Int) }
-    | ForIterator   { ty :: T.Type, parent_env :: Bool, pos_decl :: (Int, Int) }
-    | FunEntry      { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool, parent_env :: Bool, pos_decl :: (Int, Int) }
-    | ProcEntry     { params :: [(String, T.Type)], forward :: Bool, parent_env :: Bool, pos_decl :: (Int, Int) }
+    = VarEntry          { ty :: T.Type, parent_env :: Bool, pos_decl :: (Int, Int) } 
+    | ConstEntry        { ty :: T.Type, const_value :: ConstType, parent_env :: Bool, pos_decl :: (Int, Int) }
+    | ForIteratorEntry  { ty :: T.Type, parent_env :: Bool, pos_decl :: (Int, Int) }
+    | FunEntry          { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool, parent_env :: Bool, pos_decl :: (Int, Int) }
+    | ProcEntry         { params :: [(String, T.Type)], forward :: Bool, parent_env :: Bool, pos_decl :: (Int, Int) }
     deriving (Show)
 
 instance Eq EnvEntry where
@@ -60,7 +60,7 @@ lookup e name = case Map.lookup name (env e) of
             Nothing -> Nothing
             
 -- once we enter in a nested block change all entry to parent_env = True
--- this is not done to ConstEntry and ForIterator, we don't permit overriding of const and for iterator
+-- this is not done to ConstEntry and ForIteratorEntry, we don't permit overriding of const and for iterator
 change_parent_env :: Env -> Env
 change_parent_env (Env e) = Env { env = Map.map change_parent_env_aux e } where
     change_parent_env_aux var@(VarEntry {}) = var { parent_env = True }
