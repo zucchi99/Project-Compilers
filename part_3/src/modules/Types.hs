@@ -70,6 +70,14 @@ sup t1 t2 = case t1 == t2 of
 
 areErrors t1 t2 = (t1 == ErrorType || t2 == ErrorType)
 
+
+get_multi_array_length (ArrayType t d) = (get_single_array_length d) ++ (get_multi_array_length t)
+get_multi_array_length _                 = []
+
+get_single_array_length []         = []
+get_single_array_length ((l,r):xs) = (r-l+1) : (get_single_array_length xs)
+
+
 -- Function that handles the comparison of two types
 rel :: Type -> Type -> Type
 rel t1 t2 = case sup t1 t2 of
