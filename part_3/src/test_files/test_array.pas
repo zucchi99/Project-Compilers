@@ -2,13 +2,13 @@ program exArrays;
 var
    //a : array [1..10, 1..1] of integer;
    //z : array [3..5, 4..6] of integer;
-   x : array [1..2,1..3] of array [1..4] of integer ;   (* n is an array of 10 integers *)
+   x : array [0..3,0..2] of array [0..2] of integer ;   (* n is an array of 10 integers *)
    //i, j: integer;
-   p : ^array [1..2,1..3] of array [1..4] of integer ;   (* n is an array of 10 integers *)
+   //p : ^array [1..2,1..3] of array [1..4] of integer ;   (* n is an array of 10 integers *)
 
 begin
 
-   writeInt(x[1,1][1]);
+   writeInt(x[0,0][0]);
    (*writeInt(x[1,1][2]);
    writeInt(x[1,1][3]);
    writeInt(x[1,1][4]);

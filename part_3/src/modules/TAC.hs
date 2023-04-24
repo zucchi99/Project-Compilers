@@ -7,6 +7,7 @@ import qualified AbstractSyntax as AS
 import qualified Types as T
 import qualified Env as E
 import ErrM
+import Data.List
 
 -- ___________ PRIMITIVE TYPE ___________
 
@@ -170,15 +171,17 @@ empty_block = (Block "" [])
 empty_state :: State
 empty_state = (State [] [] [] 0 0 0)
 
-initialize_state :: (Int, Int) -> (String, State)
+initialize_state :: (Int, Int) -> (String, String, State)
 initialize_state main_pos = 
-    let start_name = make_block_label StartBlockType
-        main_type  = (MainBlockType main_pos True)
-        main_name  = make_block_label main_type
-        s          = add_block empty_state StartBlockType []
-        s10         = add_block s main_type []
-        s20         = out s10 start_name (Jump main_name)
-    in  (main_name, s20)
+    let start_name      = make_block_label StartBlockType
+        main_type_start = (MainBlockType main_pos True)
+        main_type_end   = (MainBlockType main_pos False)
+        main_name_start = make_block_label main_type_start
+        main_name_end   = make_block_label main_type_end
+        s10               = add_block empty_state StartBlockType []
+        s20             = add_block s10 main_type_start [ (Jump main_name_start) ]
+        s30             = add_block s20 main_type_end   [ Return ]
+    in  (main_name_start, main_name_end, s30)
    
 to_primitive_relational_operator :: AS.RightExp -> BinaryRelatOp
 to_primitive_relational_operator (AS.RightExpLess {})           = LessThan
@@ -363,8 +366,9 @@ make_start_end_label is_start = if (is_start) then "start" else "end"
 
 generate_tac :: AS.Program -> State
 generate_tac (AS.ProgramStart _ code pos _ _) = 
-    let (main_name, state) = initialize_state pos
-    in reverse_TAC $ fst $ gen_tac_of_Block state main_name code "" ""
+    let (main_name_start, main_name_end, state) = initialize_state pos
+        (s10, _) = gen_tac_of_Block state main_name_start code "" ""
+    in reverse_TAC $ s10
 
 -- gen_tac_of_Block :: State -> String -> AS.Block -> (State, String)
 gen_tac_of_Block state cur_blck (AS.Block []        []        pos   _   _  ) blck_next blck_guard = (state, cur_blck)
@@ -415,27 +419,30 @@ gen_tac_of_DeclarationVariable state cur_blck decl_var =
                 s20                       = out s10 cur_blck10 (NullAssignment { l = l_addr, r = r_addr, assign_type = t })
             in (s20, cur_blck10)
 
---make_ident_var_label
---make_block_label (FuncBlockType (AS.declaration_pos decl_fun) is_start f_name)
---{ declaration_name :: Ident, declaration_params :: [Declaration], function_type :: T.Type, declaration_body_maybe :: Maybe Block, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
 gen_tac_of_DeclarationFunction :: State -> String -> AS.Declaration -> (State, String)
-gen_tac_of_DeclarationFunction  state cur_blck decl_fun =
-    let 
-        function_pos = (AS.declaration_pos decl_fun)
-        function_plain_name = (AS.id_name (AS.declaration_name decl_fun))
-        function_type       = (FuncBlockType function_pos True function_plain_name)
-        function_name       = make_block_label function_type
-        s10                 = add_block empty_state function_type []
-        (s20, cur_blck10)   = get_tac_of_ListDeclaration s10 function_name (AS.declaration_params decl_fun)
-        (s30, cur_blck20)   = case AS.declaration_body_maybe decl_fun of
+gen_tac_of_DeclarationFunction  state cur_blck decl_fun = gen_tac_of_declaration_fun_proc state cur_blck decl_fun FuncBlockType True
+
+gen_tac_of_DeclarationProcedure state cur_blck decl_prc = gen_tac_of_declaration_fun_proc state cur_blck decl_prc ProcBlockType False
+
+
+gen_tac_of_declaration_fun_proc state cur_blck decl constructor is_fun = 
+    let function_pos        = (AS.declaration_pos decl)
+        function_plain_name = (AS.id_name (AS.declaration_name decl))
+        block_type_start    = (constructor function_pos True function_plain_name)
+        block_name_start    = make_block_label block_type_start
+        s10                 = add_block state block_type_start []
+        (s20, cur_blck10)   = get_tac_of_ListDeclaration s10 block_name_start (AS.declaration_params decl)
+        (s30, cur_blck20)   = case AS.declaration_body_maybe decl of
                                 (Just b) -> gen_tac_of_Block s20 cur_blck10 b "" ""
                                 Nothing  -> (s20, cur_blck10)
-        s40   = out s30 cur_blck20 (RetVal { value = (AddressProgramVar (make_ident_var_label function_plain_name function_pos)), return_type = to_primitive_type (AS.function_type decl_fun) })
-        fun_block           = make_block_label (FuncBlockType function_pos False function_plain_name)
-    in  (s40, fun_block)
-
-gen_tac_of_DeclarationProcedure :: State -> String -> AS.Declaration -> (State, String)
-gen_tac_of_DeclarationProcedure state cur_blck decl_prc = (state, cur_blck)
+        block_type_end      = (block_type_start { is_start = False })
+        return_addr         = (AddressProgramVar (make_ident_var_label function_plain_name function_pos))
+        s40                 = add_block s30 block_type_end []
+        block_name_end      = make_block_label block_type_end
+        s50                 = if is_fun 
+                                then out s40 block_name_end (RetVal { value = return_addr, return_type = to_primitive_type (AS.function_type decl) })
+                                else out s40 block_name_end Return
+    in  (s50, cur_blck)
 
 get_tac_of_ListDeclaration :: State -> String -> [AS.Declaration] -> (State, String)
 get_tac_of_ListDeclaration state cur_blck [] = (state, cur_blck)
@@ -550,8 +557,8 @@ gen_tac_of_VariableAssignment state cur_blck assgn_stmt =
         -- AFTER RIGHT EXPRESSION
         (s20, cur_blck10, r_addr) = gen_tac_of_RightExp s10 cur_blck   (AS.right_exp_assignment assgn_stmt)
         -- add assignment code
-        s25                       = out s20 cur_blck10 (Comment $ (show l_addr) ++ " = " ++ (show r_addr) ++ " : " ++ (show prim_type))
-        s30                       = add_assignment_instruction s25 cur_blck10 prim_type l_addr r_addr
+        -- s25                       = out s20 cur_blck10 (Comment $ (show l_addr) ++ " = " ++ (show r_addr) ++ " : " ++ (show prim_type))
+        s30                       = add_assignment_instruction s20 cur_blck10 prim_type l_addr r_addr
     in (s30, cur_blck10)
 
 add_assignment_instruction state cur_blck prim_type l_addr r_addr = 
@@ -918,9 +925,10 @@ pretty_printer_tac (State t str _ _ _ _) = "# TAC START\n" ++ "# FUNCTIONS AND P
     pretty_printer_tac_aux (x:xs) str = (pretty_printer_block x) ++ (pretty_printer_tac_aux xs str)
 
 pretty_printer_block :: Block -> String
-pretty_printer_block (Block cur_blck b_code) = (if (take 6 cur_blck) == "block?" then "" else "\n") ++ cur_blck ++ ":\n" ++ (pretty_printer_block_aux b_code) where
-    pretty_printer_block_aux []     = ""
-    pretty_printer_block_aux (x:xs) = "   " ++ (show x) ++ "\n" ++ (pretty_printer_block_aux xs)
+pretty_printer_block (Block cur_blck b_code) = 
+    (if (isPrefixOf "block?" cur_blck) || (isPrefixOf "end" cur_blck) then "" else "\n") ++ cur_blck ++ ":\n" ++ (pretty_printer_block_aux b_code) where
+        pretty_printer_block_aux []     = ""
+        pretty_printer_block_aux (x:xs) = "   " ++ (show x) ++ "\n" ++ (pretty_printer_block_aux xs)
     
 pretty_printer_string :: [ String ] -> String
 pretty_printer_string str = (pretty_printer_string_aux str 0) where

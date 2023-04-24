@@ -85,12 +85,17 @@ testami test = do
 
 
 testami_2 test = do
+    -- test single file
+    let out_dir = "src/test_files/temp/" ++ test ++ "/"
+    putStrLn $ "----------------------------------------------------------------------------------------"
+    putStrLn $ "test file: "  ++ test
+    putStrLn $ "output dir: " ++ out_dir
 
-    let out_dir = "src/test_files/temp/"
+    createDirectoryIfMissing True out_dir
     let parsing_out_file = out_dir ++ test ++ ".parsing"
-    let pretty_out_file = out_dir ++ test ++ ".pas"
-    let static_out_file = out_dir ++ test ++ ".static"
-    let tac_out_file = out_dir ++ test ++ ".tac"
+    let pretty_out_file  = out_dir ++ test ++ ".pas"
+    let static_out_file  = out_dir ++ test ++ ".static"
+    let tac_out_file     = out_dir ++ test ++ ".tac"
 
     -- Read file
     input <- readFile $ concat ["src/test_files/test_", test, ".pas"]
@@ -107,9 +112,21 @@ testami_2 test = do
     writeFile static_out_file ("Static Semantic errors: \n\n" ++ Printer.pretty_print_ast static "ident" ++ "\n\n")
     putStrLn $ Static.static_semantic_errors static
 
+    -- TAC
+    let just_tac = case static of
+            (ErrM.Ok program) -> Just $ TAC.generate_tac program
+            (ErrM.Bad err)    -> Nothing
+    
+    writeFile tac_out_file $ case just_tac of
+        Nothing   -> "TAC not generated, found error before.\n"
+        Just tac  -> TAC.pretty_printer_tac tac
+
 
 main = do
-    putStrLn "Inserisci il nome di un file:"
-    test <- getLine
-
-    testami test
+    -- test all files
+    let test_files_dir = "src/test_files/"
+    all_files <- getDirectoryContents test_files_dir
+    let test_files = filter (isPrefixOf "test_") all_files
+    let test_names = map ( \ f -> reverse $ drop 4 $ reverse $ drop 5 f ) test_files
+    mapM ( \ test -> testami_2 test ) test_names
+    putStr ""
