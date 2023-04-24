@@ -1,41 +1,62 @@
 program TAC;
-var
-   x : boolean;
-   y : boolean;
-   z : integer;
-   
+
+
+function f(x:integer; y:string; z:integer) : integer;
 begin
-   if 1 > 0
-   then 
+   f := x;
+end;
+
+
+procedure p(x:integer; y:string; z:integer);
+begin
+
+end;
+
+var 
+   i : integer = 0;
+
+const 
+   x = 3;
+
+begin
+
+   function p(x:integer; y:string; z:integer) : integer;
    begin
-      if 2 = 0
-      then
-      begin
-         x := true or false;
-      end
-      else 
-         //begin
-            y := true or false;
-         //end
+      i := x;
    end;
-   //y := 1 > 2 or 2 > 1;
-   //if 3 < 2 * 1 / 4 or 0 < 3 then print(3);
-   //x := 3 > 0; // or 5 < 4;
-   z := 2;
+
+   begin
+
+      p(3, "prova", x);
+
+   end;
+
+
 end.
 
 
 (*
-var
-   x : boolean;
+program TAC;
+
+//procedure p(); forward;
+
+//procedure p (); begin end;
+
+const x = 3;
+
 begin
-   if true or false
-   then
-      x := true;
-   else
-      begin;
-         x := true and false;
-      end;
+
+   //procedure p (); begin end;
+   var
+      x : integer = 5;
+   begin
+      x := 7;
+      writeInt(x);
+   end;
+
+   writeInt(x);
+
+
    
 end.
 *)
