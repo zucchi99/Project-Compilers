@@ -25,13 +25,13 @@ prettyPrinterDeclaration newline numtabs (DeclarationCostant id maybe_type value
     pretty_printer True (numtabs + 1) (DeclarationCostant id maybe_type value pos env errors)             ++
     ";"                                                                                                     ++
     prettyPrinterDeclaration newline numtabs declarations "const"
-prettyPrinterDeclaration newline numtabs (DeclarationVariable id var_type value_maybe pos env errors : declarations) "var" =
-    pretty_printer True (numtabs + 1) (DeclarationVariable id var_type value_maybe pos env errors)        ++
+prettyPrinterDeclaration newline numtabs (DeclarationVariable id var_type value_maybe param_maybe pos env errors : declarations) "var" =
+    pretty_printer True (numtabs + 1) (DeclarationVariable id var_type value_maybe param_maybe pos env errors)        ++
     ";"                                                                                                     ++
     prettyPrinterDeclaration newline numtabs declarations "var"
-prettyPrinterDeclaration newline numtabs (DeclarationVariable id var_type value_maybe pos env errors : declarations) _ =
+prettyPrinterDeclaration newline numtabs (DeclarationVariable id var_type value_maybe param_maybe pos env errors : declarations) _ =
     ident True numtabs "var"                                                                                ++
-    pretty_printer True (numtabs + 1) (DeclarationVariable id var_type value_maybe pos env errors)        ++
+    pretty_printer True (numtabs + 1) (DeclarationVariable id var_type value_maybe param_maybe pos env errors)        ++
     ";"                                                                                                     ++
     prettyPrinterDeclaration newline numtabs declarations "var"
 prettyPrinterDeclaration newline numtabs (declaration : declarations) _ =
@@ -127,7 +127,7 @@ instance PrettyPrinterClass Declaration where
         pretty_printer newline numtabs id                                 ++
         ident False numtabs "= "                                            ++
         pretty_printer False numtabs value
-    pretty_printer newline numtabs(DeclarationVariable id var_type value_maybe pos env errors) =
+    pretty_printer newline numtabs(DeclarationVariable id var_type value_maybe param_maybe pos env errors) =
         pretty_printer newline numtabs id                                 ++
         ident False numtabs ":"                                             ++
         pretty_printer False numtabs var_type                             ++

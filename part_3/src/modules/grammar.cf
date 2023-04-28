@@ -51,8 +51,9 @@ rules                           InitAssign          ::= {- empty -} | "=" RightE
 -- Variables Declaration inside function parenthesis 
 -- Exist the possibility to declare a function without paranthesis, if it has no parameters
 rules                           DeclarationFunc     ::= {- empty -} | "(" [VariableDeclFunc] ")" ;
-VariableDeclarationInsideF.     VariableDeclFunc    ::= [Ident] ":" Type ; 
+VariableDeclarationInsideF.     VariableDeclFunc    ::= ParameterType [Ident] ":" Type ; 
 separator nonempty Ident "," ;
+rules                           ParameterType       ::= {- empty -} | "var" | "result" ;
 
 -- __________ FUNCTION AND PROCEDURE DECLARATIONS __________
 

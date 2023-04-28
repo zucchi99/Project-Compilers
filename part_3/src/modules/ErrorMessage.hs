@@ -57,7 +57,7 @@ errMsgWrongLoopControl :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgWrongLoopControl t pos = printPos pos ++ (show t) ++ " is used outside a loop"
 
 errAssignToLeftExpr :: (Show a) => a -> (Int, Int) -> [Char]
-errAssignToLeftExpr t pos = printPos pos ++ "Can't assign value to expression of type " ++ (show t)
+errAssignToLeftExpr t pos = printPos pos ++ "Can't assign value to type " ++ (show t)
 
 errMsgWrongWritePrimitiveType :: (Show a1, Show a2) => a1 -> a2 -> (Int, Int) -> [Char]
 errMsgWrongWritePrimitiveType t1 t2 pos = printPos pos ++ "A 'Write' primitive of " ++ (show t1) ++ " type is used, but type " ++ (show t2) ++ " is given"

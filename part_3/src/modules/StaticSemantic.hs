@@ -67,6 +67,18 @@ check_sx_dx sx dx p_env =
         errors = (right_exp_errors new_sx) ++ (right_exp_errors new_dx)
     in (new_sx, new_dx, errors)
 
+coerc_sx_dx :: RightExp -> RightExp -> (T.Type -> T.Type -> T.Type) -> String -> (Int, Int) -> (RightExp, RightExp, [String])
+coerc_sx_dx sx dx operation name_op pos = 
+    let sup_type = operation (right_exp_type sx) (right_exp_type dx)
+        (sx_coerc, dx_coerc, errs) = case sup_type of
+            T.ErrorType -> (sx, dx, [Err.errMsgOperationNotPermitted (right_exp_type sx) (right_exp_type dx) name_op pos])
+            sup_type    -> case (right_exp_type sx) == (right_exp_type dx) of
+                True  -> (sx, dx, [])
+                False -> case (right_exp_type sx) /= sup_type of
+                    True  -> (apply_coercion sup_type sx, dx, [])
+                    False -> (sx, apply_coercion sup_type dx, [])
+    in (sx_coerc, dx_coerc, errs)
+
 -- encapsulate the right expression in a coercion expression
 apply_coercion :: T.Type -> RightExp -> RightExp
 apply_coercion to_type main_r = 
@@ -85,8 +97,12 @@ apply_not main_r =
     in RightExpNot main_r pos ty env errs
 
 -- given list of params declarations, create a list of (name, type) for the function or procedure definition
-create_params_for_func_proc :: [Declaration] -> [(String, T.Type)]
-create_params_for_func_proc params = map (\decl -> (id_name (variable_name decl), variable_type decl)) params
+create_params_for_func_proc :: [Declaration] -> [(String, T.Type, E.ParameterType)]
+create_params_for_func_proc params = map create_param params where
+    create_param decl = case fromJust (param_type_maybe decl) of
+        E.Value       -> (id_name (variable_name decl), variable_type decl, E.Value)
+        E.Reference   -> (id_name (variable_name decl), T.PointerType (variable_type decl), E.Reference)
+        E.ValueResult -> (id_name (variable_name decl), T.PointerType (variable_type decl), E.ValueResult)
 
 -- Given the old environment, add or override the break and continue keywords
 add_break_continue :: E.Env -> (Int, Int) -> E.Env
@@ -95,9 +111,28 @@ add_break_continue env pos =
         env_break_continue = E.addVar env_break "continue" (E.ConstEntry T.TBDType (E.StringConst "continue") True pos)
     in E.merge env_break_continue env
 
+check_fun_call :: String -> [RightExp] -> (Int, Int) -> E.Env -> (Maybe T.Type, [String])
+check_fun_call function_name params pos env =
+    let (fun_type, errors_tot) = case E.lookup env function_name of
+            Nothing                     -> (Just T.ErrorType, [Err.errMsgNotDeclared function_name pos])
+            Just (E.FunEntry entry_params ty_ret _ _ _ _ _) 
+                -- La funzione è stata dichiarata e i parametri sono corretti
+                | map (\(x,y,z) -> y) entry_params == map right_exp_type params -> (Just ty_ret, [])
+                -- I parametri non corrispondono
+                | otherwise                                                             -> (Just ty_ret, [Err.errMsgWrongParams function_name pos])
+            Just (E.ProcEntry entry_params _ _ _)
+                -- La procedura è stata dichiarata e i parametri sono corretti
+                | map (\(x,y,z) -> y) entry_params == map right_exp_type params -> (Nothing, [])
+                -- I parametri non corrispondono
+                | otherwise                                                             -> (Nothing, [Err.errMsgWrongParams function_name pos])
+                -- Si è trovata una variabile o una costante con quel nome
+            _                           -> (Just T.ErrorType, [Err.errMsgNotFunctionProcedure function_name pos])
+
+    in (fun_type, errors_tot)
+
 -- check for and, or
-check_rel_op_bool :: RightExp -> RightExp -> (Int, Int) -> E.Env -> (RightExp, RightExp, [String])
-check_rel_op_bool sx dx pos parent_env =
+check_and_or :: RightExp -> RightExp -> (Int, Int) -> E.Env -> (RightExp, RightExp, [String])
+check_and_or sx dx pos parent_env =
         -- Checking if both sx and dx are boolean
     let (sx_checked, dx_checked, merged_errors) = check_sx_dx sx dx parent_env 
         errs_rel_not_bool = if T.all_same_type [T.BooleanType, (right_exp_type sx_checked), (right_exp_type dx_checked)]
@@ -107,40 +142,15 @@ check_rel_op_bool sx dx pos parent_env =
         errors_tot = merged_errors ++ errs_rel_not_bool
     in (sx_checked, dx_checked, errors_tot)
 
--- check for <, >, <=, =>
-check_rel_op :: RightExp -> RightExp -> (Int, Int) -> E.Env -> String -> (RightExp, RightExp, [String])
-check_rel_op sx dx pos parent_env name_op =
+-- check operation like <, >, <=, =>, ==, <>, +, -, *, /
+check_op :: RightExp -> RightExp -> (Int, Int) -> E.Env -> (T.Type -> T.Type -> T.Type) -> String -> (RightExp, RightExp, [String])
+check_op sx dx pos parent_env operation name_op =
     -- Checking if both sx and dx are compatibile for a relation operation
-    let (sx_checked, dx_checked, merged_errors) = check_sx_dx sx dx parent_env 
-        -- Checking if both sx and dx are boolean
-        errs_rel_not_bool = case T.rel (right_exp_type sx_checked) (right_exp_type dx_checked) of
-            T.ErrorType     -> [Err.errMsgOperationNotPermitted (right_exp_type sx_checked) (right_exp_type dx_checked) name_op pos]
-            _               -> [] -- Nothing's wrong
-        -- concateno gli errori
-        errors_tot = merged_errors ++ errs_rel_not_bool
-    in (sx_checked, dx_checked, errors_tot)
-
--- check for +, -, *, /
-check_math_op :: RightExp -> RightExp -> (Int, Int) -> E.Env -> String -> (RightExp, RightExp, T.Type, [String])
-check_math_op sx dx pos parent_env name_op =
     let (sx_checked, dx_checked, merged_errors) = check_sx_dx sx dx parent_env
-        sx_type = right_exp_type sx_checked
-        dx_type = right_exp_type dx_checked
-
-        (sx_coerc, dx_coerc, math_type, errs_plus_not_permitted) = 
-            case T.math_op sx_type dx_type of
-                                    -- Se sono tutti Real, allora si può semplicemente ritornare il nodo
-                T.RealType      |  (T.all_same_type [T.RealType, dx_type, sx_type]) -> (sx_checked, dx_checked, T.RealType, [])
-                                    -- Altrimenti, bisogna fare il cast del nodo con il tipo "non T.sup"
-                                |  T.RealType /= dx_type    -> (sx_checked, (apply_coercion T.RealType dx_checked), T.RealType, [])
-                                |  otherwise                -> ((apply_coercion T.RealType sx_checked), dx_checked, T.RealType, [])
-                T.IntegerType   -> (sx_checked, dx_checked, T.IntegerType, [])
-                                    -- Non è possibile fare operazioni matematiche su altri tipi -> errore
-                T.ErrorType     -> (sx_checked, dx_checked, T.RealType, [Err.errMsgOperationNotPermitted sx_type dx_type name_op pos])
-
+        (sx_coerc, dx_coerc, coerc_errors) = coerc_sx_dx sx_checked dx_checked operation name_op pos
         -- concateno gli errori
-        errors_tot = merged_errors ++ errs_plus_not_permitted
-    in (sx_coerc, dx_coerc, math_type, errors_tot)
+        errors_tot = merged_errors ++ coerc_errors
+    in (sx_coerc, dx_coerc, errors_tot)
 
 -- used to convert a ident representing a constant to a right expression
 from_leftexpconst_to_rightexp :: LeftExp -> (Int, Int) -> E.Env -> [String] -> RightExp
@@ -281,7 +291,7 @@ instance StaticSemanticClass Declaration where
                 err -> (env, err)
         in (DeclarationCostant (id { ident_env = env_aft_decl }) type_aft_decl value_checked pos env_aft_decl (errors ++ err_type ++ err_aft_decl))
 
-    staticsemanticAux (DeclarationVariable id var_type value_maybe pos env errors) =
+    staticsemanticAux (DeclarationVariable id var_type value_maybe param_type_maybe pos env errors) =
             -- se il tipo dichiarato è diverso dal tipo del valore -> ritorno errore
         let value_checked = case value_maybe of
                 Nothing -> Nothing
@@ -296,7 +306,7 @@ instance StaticSemanticClass Declaration where
             (env_aft_decl, err_aft_decl) = case checkPresenceDecl id env pos of
                 [] -> (E.addVar env (id_name id) (E.VarEntry var_type False pos), [])
                 err -> (env, err)
-        in (DeclarationVariable (id { ident_env = env_aft_decl }) var_type value_checked pos env_aft_decl (errors ++ err_type ++ err_aft_decl))
+        in (DeclarationVariable (id { ident_env = env_aft_decl }) var_type value_checked param_type_maybe pos env_aft_decl (errors ++ err_type ++ err_aft_decl))
 
     staticsemanticAux (DeclarationFunction id params fun_type maybe_block pos env errors) =
             -- create a function entry for the enviroment, with params and return type
@@ -498,21 +508,8 @@ instance StaticSemanticClass Statement where
             params_checked = staticsemanticAux $ map (\param -> param {right_exp_env = env}) params
             errs_params = concat $ map right_exp_errors params_checked
 
-            errs_fun = case E.lookup env function_name of
-                    -- Non è stato trovato nulla con quel nome nell'env
-                Nothing         -> [Err.errMsgNotDeclared function_name pos]
-                    -- Tutto ok, la funzione è stata dichiarata e i parametri sono corretti
-                Just (E.FunEntry entry_params _ _ _ _ _ _)  |   map snd entry_params == map right_exp_type params_checked   -> []
-                    -- La funzione è dichiarata nell'enviroment, ma i parametri non corrispondono 
-                    -- TODO: si potrebbero mandare messaggi più significativi, tipo se manca un parametro o se c'è un parametro in più, se i tipi sono sbagliati, ...
-                                                        |   otherwise                                                   -> [Err.errMsgWrongParams function_name pos]
-                    -- Tutto ok, la procedura è stata dichiarata e i parametri sono corretti
-                Just (E.ProcEntry entry_params _ _ _)       |   map snd entry_params == map right_exp_type params_checked   -> []
-                    -- La funzione è dichiarata nell'enviroment, ma i parametri non corrispondono 
-                    -- TODO: si potrebbero mandare messaggi più significativi, tipo se manca un parametro o se c'è un parametro in più, se i tipi sono sbagliati, ...
-                                                        |   otherwise                                                   -> [Err.errMsgWrongParams function_name pos]
-                    -- Si è trovata una variabile o una costante con quel nome (non dovrebbe mai succedere)
-                _               -> [Err.errMsgNotFunctionProcedure (id_name id) pos]
+            -- controllo che i tipi corrispondano
+            (type_non, errs_fun) = check_fun_call function_name params_checked pos env
 
             -- concateno gli errori
             errors_tot = errors ++ errs_params ++ errs_fun
@@ -562,71 +559,71 @@ instance StaticSemanticClass ElseBlock where
 
 instance StaticSemanticClass RightExp where
     staticsemanticAux (RightExpOr sx dx pos ty env errors) =
-        let (sx_checked, dx_checked, errors_tot) = check_rel_op_bool sx dx pos env
+        let (sx_checked, dx_checked, errors_tot) = check_and_or sx dx pos env
         in (RightExpOr sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
     
     staticsemanticAux (RightExpAnd sx dx pos ty env errors) = 
-        let (sx_checked, dx_checked, errors_tot) = check_rel_op_bool sx dx pos env
+        let (sx_checked, dx_checked, errors_tot) = check_and_or sx dx pos env
         in (RightExpAnd sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpGreater sx dx pos ty env errors) =
-        let (sx_checked, dx_checked, errors_tot) = check_rel_op sx dx pos env "greater than"
+        let (sx_checked, dx_checked, errors_tot) = check_op sx dx pos env T.comparison "greater than"
         in (RightExpGreater sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
     
     staticsemanticAux (RightExpLess sx dx pos ty env errors) =
-        let (sx_checked, dx_checked, errors_tot) = check_rel_op sx dx pos env "less than"
+        let (sx_checked, dx_checked, errors_tot) = check_op sx dx pos env T.comparison "less than"
         in (RightExpLess sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpGreaterEqual sx dx pos ty env errors) =
-        let (sx_checked, dx_checked, errors_tot) = check_rel_op sx dx pos env "greater equal"
+        let (sx_checked, dx_checked, errors_tot) = check_op sx dx pos env T.comparison "greater equal"
         in (RightExpGreaterEqual sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpLessEqual sx dx pos ty env errors) =
-        let (sx_checked, dx_checked, errors_tot) = check_rel_op sx dx pos env "less equal"
+        let (sx_checked, dx_checked, errors_tot) = check_op sx dx pos env T.comparison "less equal"
         in (RightExpLessEqual sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpEqual sx dx pos ty env errors) =
-        let (sx_checked, dx_checked, errors_tot) = check_rel_op sx dx pos env "equal"
+        let (sx_checked, dx_checked, errors_tot) = check_op sx dx pos env T.equality "equal"
         in (RightExpEqual sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpNotEqual sx dx pos ty env errors) =
-        let (sx_checked, dx_checked, errors_tot) = check_rel_op sx dx pos env "not equal"
+        let (sx_checked, dx_checked, errors_tot) = check_op sx dx pos env T.equality "not equal"
         in (RightExpNotEqual sx_checked dx_checked pos T.BooleanType env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpPlus sx dx pos ty parent_env errors) =
         -- Checking if both sx and dx are compatibile for a math operation
-        let (sx_coerc, dx_coerc, math_type, errors_tot) = check_math_op sx dx pos parent_env "plus"
-        in (RightExpPlus sx_coerc dx_coerc pos math_type parent_env (errors ++ errors_tot))
+        let (sx_coerc, dx_coerc, errors_tot) = check_op sx dx pos parent_env T.arithmetic "plus"
+        in (RightExpPlus sx_coerc dx_coerc pos (right_exp_type sx_coerc) parent_env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpMinus sx dx pos ty parent_env errors) =
         -- Checking if both sx and dx are compatibile for a math operation
-        let (sx_coerc, dx_coerc, math_type, errors_tot) = check_math_op sx dx pos parent_env "minus"
-        in (RightExpMinus sx_coerc dx_coerc pos math_type parent_env (errors ++ errors_tot))
+        let (sx_coerc, dx_coerc, errors_tot) = check_op sx dx pos parent_env T.arithmetic "minus"
+        in (RightExpMinus sx_coerc dx_coerc pos (right_exp_type sx_coerc) parent_env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpTimes sx dx pos ty parent_env errors) =
         -- Checking if both sx and dx are compatibile for a math operation
-        let (sx_coerc, dx_coerc, math_type, errors_tot) = check_math_op sx dx pos parent_env "times"
-        in (RightExpTimes sx_coerc dx_coerc pos math_type parent_env (errors ++ errors_tot))
+        let (sx_coerc, dx_coerc, errors_tot) = check_op sx dx pos parent_env T.arithmetic "times"
+        in (RightExpTimes sx_coerc dx_coerc pos (right_exp_type sx_coerc) parent_env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpDivide sx dx pos ty parent_env errors) =
         -- Checking if both sx and dx are compatibile for a math operation
-        let (sx_coerc, dx_coerc, math_type, errors_tot) = check_math_op sx dx pos parent_env "divide"
-        in (RightExpDivide sx_coerc dx_coerc pos math_type parent_env (errors ++ errors_tot))
+        let (sx_coerc, dx_coerc, errors_tot) = check_op sx dx pos parent_env T.arithmetic "divide"
+        in (RightExpDivide sx_coerc dx_coerc pos (right_exp_type sx_coerc) parent_env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpMod sx dx pos ty parent_env errors) =
         -- Checking if both sx and dx are compatibile for a math operation
-        let (sx_coerc, dx_coerc, math_type, errors_tot) = check_math_op sx dx pos parent_env "mod"
-        in (RightExpMod sx_coerc dx_coerc pos math_type parent_env (errors ++ errors_tot))
+        let (sx_coerc, dx_coerc, errors_tot) = check_op sx dx pos parent_env T.arithmetic "mod"
+        in (RightExpMod sx_coerc dx_coerc pos (right_exp_type sx_coerc) parent_env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpDiv sx dx pos ty parent_env errors) =
         -- Checking if both sx and dx are compatibile for a math operation
-        let (sx_coerc, dx_coerc, math_type, errors_tot) = check_math_op sx dx pos parent_env "div"
-        in (RightExpDiv sx_coerc dx_coerc pos math_type parent_env (errors ++ errors_tot))
+        let (sx_coerc, dx_coerc, errors_tot) = check_op sx dx pos parent_env T.arithmetic "div"
+        in (RightExpDiv sx_coerc dx_coerc pos (right_exp_type sx_coerc) parent_env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpPower sx dx pos ty parent_env errors) =
         -- Checking if both sx and dx are compatibile for a math operation
-        let (sx_coerc, dx_coerc, math_type, errors_tot) = check_math_op sx dx pos parent_env "power"
-        in (RightExpPower sx_coerc dx_coerc pos math_type parent_env (errors ++ errors_tot))
+        let (sx_coerc, dx_coerc, errors_tot) = check_op sx dx pos parent_env T.arithmetic "power"
+        in (RightExpPower sx_coerc dx_coerc pos (right_exp_type sx_coerc) parent_env (errors ++ errors_tot))
 
     staticsemanticAux (RightExpNot dx pos ty parent_env errors) =
             -- Faccio questa operazione altrimenti non riesco a ritornare dei messaggi di errore che siano coerenti con quanto scritto
@@ -701,22 +698,16 @@ instance StaticSemanticClass RightExp where
             params_checked = staticsemanticAux $ map (\param -> param {right_exp_env = parent_env}) params
             errs_params = concat $ map right_exp_errors params_checked
 
-            (checked_type, errs_fun) = case E.lookup parent_env function_name of
-                    -- Non è stato trovato nulla con quel nome nell'env
-                Nothing                                         -> (T.ErrorType, [Err.errMsgNotDeclared function_name pos])
-                    -- Tutto ok, la funzione è stata dichiarata e i parametri sono corretti
-                Just (E.FunEntry entry_params ty_ret _ _ _ _ _) |   map snd entry_params == map right_exp_type params_checked   -> (ty_ret, [])
-                    -- La funzione è dichiarata nell'enviroment, ma i parametri non corrispondono 
-                    -- TODO: si potrebbero mandare messaggi più significativi, tipo se manca un parametro o se c'è un parametro in più, se i tipi sono sbagliati, ...
-                                                            |   otherwise                                                   -> (ty_ret, [Err.errMsgWrongParams function_name pos])
-                    -- La funzione è dichiarata nell'enviroment, ma è una procedura
-                Just (E.ProcEntry _ _ _ _)                      -> (T.ErrorType, [Err.errMsgAssignToProc function_name pos])
-                    -- Si è trovata una variabile o una costante con quel nome (non dovrebbe mai succedere)
-                _                                               -> (T.ErrorType, [Err.errMsgNotFunctionProcedure (id_name id) pos])
+            -- controllo che i tipi corrispondano
+            (fun_type, errs_fun) = check_fun_call function_name params_checked pos parent_env
+            -- controllo che sia una function
+            (fun_type_checked, err_fun_not_proc) = case fun_type of
+                Nothing -> (T.ErrorType, [Err.errMsgAssignToProc function_name pos])
+                Just t  -> (T.ErrorType, [])
 
             -- concateno gli errori
-            errors_tot = errors ++ errs_params ++ errs_fun
-        in (RightExpFuncProcCall (id { ident_env = parent_env }) params_checked pos checked_type parent_env errors_tot)
+            errors_tot = errors ++ errs_params ++ errs_fun ++ err_fun_not_proc
+        in (RightExpFuncProcCall (id { ident_env = parent_env }) params_checked pos fun_type_checked parent_env errors_tot)
 
     staticsemanticAux (RightExpLeftExp left_exp pos ty parent_env errors) =
             -- Controllo che left_exp sia corretto
@@ -837,6 +828,10 @@ instance StaticSemanticClass Assign where
                 LeftExpForIterator id _ _ _ _   -> (T.ErrorType, [Err.errMsgAssignToForIterator (id_name id) pos])
                 LeftExpPointerAddress _ _ _ _ _ -> (T.ErrorType, [Err.errMsgPointerError "The left expression is a pointer address" pos])
                 _                               -> (left_exp_type lexp_checked, [])
+            -- Controllo che la left_exp non sia un array
+            err_array = case type_aft of
+                T.ArrayType _ _ -> [Err.errAssignToLeftExpr "array" pos]
+                _               -> []
             -- Controllo che la right_exp sia corretta
             rexp_checked = staticsemanticAux (right_exp {right_exp_env = env})
             -- Controllo che left_exp e right_exp abbiano lo stesso tipo
@@ -848,7 +843,7 @@ instance StaticSemanticClass Assign where
                 True    -> apply_coercion (T.sup type_aft (right_exp_type rexp_checked)) rexp_checked
                 False   -> rexp_checked
             -- Concateno gli errori
-            errors_tot = errors ++ (left_exp_errors lexp_checked) ++ err_const ++ (right_exp_errors rexp_checked) ++ err_different_types
+            errors_tot = errors ++ (left_exp_errors lexp_checked) ++ err_const ++ err_array ++ (right_exp_errors rexp_checked) ++ err_different_types
         in (VariableAssignment lexp_checked rexp_checked_coerced pos (left_exp_env lexp_checked) errors_tot)
     
 instance StaticSemanticClass WritePrimitive where
