@@ -48,13 +48,13 @@ sup t1 t2 = case t1 == t2 of
     True  -> t1
     False -> ErrorType
 
-get_multi_array_length :: Type -> [Int]
-get_multi_array_length (ArrayType t d)  = (get_single_array_length d) ++ (get_multi_array_length t)
-get_multi_array_length _                = []
+get_multi_array_length (ArrayType t d) = (get_single_array_length d) ++ (get_multi_array_length t)
+get_multi_array_length (PointerType t) = get_multi_array_length t
+get_multi_array_length _               = []
 
-get_single_array_length :: [(Int,Int)] -> [Int]
-get_single_array_length []          = []
-get_single_array_length ((l,r):xs)  = (r-l+1) : (get_single_array_length xs)
+get_single_array_length []         = []
+get_single_array_length ((l,r):xs) = (r-l+1) : (get_single_array_length xs)
+
 
 -- given two types, return True if them are comparable ( <, >, <=, >= )
 comparison :: Type -> Type -> Type
