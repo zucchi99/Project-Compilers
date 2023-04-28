@@ -11,6 +11,15 @@ import Data.Maybe
 
 data Env = Env { env :: Map.Map String EnvEntry} deriving (Show)
 
+data ParameterType = Value | Reference | ValueResult
+    deriving (Show)
+
+instance Eq ParameterType where
+    Value           == Value        = True
+    Reference       == Reference    = True
+    ValueResult     == ValueResult  = True
+    _               == _            = False
+
 data ConstType = 
     IntConst        { value_int :: Int }
     | RealConst     { value_double :: Double }
@@ -23,8 +32,8 @@ data EnvEntry
     = VarEntry          { ty :: T.Type, parent_env :: Bool, pos_decl :: (Int, Int) } 
     | ConstEntry        { ty :: T.Type, const_value :: ConstType, parent_env :: Bool, pos_decl :: (Int, Int) }
     | ForIteratorEntry  { ty :: T.Type, parent_env :: Bool, pos_decl :: (Int, Int) }
-    | FunEntry          { params :: [(String, T.Type)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool, parent_env :: Bool, pos_decl :: (Int, Int) }
-    | ProcEntry         { params :: [(String, T.Type)], forward :: Bool, parent_env :: Bool, pos_decl :: (Int, Int) }
+    | FunEntry          { params :: [(String, T.Type, ParameterType)], ret :: T.Type, forward :: Bool, permit_change :: Bool, changed :: Bool, parent_env :: Bool, pos_decl :: (Int, Int) }
+    | ProcEntry         { params :: [(String, T.Type, ParameterType)], forward :: Bool, parent_env :: Bool, pos_decl :: (Int, Int) }
     deriving (Show)
 
 instance Eq EnvEntry where

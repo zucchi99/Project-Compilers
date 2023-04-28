@@ -28,7 +28,7 @@ data Declaration
     -- TAC DONE
     = DeclarationCostant                    { constant_name :: Ident, constant_type_maybe :: Maybe T.Type, constant_value :: RightExp, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
     -- TAC DONE
-    | DeclarationVariable                   { variable_name :: Ident, variable_type :: T.Type, variable_value_maybe :: Maybe RightExp, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
+    | DeclarationVariable                   { variable_name :: Ident, variable_type :: T.Type, variable_value_maybe :: Maybe RightExp, param_type_maybe :: Maybe E.ParameterType, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
     -- NB v_value in params must be all nothing !               (OR we can accept default values)
     -- NB (f_body == Nothing) <==> is forward
     -- TAC TODO
