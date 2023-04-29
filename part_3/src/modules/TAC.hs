@@ -628,70 +628,87 @@ gen_tac_of_Ident ident =
 
 gen_tac_of_LeftExp :: State -> String -> AS.LeftExp -> Bool -> (State, PrimType, Address, Bool)
 gen_tac_of_LeftExp state cur_blck l_exp is_lexp = 
-    let name = (AS.left_exp_name l_exp)
-        prim_type = to_primitive_type (AS.left_exp_type l_exp)
+    let prim_type = to_primitive_type (AS.left_exp_type l_exp)
         s10       = state --out state cur_blck (Comment $ ( (show prim_type) ++ " -> " ++ (show l_exp)))
     in case l_exp of 
         -- variable
-        (AS.LeftExpIdent {})           -> (s10, prim_type, gen_tac_of_Ident name, False)
-        (AS.LeftExpForIterator {})     -> (s10, prim_type, gen_tac_of_Ident name, False)
+        (AS.LeftExpIdent {})           -> (s10, prim_type, gen_tac_of_Ident (AS.left_exp_name l_exp), False)
+        (AS.LeftExpForIterator {})     -> (s10, prim_type, gen_tac_of_Ident (AS.left_exp_name l_exp), False)
         -- only string-constants (non-string constants has been already substituted by static semantic)
-        (AS.LeftExpConst {})           -> (s10, prim_type, get_address_from_string_constant s10 (AS.id_name name), False)
+        (AS.LeftExpConst {})           -> (s10, prim_type, get_address_from_string_constant s10 (AS.id_name (AS.left_exp_name l_exp)), False)
         -- pointers
-        (AS.LeftExpArrayAccess {})     -> gen_tac_of_ArrayAccess s10 cur_blck prim_type l_exp
-        (AS.LeftExpPointerValue {})    -> (s10, prim_type, gen_tac_of_Ident $ get_pointer_ident l_exp, True)
-        (AS.LeftExpPointerAddress {})  -> gen_tac_of_LeftExpPointerAddress s10 cur_blck l_exp
+        (AS.LeftExpArrayAccess {})     -> gen_tac_of_ArrayAccess           s10 cur_blck prim_type l_exp False
+        (AS.LeftExpPointerValue {})    -> gen_tac_of_LeftExpPointerValue   s10 cur_blck prim_type l_exp
+        (AS.LeftExpPointerAddress {})  -> gen_tac_of_LeftExpPointerAddress s10 cur_blck prim_type l_exp
 
-gen_tac_of_LeftExpPointerAddress :: State -> String -> AS.LeftExp -> (State, PrimType, Address, Bool)
-gen_tac_of_LeftExpPointerAddress state cur_blck ptr_val =
-    let ident_addr      = gen_tac_of_Ident $ get_pointer_ident ptr_val
-        (tmp_addr, s10) = add_temp_var state
-        s20             = out s10 cur_blck (ReadPointerAddress { l = tmp_addr, pointer = ident_addr })
-    in  (s20, TypeAddr, tmp_addr, False)
+gen_tac_of_LeftExpPointerValue :: State -> String -> PrimType -> AS.LeftExp -> (State, PrimType, Address, Bool)
+gen_tac_of_LeftExpPointerValue state cur_blck prim_type ptr_val =
+    let (s10, ident_addr, _) = get_pointer_ident state cur_blck prim_type ptr_val
+    in  (s10, prim_type, ident_addr, True)
 
-gen_tac_of_LeftExpPointerValue :: State -> String -> PrimType -> AS.LeftExp -> Bool -> (State, PrimType, Address, Bool)
-gen_tac_of_LeftExpPointerValue state cur_blck prim_type ptr_val is_lexp =
-    let ident_addr      = gen_tac_of_Ident $ get_pointer_ident ptr_val
-        (tmp_addr, s10) = add_temp_var state
-        s20             = out s10 cur_blck (ReadPointerValue { l1 = tmp_addr, l2 = ident_addr })
-        (s30, out_addr) = if is_lexp then (state, ident_addr) else (s20, tmp_addr)
-    in  (s30, prim_type, ident_addr, True)
+gen_tac_of_LeftExpPointerAddress :: State -> String -> PrimType -> AS.LeftExp -> (State, PrimType, Address, Bool)
+gen_tac_of_LeftExpPointerAddress state cur_blck prim_type ptr_val =
+    let (s10, ident_addr, is_array) = get_pointer_ident state cur_blck prim_type ptr_val
+        (tmp_addr, s20)             = add_temp_var s10
+        s30                         = out s20 cur_blck (ReadPointerAddress { l = tmp_addr, pointer = ident_addr })
+        (s40, out_addr)             = if is_array then (s10, ident_addr) else (s30, tmp_addr)
+    in  (s40, TypeAddr, tmp_addr, False)
 
-get_pointer_ident :: AS.LeftExp -> AS.Ident
-get_pointer_ident l_exp = 
+get_pointer_ident :: State -> String -> PrimType -> AS.LeftExp -> (State, Address, Bool)
+get_pointer_ident state cur_blck prim_type l_exp = 
     case l_exp of
-        (AS.LeftExpPointerValue {})   -> get_pointer_ident (AS.pointer_value   l_exp)
-        (AS.LeftExpPointerAddress {}) -> get_pointer_ident (AS.pointer_address l_exp)
-        _                             -> (AS.left_exp_name l_exp)
+        (AS.LeftExpPointerValue {})   -> get_pointer_ident state cur_blck prim_type (AS.pointer_value   l_exp)
+        (AS.LeftExpPointerAddress {}) -> get_pointer_ident state cur_blck prim_type (AS.pointer_address l_exp)
+        (AS.LeftExpArrayAccess {})    -> 
+            let (s10, _, addr, _) = gen_tac_of_ArrayAccess state cur_blck prim_type l_exp True
+            in (s10, addr, True)
+        _                             -> (state, gen_tac_of_Ident (AS.left_exp_name l_exp), False)
     
-gen_tac_of_ArrayAccess :: State -> String -> PrimType -> AS.LeftExp -> (State, PrimType, Address, Bool)
-gen_tac_of_ArrayAccess state cur_blck primitive_type array = 
+gen_tac_of_ArrayAccess :: State -> String -> PrimType -> AS.LeftExp -> Bool -> (State, PrimType, Address, Bool)
+gen_tac_of_ArrayAccess state cur_blck primitive_type array is_address = 
     let decl_pos             = (get_declaration_position (AS.left_exp_env array) id_name)
         (id_name, arr_sizes) = get_multi_array_name_and_length_from_lexp array
-        (s10, addr_idx)      = linearize_multi_array state cur_blck primitive_type arr_sizes array
+        (s10, addr_idx)      = linearize_multi_array state cur_blck arr_sizes array
         --s20                = out s10 cur_blck (Comment $ PP.pretty_printer_naive $ show array )
-        (s20, addr, is_pnt)  = make_array_access_address s10 cur_blck array id_name decl_pos addr_idx
+        (s20, addr, is_pnt)  = make_array_access_address s10 cur_blck array id_name decl_pos addr_idx is_address
     in  (s20, primitive_type, addr, is_pnt)
 
-make_array_access_address :: State -> String -> AS.LeftExp -> String -> (Int, Int) -> Address -> (State, Address, Bool)
-make_array_access_address state cur_blck l_exp id_name decl_pos addr_idx = 
+make_array_access_address :: State -> String -> AS.LeftExp -> String -> (Int, Int) -> Address -> Bool -> (State, Address, Bool)
+make_array_access_address state cur_blck l_exp id_name decl_pos addr_idx is_address = 
     case l_exp of
-        (AS.LeftExpArrayAccess  {}) -> 
-            make_array_access_address state cur_blck (AS.array_name l_exp) id_name decl_pos addr_idx
-        (AS.LeftExpPointerValue {}) -> 
-            let pointer_address = AddressProgramVar $ make_ident_var_label id_name decl_pos
-                (tmp_addr, s10) = add_temp_var state
-                s20             = out s10 cur_blck (Comment $ "Sum address pointer with index value")
-                s30             = out s20 cur_blck (BinaryArithmAssignment { l = tmp_addr, r1 = pointer_address, r2 = addr_idx, assign_type = TypeInt, bin_arit_op = (Sum TypeInt) }) 
-            in (s30, tmp_addr, True)
-        _   ->
-            let s10             = out state cur_blck (Comment $ "Make address of array with index")
-                array_address   = (AddressProgramVar $ make_ident_array_label id_name decl_pos addr_idx)
-            in (s10, array_address, False)
+        (AS.LeftExpArrayAccess  {}) -> make_array_access_address state cur_blck (AS.array_name l_exp) id_name decl_pos addr_idx is_address
+        (AS.LeftExpPointerValue {}) -> array_to_pointer_value state cur_blck id_name decl_pos addr_idx       
+        _                           ->  if is_address
+                                        then array_to_pointer_address  state cur_blck id_name decl_pos addr_idx
+                                        else array_to_array            state cur_blck id_name decl_pos addr_idx
 
--- matrix[ i ][ j ][ k ] = array[ i*(N*M) + j*M + k ]
-linearize_multi_array :: State -> String -> PrimType -> [(Int,Int,Int)] -> AS.LeftExp -> (State, Address)
-linearize_multi_array state cur_blck primitive_type arr_sizes l_exp =
+array_to_array :: State -> String -> String -> (Int, Int) -> Address -> (State, Address, Bool)
+array_to_array state cur_blck id_name decl_pos addr_idx =
+    let s10             = out state cur_blck (Comment $ "Make address of array with index")
+        array_address   = (AddressProgramVar $ make_ident_array_label id_name decl_pos addr_idx)
+    in (s10, array_address, False)
+
+array_to_pointer_value :: State -> String -> String -> (Int, Int) -> Address -> (State, Address, Bool)
+array_to_pointer_value state cur_blck id_name decl_pos addr_idx = 
+    let pointer_address = AddressProgramVar $ make_ident_var_label id_name decl_pos
+        (tmp_addr, s10) = add_temp_var state
+        s20             = out s10 cur_blck (Comment $ "Sum address pointer with index value")
+        s30             = out s20 cur_blck (BinaryArithmAssignment { l = tmp_addr, r1 = pointer_address, r2 = addr_idx, assign_type = TypeInt, bin_arit_op = (Sum TypeInt) }) 
+    in (s30, tmp_addr, True)
+    
+array_to_pointer_address :: State -> String -> String -> (Int, Int) -> Address -> (State, Address, Bool)
+array_to_pointer_address state cur_blck id_name decl_pos addr_idx = 
+    let pointer_address = AddressProgramVar $ make_ident_var_label id_name decl_pos
+        (tmp_addr, s10) = add_temp_var state
+        s20             = out s10 cur_blck (Comment $ "Read array pointer ans then sum with index value")
+        s30             = out s20 cur_blck (ReadPointerAddress     { l = tmp_addr, pointer = pointer_address } ) 
+        s40             = out s30 cur_blck (BinaryArithmAssignment { l = tmp_addr, r1 = tmp_addr, r2 = addr_idx, assign_type = TypeInt, bin_arit_op = (Sum TypeInt) }) 
+    in (s40, tmp_addr, True)
+
+-- matrix sizes : [ N ][ M ][ P ]
+-- matrix[ i ][ j ][ k ] = array[ i*(M*P) + j*P + k ]
+linearize_multi_array :: State -> String -> [(Int,Int,Int)] -> AS.LeftExp -> (State, Address)
+linearize_multi_array state cur_blck arr_sizes l_exp =
     let (s10, addr_idxs)     = get_array_indexes_raw l_exp state cur_blck
         s14                  = out s10 cur_blck (Comment $ "check array bounds: " ++ (show addr_idxs) ++ " in " ++ (show arr_sizes))
         s15                  = check_array_bounds s14 cur_blck addr_idxs ( map ( \ (x,y,_) -> (x,y) ) arr_sizes)
@@ -700,16 +717,17 @@ linearize_multi_array state cur_blck primitive_type arr_sizes l_exp =
         (addr_idx, s30)      = add_temp_var s20
         s40                  = out s30 cur_blck (NullAssignment { l = addr_idx, r = (AddressInt 0),  assign_type = TypeInt })
         s50                  = sum_all_offsets_by_dim s40 cur_blck addr_idx offset_by_idx
-        sizeof_prim_type     = size_of_PrimType primitive_type
-        s60                  = out s50 cur_blck (Comment $ "Multiply index by sizeof(" ++ (show primitive_type) ++ ") = " ++ (show sizeof_prim_type) )
+        prim_type            = to_primitive_type (T.get_basic_type (AS.left_exp_type l_exp))
+        sizeof_prim_type     = size_of_PrimType prim_type 
+        s60                  = out s50 cur_blck (Comment $ "Multiply index by sizeof(" ++ (show prim_type) ++ ") = " ++ (show sizeof_prim_type) )
         s70                  = out s60 cur_blck (BinaryArithmAssignment { l = addr_idx, r1 = addr_idx, r2 = (AddressInt sizeof_prim_type), assign_type = TypeInt, bin_arit_op = (Multiply TypeInt) })
     in  (s70, addr_idx)
 
 check_array_bounds :: State -> String -> [Address] -> [(Int,Int)] -> State
-check_array_bounds state cur_blck []       []            = state
+check_array_bounds state cur_blck []       _             = state
 check_array_bounds state cur_blck (i:idxs) ((l,r):sizes) = 
     let block_excep_handler = make_block_label ExcepHandlerBlockType
-        s10 = out state cur_blck (JumpConditional { goto = block_excep_handler, r1 = (AddressInt l), r2 = i, rel_op = (LessThan    TypeInt) } )
+        s10 = out state cur_blck (JumpConditional { goto = block_excep_handler, r1 = i, r2 = (AddressInt l), rel_op = (LessThan    TypeInt) } )
         s20 = out s10   cur_blck (JumpConditional { goto = block_excep_handler, r1 = i, r2 = (AddressInt r), rel_op = (GreaterThan TypeInt) } )
     in  check_array_bounds s20 cur_blck idxs sizes
 
@@ -743,7 +761,8 @@ get_offsets_from_array_lengths (x:xs) = (foldr (*) 1 (x:xs)) : (get_offsets_from
 get_array_indexes_with_offset :: State -> String -> [Address] -> [Int] -> (State, [Address])
 get_array_indexes_with_offset state cur_blck addresses offsets = 
     get_array_indexes_with_offset_aux state cur_blck addresses offsets [] where
-        get_array_indexes_with_offset_aux state cur_blck []               []            acc = (state, acc)
+        get_array_indexes_with_offset_aux state cur_blck []               _             acc = (state, acc)
+        get_array_indexes_with_offset_aux state cur_blck _                []            acc = (state, acc)
         get_array_indexes_with_offset_aux state cur_blck (addr:addresses) (off:offsets) acc = 
             let (tmp_var, s10) = add_temp_var state
                 -- calculate offset for each index
