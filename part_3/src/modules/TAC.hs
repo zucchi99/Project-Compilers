@@ -9,6 +9,7 @@ import qualified Env as E
 import ErrM
 import Data.List
 import PrettyPrinter as PP
+import qualified Data.Map as Map
 
 -- ___________ PRIMITIVE TYPE ___________
 
@@ -127,6 +128,7 @@ data BinaryRelatOp =
 
 data BlockType = 
     StartBlockType                                                              -- start computation (invoke main)
+    | ExcepHandlerBlockType                                                     -- block for handle exceptions
     | MainBlockType { pos :: (Int, Int), is_start :: Bool }                     -- block for main code declaration
     | FuncBlockType { pos :: (Int, Int), is_start :: Bool, fun_name :: String } -- block for function declaration
     | ProcBlockType { pos :: (Int, Int), is_start :: Bool, prc_name :: String } -- block for procedure declaration
@@ -134,13 +136,14 @@ data BlockType =
     | StringBlockType { b_idx :: Int }                                          -- block for storage a string literal
 
 instance Eq BlockType where
-    StartBlockType       == StartBlockType        = True
-    (MainBlockType {})   == (MainBlockType {})    = True
-    (FuncBlockType {})   == (FuncBlockType {})    = True
-    (ProcBlockType {})   == (ProcBlockType {})    = True
-    (TempBlockType {})   == (TempBlockType {})    = True
-    (StringBlockType {}) == (StringBlockType {})  = True
-    _                    == _                     = False      
+    StartBlockType        == StartBlockType         = True
+    (MainBlockType {})    == (MainBlockType {})     = True
+    (FuncBlockType {})    == (FuncBlockType {})     = True
+    (ProcBlockType {})    == (ProcBlockType {})     = True
+    (TempBlockType {})    == (TempBlockType {})     = True
+    (StringBlockType {})  == (StringBlockType {})   = True
+    ExcepHandlerBlockType == ExcepHandlerBlockType  = True
+    _                     == _                      = False      
 
 data Block = Block {
     block_name  :: String,
@@ -181,7 +184,8 @@ initialize_state main_pos =
         s10             = add_block empty_state StartBlockType [ (Jump main_name_start) ]
         s20             = add_block s10 main_type_start [ ]
         s30             = add_block s20 main_type_end   [ Return ]
-    in  (main_name_start, main_name_end, s30)
+        s40             = add_block s30 ExcepHandlerBlockType [ Comment "Defined by back-end" ]
+    in  (main_name_start, main_name_end, s40)
    
 to_primitive_relational_operator :: AS.RightExp -> BinaryRelatOp
 to_primitive_relational_operator r_exp = 
@@ -350,6 +354,7 @@ make_temp_var_label :: Int -> String
 make_temp_var_label i = "tmp?" ++ (show i)
 
 make_block_label :: BlockType -> String
+make_block_label ExcepHandlerBlockType               = "excep_handler"
 make_block_label StartBlockType                      = "start->program"
 make_block_label (MainBlockType pos is_start)        = (make_start_end_label is_start)           ++ "->" ++ "main" ++ "?" ++ (print_row_col pos)
 make_block_label (FuncBlockType pos is_start f_name) = (make_start_end_label is_start) ++ "_fun" ++ "->" ++ f_name ++ "?" ++ (print_row_col pos)
@@ -657,8 +662,8 @@ get_pointer_ident l_exp =
 gen_tac_of_ArrayAccess :: State -> String -> PrimType -> AS.LeftExp -> (State, PrimType, Address, Bool)
 gen_tac_of_ArrayAccess state cur_blck primitive_type array = 
     let decl_pos             = (get_declaration_position (AS.left_exp_env array) id_name)
-        (id_name, arr_len)   = get_multi_array_name_and_length_from_lexp array
-        (s10, addr_idx)      = linearize_multi_array state cur_blck primitive_type arr_len array
+        (id_name, arr_sizes) = get_multi_array_name_and_length_from_lexp array
+        (s10, addr_idx)      = linearize_multi_array state cur_blck primitive_type arr_sizes array
         --s20                = out s10 cur_blck (Comment $ PP.pretty_printer_naive $ show array )
         (s20, addr, is_pnt)  = make_array_access_address s10 cur_blck array id_name decl_pos addr_idx
     in  (s20, primitive_type, addr, is_pnt)
@@ -666,24 +671,27 @@ gen_tac_of_ArrayAccess state cur_blck primitive_type array =
 make_array_access_address :: State -> String -> AS.LeftExp -> String -> (Int, Int) -> Address -> (State, Address, Bool)
 make_array_access_address state cur_blck l_exp id_name decl_pos addr_idx = 
     case l_exp of
-        (AS.LeftExpArrayAccess  {}) -> make_array_access_address state cur_blck (AS.array_name l_exp) id_name decl_pos addr_idx
+        (AS.LeftExpArrayAccess  {}) -> 
+            make_array_access_address state cur_blck (AS.array_name l_exp) id_name decl_pos addr_idx
         (AS.LeftExpPointerValue {}) -> 
             let pointer_address = AddressProgramVar $ make_ident_var_label id_name decl_pos
                 (tmp_addr, s10) = add_temp_var state
                 s20             = out s10 cur_blck (Comment $ "Sum address pointer with index value")
                 s30             = out s20 cur_blck (BinaryArithmAssignment { l = tmp_addr, r1 = pointer_address, r2 = addr_idx, assign_type = TypeInt, bin_arit_op = (Sum TypeInt) }) 
             in (s30, tmp_addr, True)
-        _                           ->
+        _   ->
             let s10             = out state cur_blck (Comment $ "Make address of array with index")
                 array_address   = (AddressProgramVar $ make_ident_array_label id_name decl_pos addr_idx)
             in (s10, array_address, False)
 
 -- matrix[ i ][ j ][ k ] = array[ i*(N*M) + j*M + k ]
-linearize_multi_array :: State -> String -> PrimType -> [Int] -> AS.LeftExp -> (State, Address)
-linearize_multi_array state cur_blck primitive_type arr_len l_exp =
+linearize_multi_array :: State -> String -> PrimType -> [(Int,Int,Int)] -> AS.LeftExp -> (State, Address)
+linearize_multi_array state cur_blck primitive_type arr_sizes l_exp =
     let (s10, addr_idxs)     = get_array_indexes_raw l_exp state cur_blck
-        offsets              = get_offsets_from_array_lengths $ init arr_len
-        (s20, offset_by_idx) = get_array_indexes_with_offset s10 cur_blck addr_idxs offsets
+        s14                  = out s10 cur_blck (Comment $ "check array bounds: " ++ (show addr_idxs) ++ " in " ++ (show arr_sizes))
+        s15                  = check_array_bounds s14 cur_blck addr_idxs ( map ( \ (x,y,_) -> (x,y) ) arr_sizes)
+        offsets              = get_offsets_from_array_lengths $ init $ map ( \ (_,_,x) -> x ) arr_sizes
+        (s20, offset_by_idx) = get_array_indexes_with_offset s15 cur_blck addr_idxs offsets
         (addr_idx, s30)      = add_temp_var s20
         s40                  = out s30 cur_blck (NullAssignment { l = addr_idx, r = (AddressInt 0),  assign_type = TypeInt })
         s50                  = sum_all_offsets_by_dim s40 cur_blck addr_idx offset_by_idx
@@ -692,9 +700,18 @@ linearize_multi_array state cur_blck primitive_type arr_len l_exp =
         s70                  = out s60 cur_blck (BinaryArithmAssignment { l = addr_idx, r1 = addr_idx, r2 = (AddressInt sizeof_prim_type), assign_type = TypeInt, bin_arit_op = (Multiply TypeInt) })
     in  (s70, addr_idx)
 
+check_array_bounds :: State -> String -> [Address] -> [(Int,Int)] -> State
+check_array_bounds state cur_blck []       []            = state
+check_array_bounds state cur_blck (i:idxs) ((l,r):sizes) = 
+    let block_excep_handler = make_block_label ExcepHandlerBlockType
+        s10 = out state cur_blck (JumpConditional { goto = block_excep_handler, r1 = (AddressInt l), r2 = i, rel_op = (LessThan    TypeInt) } )
+        s20 = out s10   cur_blck (JumpConditional { goto = block_excep_handler, r1 = i, r2 = (AddressInt r), rel_op = (GreaterThan TypeInt) } )
+    in  check_array_bounds s20 cur_blck idxs sizes
+
 get_array_indexes_raw :: AS.LeftExp -> State -> String -> (State, [Address])
 get_array_indexes_raw l_exp state cur_blck = 
-    get_array_indexes_aux state (get_array_indexes_as_rexp l_exp) []
+    let (s, l) = get_array_indexes_aux state (get_array_indexes_as_rexp l_exp) []
+    in  (s, reverse l)
         where
             get_array_indexes_aux state []         acc = (state, acc)
             get_array_indexes_aux state (r_exp:xs) acc = 
@@ -707,7 +724,7 @@ get_array_indexes_as_rexp l_exp =
         (AS.LeftExpArrayAccess {}) -> (get_array_indexes_as_rexp (AS.array_name l_exp)) ++ (AS.array_pos l_exp)
         _                          -> []
 
-get_multi_array_name_and_length_from_lexp :: AS.LeftExp -> (String, [Int])
+get_multi_array_name_and_length_from_lexp :: AS.LeftExp -> (String, [(Int,Int,Int)])
 get_multi_array_name_and_length_from_lexp l_exp = 
     case l_exp of
         (AS.LeftExpArrayAccess {})  -> get_multi_array_name_and_length_from_lexp (AS.array_name l_exp)
@@ -988,7 +1005,7 @@ instance Show Instruction where
     show (Jump goto)                              = "goto " ++ goto
     show (JumpIfTrue goto cond)                   = "if " ++ (show cond) ++ " goto " ++ goto
     show (JumpIfFalse goto cond)                  = "ifFalse " ++ (show cond) ++ " goto " ++ goto
-    --JumpConditional
+    show (JumpConditional goto r1 r2 op)          = "ifCond " ++ (show r1) ++ " " ++ (show op) ++ " " ++ (show r2) ++ " goto " ++ goto
     show (ReadFromArray array i l t)              = (show l) ++ " =:" ++ (show t) ++ " " ++ (show array) ++ "[" ++ (show i) ++ "]"
     show (WriteToArray array i r t)               = (show array) ++ "[" ++ (show i) ++ "]" ++ " =:" ++ (show t) ++ " " ++ (show r)
     show (ReadPointerAddress l pointer)           = (show l) ++ " = " ++ (show pointer) ++ "@" ++ " #ReadPointerAddress"
