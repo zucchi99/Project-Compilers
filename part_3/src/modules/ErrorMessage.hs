@@ -99,6 +99,9 @@ errMsgConstLimit id pos = printPos pos ++ (show id) ++ ": A const can only be an
 errMsgWrongParams :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgWrongParams t pos = printPos pos ++ "Wrong parameters for function " ++ (show t)
 
+errMsgWrongNumberParams :: (Show a) => a -> (Int, Int) -> [Char]
+errMsgWrongNumberParams t pos = printPos pos ++ "Wrong number of parameters in function " ++ (show t)
+
 errMsgUnexpectedParams :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgUnexpectedParams t pos = printPos pos ++ (show t) ++ "is not a valid argument for the function" 
 
@@ -114,5 +117,23 @@ errMsgPointerError error pos = printPos pos ++ "Pointer error : " ++ error
 errMsgFunctionError :: String -> String -> (Int, Int) -> String
 errMsgFunctionError id error pos = printPos pos ++ "Function error " ++ (show id) ++ " : " ++ error
 
+errMsgWrongTypeNthParam :: (Show a) => a -> Int -> (Int, Int) -> [Char]
+errMsgWrongTypeNthParam t nth pos = printPos pos ++ "The " ++ (numberPattern nth) ++ " parameter must be of type " ++ (show t)
+
+errMsgExpectingLeftExpr :: (Int, Int) -> [Char]
+errMsgExpectingLeftExpr pos = printPos pos ++ "Expecting a left expression, but a value"
+
+errMsgWrongLeftExpr :: String -> (Int, Int) -> [Char]
+errMsgWrongLeftExpr t pos = printPos pos ++ "The left expression passed is a " ++ (show t) ++ " and it's not a valid"
+
 printPos :: (Int, Int) -> [Char]
 printPos (l, c) = "At line " ++ (show l) ++ ", column " ++ (show c) ++ ": \n\t"
+
+numberPattern :: Int -> String
+numberPattern n
+    | n `mod` 100 `elem` [11,12,13] = show n ++ "th"
+    | otherwise = show n ++ case n `mod` 10 of
+                              1 -> "st"
+                              2 -> "nd"
+                              3 -> "rd"
+                              _ -> "th"

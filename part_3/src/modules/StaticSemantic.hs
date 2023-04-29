@@ -120,21 +120,21 @@ add_break_continue env pos =
         env_break_continue = E.addVar env_break "continue" (E.ConstEntry T.TBDType (E.StringConst "continue") True pos)
     in E.merge env_break_continue env
 
---check_fun_call :: String -> [RightExp] -> (Int, Int) -> E.Env -> (Maybe T.Type, [RightExp], [String])
+check_fun_call :: String -> [RightExp] -> (Int, Int) -> E.Env -> (Maybe T.Type, [RightExp], [String])
 check_fun_call function_name params pos env =
     let (fun_type, rexps_coerced, errors_tot) = case E.lookup env function_name of
-            Just (E.FunEntry entry_params ty_ret _ _ _ _ _) -> get_check_fun_call entry_params (Just ty_ret) params
-            Just (E.ProcEntry entry_params _ _ _)           -> get_check_fun_call entry_params Nothing params
+            Just (E.FunEntry entry_params ty_ret _ _ _ _ pos_decl) -> get_check_fun_call entry_params (Just ty_ret) params pos_decl function_name
+            Just (E.ProcEntry entry_params _ _ pos_decl)           -> get_check_fun_call entry_params Nothing params pos_decl function_name
             Nothing                                         -> (Just T.ErrorType, [], [Err.errMsgNotDeclared function_name pos])
             _                                               -> (Just T.ErrorType, [], [Err.errMsgNotFunctionProcedure function_name pos])
 
     in (fun_type, rexps_coerced, errors_tot)
 
---get_check_fun_call :: [(String, T.Type, E.ParameterType)] -> Maybe T.Type -> [(RightExp, String)] -> (Maybe T.Type, [RightExp], [String])
-get_check_fun_call entry_params ty_ret params = 
+get_check_fun_call :: [(String, T.Type, E.ParameterType)] -> Maybe T.Type -> [RightExp] -> (Int, Int) -> String -> (Maybe T.Type, [RightExp], [String])
+get_check_fun_call entry_params ty_ret params pos_decl function_name = 
     let (right_exps, errs_cleaned) = case length params == length entry_params of
-            False   ->  (params, ["Wrong number of parameters"])
-            True    ->  let (right_exps, errs) = unzip (check_params_func_call params entry_params)
+            False   ->  (params, [Err.errMsgWrongParams function_name pos_decl])
+            True    ->  let (right_exps, errs) = unzip (check_params_func_call (reverse params) (reverse entry_params)) -- Il reverse viene fatto per avere l'ordine corretto negli errori
                             errs_cleaned = filter (not . null) errs
                         in (right_exps, errs_cleaned)
     in (ty_ret, right_exps, errs_cleaned)
@@ -149,13 +149,13 @@ check_params_func_call (x:xs) ((_, t, E.Reference):ys) =
             Just left_exp -> case is_acceptable_left_exp left_exp of
                 (True, _)  -> case (T.need_coerc t x_type || t == x_type) of
                     True  -> ""
-                    False -> "Wrong type for parameter " ++ show (length ys + 1)
-                (False, left_exp_name) -> "Devi passarmi un left expression valida, non un " ++ left_exp_name
-            Nothing       -> "Devi passarmi un left expression, non un valore"
+                    False -> Err.errMsgWrongTypeNthParam t (length ys + 1) (right_exp_pos x)
+                (False, left_exp_name) -> Err.errMsgWrongLeftExpr left_exp_name (right_exp_pos x)
+            Nothing       -> Err.errMsgExpectingLeftExpr (right_exp_pos x)
     in  (coerc_if_needed t x, errs) : check_params_func_call xs ys
 check_params_func_call (x:xs) ((_, t, _):ys) = case (T.need_coerc t (right_exp_type x) || t == (right_exp_type x)) of
     True  -> (coerc_if_needed t x, "") : check_params_func_call xs ys
-    False -> (coerc_if_needed t x, "Wrong type for parameter " ++ show (length ys + 1)) : check_params_func_call xs ys
+    False -> (coerc_if_needed t x, Err.errMsgWrongTypeNthParam t (length ys + 1) (right_exp_pos x)) : check_params_func_call xs ys
 
 is_maybe_left_exp :: RightExp -> Maybe LeftExp
 is_maybe_left_exp (RightExpLeftExp {left_exp_right_exp=left_exp}) = Just left_exp
