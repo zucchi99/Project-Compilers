@@ -126,9 +126,9 @@ data BinaryRelatOp =
 
 -- ___________ TAC CODE TYPE ___________
 
-data BlockType = 
-    StartBlockType                                                              -- start computation (invoke main)
-    | ExcepHandlerBlockType                                                     -- block for handle exceptions
+data BlockType
+    --StartBlockType                                                              -- start computation (invoke main)
+    = ExcepHandlerBlockType                                                     -- block for handle exceptions
     | MainBlockType { pos :: (Int, Int), is_start :: Bool }                     -- block for main code declaration
     | FuncBlockType { pos :: (Int, Int), is_start :: Bool, fun_name :: String } -- block for function declaration
     | ProcBlockType { pos :: (Int, Int), is_start :: Bool, prc_name :: String } -- block for procedure declaration
@@ -136,7 +136,7 @@ data BlockType =
     | StringBlockType { b_idx :: Int }                                          -- block for storage a string literal
 
 instance Eq BlockType where
-    StartBlockType        == StartBlockType         = True
+    --StartBlockType        == StartBlockType         = True
     (MainBlockType {})    == (MainBlockType {})     = True
     (FuncBlockType {})    == (FuncBlockType {})     = True
     (ProcBlockType {})    == (ProcBlockType {})     = True
@@ -181,8 +181,8 @@ initialize_state main_pos =
         main_type_end   = (MainBlockType main_pos False)
         main_name_start = make_block_label main_type_start
         main_name_end   = make_block_label main_type_end
-        s10             = add_block empty_state StartBlockType [ (Jump main_name_start) ]
-        s20             = add_block s10 main_type_start [ ]
+        --s10             = add_block empty_state StartBlockType [ (Jump main_name_start) ]
+        s20             = add_block empty_state main_type_start [ ]
         s30             = add_block s20 main_type_end   [ Return ]
         s40             = add_block s30 ExcepHandlerBlockType [ Comment "Defined by back-end" ]
     in  (main_name_start, main_name_end, s40)
@@ -355,7 +355,7 @@ make_temp_var_label i = "tmp?" ++ (show i)
 
 make_block_label :: BlockType -> String
 make_block_label ExcepHandlerBlockType               = "excep_handler"
-make_block_label StartBlockType                      = "start->program"
+--make_block_label StartBlockType                      = "start->program"
 make_block_label (MainBlockType pos is_start)        = (make_start_end_label is_start)           ++ "->" ++ "main" ++ "?" ++ (print_row_col pos)
 make_block_label (FuncBlockType pos is_start f_name) = (make_start_end_label is_start) ++ "_fun" ++ "->" ++ f_name ++ "?" ++ (print_row_col pos)
 make_block_label (ProcBlockType pos is_start p_name) = (make_start_end_label is_start) ++ "_prc" ++ "->" ++ p_name ++ "?" ++ (print_row_col pos)
@@ -433,30 +433,35 @@ gen_tac_of_DeclarationProcedure state decl_prc = gen_tac_of_declaration_fun_proc
 
 gen_tac_of_declaration_fun_proc :: State -> AS.Declaration -> ((Int, Int) -> Bool -> String -> BlockType) -> Bool -> State
 gen_tac_of_declaration_fun_proc state decl constructor is_fun = 
-    let function_pos        = (AS.declaration_pos decl)
-        function_plain_name = (AS.id_name (AS.declaration_name decl))
-        block_type_start    = (constructor function_pos True function_plain_name)
+    let fun_prc_pos         = (AS.declaration_pos decl)
+        fun_prc_name        = (AS.id_name (AS.declaration_name decl))
+        block_type_start    = (constructor fun_prc_pos True fun_prc_name)
         block_name_start    = make_block_label block_type_start
         block_type_end      = (block_type_start { is_start = False })
         block_name_end      = make_block_label block_type_end
         s10                 = add_block state block_type_start []
         s20                 = add_block s10 block_type_end []
-        (s30, cur_blck10)   = get_tac_of_ListDeclaration s20 block_name_start (AS.declaration_params decl)
+        (s30, cur_blck10)   = (s20, block_name_start) --get_tac_of_parameters s20 block_name_start (AS.declaration_params decl)
         (s40, cur_blck20)   = case AS.declaration_body_maybe decl of
                                 (Just b) -> gen_tac_of_Block s30 cur_blck10 b "" ""
                                 Nothing  -> (s30, cur_blck10)
-        return_addr         = (AddressProgramVar (make_ident_var_label function_plain_name function_pos))
+        return_addr         = (AddressProgramVar (make_ident_var_label fun_prc_name fun_prc_pos))
         s50                 = if is_fun 
                                 then out s40 block_name_end (RetVal { value = return_addr, return_type = to_primitive_type (AS.function_type decl) })
                                 else out s40 block_name_end Return
     in  s50
 
-get_tac_of_ListDeclaration :: State -> String -> [AS.Declaration] -> (State, String)
-get_tac_of_ListDeclaration state cur_blck [] = (state, cur_blck)
-get_tac_of_ListDeclaration state cur_blck (d:decls) = 
-    let (s10, cur_blck1) = gen_tac_of_Declaration state cur_blck d
-    in  get_tac_of_ListDeclaration s10 cur_blck1 decls
-
+{-
+get_tac_of_parameters :: State -> String -> [AS.Declaration] -> (State, String)
+get_tac_of_parameters state cur_blck [] = (state, cur_blck)
+get_tac_of_parameters state cur_blck (d:decls) = 
+    case (AS.param_type_maybe d) of
+        Just ValueResult -> 
+            let 
+            in  get_tac_of_parameters state cur_blck decls
+        -- if param is not given by ValueResult do nothing (cannot be a func/proc neither we have default values for params) 
+        _                -> get_tac_of_parameters state cur_blck decls
+-}
 
 --________________________________ Statement __________________________________________
 
@@ -690,7 +695,7 @@ linearize_multi_array state cur_blck primitive_type arr_sizes l_exp =
     let (s10, addr_idxs)     = get_array_indexes_raw l_exp state cur_blck
         s14                  = out s10 cur_blck (Comment $ "check array bounds: " ++ (show addr_idxs) ++ " in " ++ (show arr_sizes))
         s15                  = check_array_bounds s14 cur_blck addr_idxs ( map ( \ (x,y,_) -> (x,y) ) arr_sizes)
-        offsets              = get_offsets_from_array_lengths $ init $ map ( \ (_,_,x) -> x ) arr_sizes
+        offsets              = get_offsets_from_array_lengths $ tail $ map ( \ (_,_,x) -> x ) arr_sizes
         (s20, offset_by_idx) = get_array_indexes_with_offset s15 cur_blck addr_idxs offsets
         (addr_idx, s30)      = add_temp_var s20
         s40                  = out s30 cur_blck (NullAssignment { l = addr_idx, r = (AddressInt 0),  assign_type = TypeInt })
