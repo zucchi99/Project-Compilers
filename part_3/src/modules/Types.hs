@@ -48,6 +48,11 @@ sup t1 t2 = case t1 == t2 of
     True  -> t1
     False -> ErrorType
 
+get_basic_type :: Type -> Type
+get_basic_type (ArrayType t _) = get_basic_type t
+get_basic_type (PointerType t) = get_basic_type t
+get_basic_type t               = t
+
 get_multi_array_length :: Type -> [(Int,Int,Int)]
 get_multi_array_length (ArrayType t d) = (get_single_array_sizes d) ++ (get_multi_array_length t)
 get_multi_array_length (PointerType t) = get_multi_array_length t
@@ -56,7 +61,6 @@ get_multi_array_length _               = []
 get_single_array_sizes :: [(Int,Int)] -> [(Int,Int,Int)]
 get_single_array_sizes []         = []
 get_single_array_sizes ((l,r):xs) = (l,r,(r-l+1)) : (get_single_array_sizes xs)
-
 
 -- given two types, return True if them are comparable ( <, >, <=, >= )
 comparison :: Type -> Type -> Type
