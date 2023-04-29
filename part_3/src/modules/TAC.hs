@@ -336,14 +336,6 @@ get_address_from_string_constant (State t str ((name, addr):xs) tmp_i bck_i str_
     
 -- ____________________________ LABELS ________________________________________
 
-{-
-block_TBD :: String
-block_TBD = "BLOCK_TO_BE_DEFINED"
-
-is_block_TBD :: String -> Bool
-is_block_TBD b_name = b_name == block_TBD
--}
-
 make_ident_array_label :: String -> (Int, Int) -> Address -> [Char]
 make_ident_array_label name pos idx = (make_ident_var_label name pos) ++ "[" ++ (show idx) ++ "]"
 
