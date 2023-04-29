@@ -123,8 +123,8 @@ add_break_continue env pos =
 check_fun_call :: String -> [RightExp] -> (Int, Int) -> E.Env -> (Maybe T.Type, [RightExp], [String])
 check_fun_call function_name params pos env =
     let (fun_type, rexps_coerced, errors_tot) = case E.lookup env function_name of
-            Just (E.FunEntry entry_params ty_ret _ _ _ _ pos_decl) -> get_check_fun_call entry_params (Just ty_ret) params pos_decl function_name
-            Just (E.ProcEntry entry_params _ _ pos_decl)           -> get_check_fun_call entry_params Nothing params pos_decl function_name
+            Just (E.FunEntry entry_params ty_ret _ _ _ _ pos_decl) -> get_check_fun_call entry_params (Just ty_ret) params pos function_name
+            Just (E.ProcEntry entry_params _ _ pos_decl)           -> get_check_fun_call entry_params Nothing params pos function_name
             Nothing                                         -> (Just T.ErrorType, [], [Err.errMsgNotDeclared function_name pos])
             _                                               -> (Just T.ErrorType, [], [Err.errMsgNotFunctionProcedure function_name pos])
 
@@ -438,7 +438,6 @@ instance StaticSemanticClass Declaration where
             block = case maybe_block of
                 Nothing -> Nothing
                 Just b  -> Just (staticsemanticAux (b {block_env = env_aft_params}))
-                -- Just b  -> Just (staticsemanticAux (b {block_env = (E.merge env_aft_params env_after_adding_proc)}))
             
             -- non mi serve estrarre l'env, a differenza delle function
             errs_aft_block = case block of
