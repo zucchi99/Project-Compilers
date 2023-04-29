@@ -695,7 +695,7 @@ linearize_multi_array state cur_blck primitive_type arr_sizes l_exp =
     let (s10, addr_idxs)     = get_array_indexes_raw l_exp state cur_blck
         s14                  = out s10 cur_blck (Comment $ "check array bounds: " ++ (show addr_idxs) ++ " in " ++ (show arr_sizes))
         s15                  = check_array_bounds s14 cur_blck addr_idxs ( map ( \ (x,y,_) -> (x,y) ) arr_sizes)
-        offsets              = get_offsets_from_array_lengths $ init $ map ( \ (_,_,x) -> x ) arr_sizes
+        offsets              = get_offsets_from_array_lengths $ tail $ map ( \ (_,_,x) -> x ) arr_sizes
         (s20, offset_by_idx) = get_array_indexes_with_offset s15 cur_blck addr_idxs offsets
         (addr_idx, s30)      = add_temp_var s20
         s40                  = out s30 cur_blck (NullAssignment { l = addr_idx, r = (AddressInt 0),  assign_type = TypeInt })
