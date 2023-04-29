@@ -103,8 +103,8 @@ create_params_for_func_proc params = unzip $ map create_param params where
         E.Value       
             | is_pointer_or_array (variable_type decl) -> ((id_name (variable_name decl), variable_type decl, E.Value), Err.errMsgUnexpectedParams (id_name (variable_name decl)) (declaration_pos decl))
             | otherwise                                -> ((id_name (variable_name decl), variable_type decl, E.Value), "")
-        E.Reference   -> ((id_name (variable_name decl), T.PointerType (variable_type decl), E.Reference), "")
-        E.ValueResult -> ((id_name (variable_name decl), T.PointerType (variable_type decl), E.ValueResult), "")
+        E.Reference   -> ((id_name (variable_name decl), (variable_type decl), E.Reference), "")
+        E.ValueResult -> ((id_name (variable_name decl), (variable_type decl), E.ValueResult), "")
 
 -- helper function to check if a type is a pointer or an array (only used above)
 is_pointer_or_array :: T.Type -> Bool
@@ -120,24 +120,71 @@ add_break_continue env pos =
         env_break_continue = E.addVar env_break "continue" (E.ConstEntry T.TBDType (E.StringConst "continue") True pos)
     in E.merge env_break_continue env
 
-check_fun_call :: String -> [RightExp] -> (Int, Int) -> E.Env -> (Maybe T.Type, [String])
+--check_fun_call :: String -> [RightExp] -> (Int, Int) -> E.Env -> (Maybe T.Type, [RightExp], [String])
 check_fun_call function_name params pos env =
-    let (fun_type, errors_tot) = case E.lookup env function_name of
-            Nothing                     -> (Just T.ErrorType, [Err.errMsgNotDeclared function_name pos])
-            Just (E.FunEntry entry_params ty_ret _ _ _ _ _) 
-                -- La funzione è stata dichiarata e i parametri sono corretti
-                | are_compatibile_types (map (\(x,y,z) -> y) entry_params) (map right_exp_type params) -> (Just ty_ret, [])
+    let (fun_type, rexps_coerced, errors_tot) = case E.lookup env function_name of
+            Nothing                     -> (Just T.ErrorType, [], [Err.errMsgNotDeclared function_name pos])
+            Just (E.FunEntry entry_params ty_ret _ _ _ _ _) -> get_check_fun_call entry_params (Just ty_ret) (check_params_func_call params entry_params)
+                {- -- La funzione è stata dichiarata e i parametri sono corretti
+                -- | case unzip_filter_empty_errors $ check_params_func_call entry_params params of 
+                --     (right_exps, errs, False) -> (Just ty_ret, right_exps, errs)
+                --     (right_exps, errs, True) -> (Just ty_ret, right_exps, errs)
                 -- I parametri non corrispondono
-                | otherwise                                                             -> (Just ty_ret, [Err.errMsgWrongParams function_name pos])
-            Just (E.ProcEntry entry_params _ _ _)
-                -- La procedura è stata dichiarata e i parametri sono corretti
-                | are_compatibile_types (map (\(x,y,z) -> y) entry_params) (map right_exp_type params) -> (Nothing, [])
+                -- | otherwise                                                             -> (Just ty_ret, [Err.errMsgWrongParams function_name pos]) -}
+            Just (E.ProcEntry entry_params _ _ _) -> get_check_fun_call entry_params Nothing (check_params_func_call params entry_params)
+                {- -- La procedura è stata dichiarata e i parametri sono corretti
+                -- | are_compatibile_types entry_params params -> (Nothing, [])
                 -- I parametri non corrispondono
-                | otherwise                                                             -> (Nothing, [Err.errMsgWrongParams function_name pos])
+                -- | otherwise                                 -> (Nothing, [Err.errMsgWrongParams function_name pos]) -}
                 -- Si è trovata una variabile o una costante con quel nome
-            _                           -> (Just T.ErrorType, [Err.errMsgNotFunctionProcedure function_name pos])
+            _                           -> (Just T.ErrorType, [], [Err.errMsgNotFunctionProcedure function_name pos])
 
-    in (fun_type, errors_tot)
+    in (fun_type, rexps_coerced, errors_tot)
+
+--get_check_fun_call :: [(String, T.Type, E.ParameterType)] -> Maybe T.Type -> [(RightExp, String)] -> (Maybe T.Type, [RightExp], [String])
+get_check_fun_call e_params ty_ret rexps_errors = 
+    let 
+        (right_exps, errs) = unzip rexps_errors
+        errs_cleaned = filter (not . null) errs
+    in (ty_ret, right_exps, errs_cleaned)
+
+
+check_params_func_call :: [RightExp] -> [(String, T.Type, E.ParameterType)] -> [(RightExp, String)]
+check_params_func_call [] [] = []
+check_params_func_call [] _ = []
+check_params_func_call xs [] = map (\x -> (x,"")) xs
+check_params_func_call (x:xs) ((_, t, E.Value):ys) = case (T.need_coerc t (right_exp_type x) || t == (right_exp_type x)) of
+    True  -> (coerc_if_needed t x, "") : check_params_func_call xs ys
+    False -> (coerc_if_needed t x, "Wrong type for parameter " ++ show (length ys + 1)) : check_params_func_call xs ys
+
+check_params_func_call (x:xs) ((_, t, _):ys) = 
+    let 
+        x_type = right_exp_type x
+        errs = case is_maybe_left_exp x of
+            Just left_exp -> case is_acceptable_left_exp left_exp of
+                (True, _)  -> case (T.need_coerc t x_type || t == x_type) of
+                    True  -> ""
+                    False -> "Wrong type for parameter " ++ show (length ys + 1)
+                (False, left_exp_name) -> "Devi passarmi un left expression valida, non un " ++ left_exp_name
+            Nothing       -> "Devi passarmi un left expression, non un valore"
+    in  (coerc_if_needed t x, errs) : check_params_func_call xs ys
+    
+    -- LeftExpIdent _ ritorna E.Value, E.Refernence o E.ValueResult
+    -- LeftExpPointerValue ^ ritorna E.Value, E.Refernence o E.ValueResult 
+    --                     -> Non posso passargli LeftExpForIterator, LeftExpConst, LeftExpPointerAddress
+    -- LeftExpPointerAddress @ ritorna SOLO E.Value
+
+is_maybe_left_exp :: RightExp -> Maybe LeftExp
+is_maybe_left_exp (RightExpLeftExp {left_exp_right_exp=left_exp}) = Just left_exp
+is_maybe_left_exp (RightExpCoercion {right_exp_coercion=left_exp}) = is_maybe_left_exp left_exp
+is_maybe_left_exp _ = Nothing
+
+is_acceptable_left_exp :: LeftExp -> (Bool, String)
+is_acceptable_left_exp (LeftExpPointerAddress _ _ _ _ _) = (False, "pointer address")
+is_acceptable_left_exp (LeftExpForIterator _ _ _ _ _) = (False, "for iterator")
+is_acceptable_left_exp (LeftExpConst _ _ _ _ _ _) = (False, "constant")
+is_acceptable_left_exp _ = (True, "")
+
 
 -- Se i tipi sono compatibili, ritorna True, altrimenti False
 -- Viene usata sopra per controllare che i parametri di una funzione siano compatibili con quelli della sua dichiarazione
@@ -150,12 +197,10 @@ are_compatibile_types (x:xs) (y:ys) = case (T.need_coerc x y || x == y) of
     True  -> are_compatibile_types xs ys
     otherwise -> False
 
-coerc_if_needed :: [T.Type] -> [RightExp] -> [RightExp]
-coerc_if_needed [] a = a
-coerc_if_needed _ [] = []
-coerc_if_needed (t:ts) (x:xs) = case T.need_coerc t (right_exp_type x) of
-    True -> (apply_coercion (T.sup t (right_exp_type x)) x) : (coerc_if_needed ts xs)
-    _    -> x : (coerc_if_needed ts xs)
+coerc_if_needed :: T.Type -> RightExp -> RightExp
+coerc_if_needed t x = case T.need_coerc t (right_exp_type x) of
+    True -> (apply_coercion (T.sup t (right_exp_type x)) x)
+    _    -> x
 
 -- check for and, or
 check_and_or :: RightExp -> RightExp -> (Int, Int) -> E.Env -> (RightExp, RightExp, [String])
@@ -346,8 +391,8 @@ instance StaticSemanticClass Declaration where
             (env_after_adding_func, err_already_declared) = checkPresenceDeclFuncProc new_fun_entry (id_name id) env pos
 
             -- parto dall'env vuoto e aggiungo le dichiarazioni
-            -- env_before_params = E.mkSingletonEnv (id_name id) new_fun_entry
-            env_before_params = E.addVar env (id_name id) new_fun_entry
+            env_before_params = E.mkSingletonEnv (id_name id) new_fun_entry
+            -- env_before_params = E.addVar env (id_name id) new_fun_entry
 
             -- aggiungo i parametri alla funzione
             params_checked = staticsemanticAux $ map (\x -> x {declaration_env = env_before_params}) params
@@ -400,8 +445,8 @@ instance StaticSemanticClass Declaration where
             (env_after_adding_proc, err_already_declared) = checkPresenceDeclFuncProc new_pro_entry (id_name id) env pos
 
             -- parto dall'env vuoto e aggiungo le dichiarazioni
-            -- env_before_params = E.mkSingletonEnv (id_name id) new_pro_entry
-            env_before_params = E.addVar env (id_name id) new_pro_entry
+            env_before_params = E.mkSingletonEnv (id_name id) new_pro_entry
+            -- env_before_params = E.addVar env (id_name id) new_pro_entry
 
             -- aggiungo i parametri alla funzione
             params_checked = staticsemanticAux $ map (\x -> x {declaration_env = env_before_params}) params
@@ -538,15 +583,12 @@ instance StaticSemanticClass Statement where
             errs_params = concat $ map right_exp_errors params_checked
 
             -- controllo che i tipi corrispondano
-            (type_non, errs_fun) = check_fun_call function_name params_checked pos env
+            (type_non, params_coerced, errs_fun) = check_fun_call function_name params_checked pos env
 
             -- concateno gli errori
             errors_tot = errors ++ errs_params ++ errs_fun
 
-            func_params_types = case E.lookup env function_name of
-                Just (E.FunEntry entry_params _ _ _ _ _ _)  -> map (\(x,y,z) -> y) entry_params
-                _                                           -> []
-        in (StatementFuncProcCall (id { ident_env = env }) (coerc_if_needed func_params_types params_checked) pos env errors_tot)
+        in (StatementFuncProcCall (id { ident_env = env }) params_coerced pos env errors_tot)
 
     staticsemanticAux (StatementWrite write_primitive pos env errors) =
             -- Controllo che il write_primitive sia corretto
@@ -732,7 +774,7 @@ instance StaticSemanticClass RightExp where
             errs_params = concat $ map right_exp_errors params_checked
 
             -- controllo che i tipi corrispondano
-            (fun_type, errs_fun) = check_fun_call function_name params_checked pos parent_env
+            (fun_type, params_coerced, errs_fun) = check_fun_call function_name params_checked pos parent_env
             -- controllo che sia una function
             (fun_type_checked, err_fun_not_proc) = case fun_type of
                 Nothing -> (T.ErrorType, [Err.errMsgAssignToProc function_name pos])
@@ -740,10 +782,8 @@ instance StaticSemanticClass RightExp where
 
             -- concateno gli errori
             errors_tot = errors ++ errs_params ++ errs_fun ++ err_fun_not_proc
-            func_params_types = case E.lookup parent_env function_name of
-                Just (E.FunEntry entry_params _ _ _ _ _ _)  -> map (\(x,y,z) -> y) entry_params
-                _                                           -> []
-        in (RightExpFuncProcCall (id { ident_env = parent_env }) (coerc_if_needed func_params_types params_checked) pos fun_type_checked parent_env errors_tot)
+
+        in (RightExpFuncProcCall (id { ident_env = parent_env }) params_coerced pos fun_type_checked parent_env errors_tot)
 
     staticsemanticAux (RightExpLeftExp left_exp pos ty parent_env errors) =
             -- Controllo che left_exp sia corretto
