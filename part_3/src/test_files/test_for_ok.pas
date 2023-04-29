@@ -1,19 +1,21 @@
 program forLoop;
 var
-   a,b: integer;
+   i,b: integer;
    c : real;
 begin
 
-   a := 0;
+   i := 0;
    
    // Normale ciclo
-   for a := 10 to 20 do
+   for i := 10 to 20 do
    begin
-      b := b + a;
+      b := b + i;
+      continue;
       break;
+      b := i;
    end;
 
-   writeInt(a);
+   writeInt(i);
 
    // Dovrebbe uscire subito dal ciclo
    (*
