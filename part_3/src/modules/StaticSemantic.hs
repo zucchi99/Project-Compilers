@@ -67,11 +67,15 @@ check_sx_dx sx dx p_env =
         errors = (right_exp_errors new_sx) ++ (right_exp_errors new_dx)
     in (new_sx, new_dx, errors)
 
+-- this function checks if one of the two types is an ErrorType
 is_one_error :: T.Type -> T.Type -> Bool
 is_one_error T.ErrorType _ = True
 is_one_error _ T.ErrorType = True
 is_one_error _ _ = False
 
+-- coerc_sx_dx applies a coercion to the sx expr or dx expr if needed
+-- operation is the function that will be applied to the two types to get the superior type between the two
+-- name_op is the name of the operation, used to create the error message
 coerc_sx_dx :: RightExp -> RightExp -> (T.Type -> T.Type -> T.Type) -> String -> (Int, Int) -> (T.Type, RightExp, RightExp, [String])
 coerc_sx_dx sx dx operation name_op pos = 
     let sup_type = operation (right_exp_type sx) (right_exp_type dx)
@@ -120,6 +124,11 @@ add_break_continue env pos =
         env_break_continue = E.addVar env_break "continue" (E.ConstEntry T.TBDType (E.StringConst "continue") True pos)
     in E.merge env_break_continue env
 
+-- check if the function call is correct
+-- To be correct:
+--      * the number of parameters must be the same as the number of parameters of the function
+--      * the type of the parameters must be the compatible with the type of the parameters of the function (t least one of the two must be coerced)
+--      * the type of the return value must be the same as the type of the return value of the function
 check_fun_call :: String -> [RightExp] -> (Int, Int) -> E.Env -> (Maybe T.Type, [RightExp], [String])
 check_fun_call function_name params pos env =
     let (fun_type, rexps_coerced, errors_tot) = case E.lookup env function_name of
@@ -130,16 +139,21 @@ check_fun_call function_name params pos env =
 
     in (fun_type, rexps_coerced, errors_tot)
 
+-- helper function for check_fun_call
+-- given the list of parameters of the function (name, type, parameter type), the type of the return value (if it is a function), 
+-- the list of parameters of the function call, the position of the function and the function name
+-- return the type of the return value, the list of parameters coerced (if needed) and the errors list
 get_check_fun_call :: [(String, T.Type, E.ParameterType)] -> Maybe T.Type -> [RightExp] -> (Int, Int) -> String -> (Maybe T.Type, [RightExp], [String])
 get_check_fun_call entry_params ty_ret params pos_decl function_name = 
     let (right_exps, errs_cleaned) = case length params == length entry_params of
             False   ->  (params, [Err.errMsgWrongParams function_name pos_decl])
-            True    ->  let (right_exps, errs) = unzip (check_params_func_call (reverse params) (reverse entry_params)) -- Il reverse viene fatto per avere l'ordine corretto negli errori
+            -- reverse is used to get the correct number of the parameter in the error message
+            True    ->  let (right_exps, errs) = unzip (check_params_func_call (reverse params) (reverse entry_params))
                             errs_cleaned = filter (not . null) errs
                         in (right_exps, errs_cleaned)
     in (ty_ret, right_exps, errs_cleaned)
 
-
+-- this function checks if the parameters of the function call are correct, checking if the type of the parameters is the same as the type of the parameters of the function
 check_params_func_call :: [RightExp] -> [(String, T.Type, E.ParameterType)] -> [(RightExp, String)]
 check_params_func_call [] _ = []
 check_params_func_call xs [] = map (\x -> (x,"")) xs
@@ -157,11 +171,14 @@ check_params_func_call (x:xs) ((_, t, _):ys) = case (T.need_coerc t (right_exp_t
     True  -> (coerc_if_needed t x, "") : check_params_func_call xs ys
     False -> (coerc_if_needed t x, Err.errMsgWrongTypeNthParam t (length ys + 1) (right_exp_pos x)) : check_params_func_call xs ys
 
+-- Checks if there is a left expression inside the right expression (it can be nested, too)
 is_maybe_left_exp :: RightExp -> Maybe LeftExp
 is_maybe_left_exp (RightExpLeftExp {left_exp_right_exp=left_exp}) = Just left_exp
 is_maybe_left_exp (RightExpCoercion {right_exp_coercion=left_exp}) = is_maybe_left_exp left_exp
 is_maybe_left_exp _ = Nothing
 
+-- Not every left expression is acceptable as a parameter of a function
+-- This function checks if the left expression is acceptable
 is_acceptable_left_exp :: LeftExp -> (Bool, String)
 is_acceptable_left_exp (LeftExpPointerAddress _ _ _ _ _) = (False, "pointer address")
 is_acceptable_left_exp (LeftExpForIterator _ _ _ _ _) = (False, "for iterator")
@@ -169,9 +186,9 @@ is_acceptable_left_exp (LeftExpConst _ _ _ _ _ _) = (False, "constant")
 is_acceptable_left_exp _ = (True, "")
 
 
--- Se i tipi sono compatibili, ritorna True, altrimenti False
--- Viene usata sopra per controllare che i parametri di una funzione siano compatibili con quelli della sua dichiarazione
--- Se sono compatibili li consideriamo "uguali", la coercion viene fatta dopo
+-- If types are compatible, return True, otherwise False
+-- It is used above to check if the parameters of a function are compatible with those in its declaration
+-- If they are compatible, we consider them "equal": the coercion is done later
 are_compatibile_types :: [T.Type] -> [T.Type] -> Bool
 are_compatibile_types [] [] = True
 are_compatibile_types _  [] = False
@@ -180,6 +197,8 @@ are_compatibile_types (x:xs) (y:ys) = case (T.need_coerc x y || x == y) of
     True  -> are_compatibile_types xs ys
     otherwise -> False
 
+-- given a type and a right expression, a new right expression is returned with the coercion applied ONLY if needed
+-- otherwise the same right expression is returned
 coerc_if_needed :: T.Type -> RightExp -> RightExp
 coerc_if_needed t x = case T.need_coerc t (right_exp_type x) of
     True -> (apply_coercion (T.sup t (right_exp_type x)) x)

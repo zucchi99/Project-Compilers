@@ -13,8 +13,8 @@ import Data.List
 import ErrM
 import TAC
 
--- mostra a schermo gli errori della compilazione 
--- mostra a schermo la posizione del file in cui scrive tutti i dettagli della compilazione ()
+-- Displays the compilation errors on the screen
+-- Displays the file location where it writes all the compilation details on the screen ()
 testami test = do
 
     let out_dir = "src/test_files/temp/"

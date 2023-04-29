@@ -71,10 +71,7 @@ pretty_printer_naive text = pretty_printer_naive_aux text 1 where
     pretty_printer_naive_aux ""       _ = "\n\n"
     pretty_printer_naive_aux (c:xs) n | (c == '{') = (c : '\n' : (replicate (n+1) '\t'))    ++ (pretty_printer_naive_aux xs (n+1))
     pretty_printer_naive_aux (c:xs) n | (c == '}') = ('\n' : (replicate (n-1) '\t') ++ [c]) ++ (pretty_printer_naive_aux xs (n-1))
-    -- pretty_printer_dummy_aux (c:xs) n | (c == '[') = (c : '\n' : (replicate (n+1) '\t'))    ++ (pretty_printer_dummy_aux xs (n+1))
-    -- pretty_printer_dummy_aux (c:xs) n | (c == ']') = ('\n' : (replicate (n-1) '\t') ++ [c]) ++ (pretty_printer_dummy_aux xs (n-1))
     pretty_printer_naive_aux (x:xs) n = (x : (pretty_printer_naive_aux xs n))
-    -- pretty_printer_dummy_aux (',':xs) n = (",\n" ++ (replicate n '\t')) ++ (pretty_printer_dummy_aux xs n)
 
 -- __________________________ PRETTY PRINTER ABSTRACT SINTAX TREE FOR DEBUG
 -- pretty_print_ast :: Show a => Err a -> String -> String
