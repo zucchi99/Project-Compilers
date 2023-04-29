@@ -97,7 +97,7 @@ errMsgConstLimit :: String -> (Int, Int) -> [Char]
 errMsgConstLimit id pos = printPos pos ++ (show id) ++ ": A const can only be an integer, a char, a string, a boolean or a real " 
 
 errMsgWrongParams :: (Show a) => a -> (Int, Int) -> [Char]
-errMsgWrongParams t pos = printPos pos ++ "Wrong parameters for function " ++ (show t)
+errMsgWrongParams t pos = printPos pos ++ "The function/procedure call for " ++ (show t) ++ " has a different number of parameters than the declaration"
 
 errMsgWrongNumberParams :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgWrongNumberParams t pos = printPos pos ++ "Wrong number of parameters in function " ++ (show t)
