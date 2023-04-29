@@ -1,23 +1,25 @@
 program exArrays;
 var
-   //a : array [1..10, 1..1] of integer;
-   //z : array [3..5, 4..6] of integer;
-   x : array [0..3,0..2] of array [0..2] of integer ;   (* n is an array of 10 integers *)
-   z : array [0..3,0..2] of array [0..2] of integer ;   (* n is an array of 10 integers *)
-   //i, j: integer;
-   p : ^array [0..3,0..2] of array [0..2] of integer ;   (* n is an array of 10 integers *)
+   x :  array [0..3] of integer ;   (* n is an array of 10 integers *)
+   p : ^array [0..3] of integer ;   (* n is an array of 10 integers *)
    w : boolean;
 begin
 
    // no copy di array
    //x := z;
 
-   p^[0,0][0] := 2;
-
-   //p := x@;
+   x[0] := 2;
+   w := false;
+   writeInt(x[0]);
+   
    w := true;
+   
+   p := x@;
+   w := false;
+   p^[0] := 2;
+   w := false;
+   writeInt(p^[0]);
 
-   writeInt(p^[0,0][0]);
    (*writeInt(x[1,1][2]);
    writeInt(x[1,1][3]);
    writeInt(x[1,1][4]);
