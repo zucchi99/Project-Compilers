@@ -8,7 +8,6 @@ import qualified Types as T
 import qualified Env as E
 import ErrM
 import Data.List
-import PrettyPrinter as PP
 import qualified Data.Map as Map
 
 -- ___________ PRIMITIVE TYPE ___________
@@ -661,7 +660,6 @@ gen_tac_of_ArrayAccess state cur_blck primitive_type array is_address =
     let decl_pos             = (get_declaration_position (AS.left_exp_env array) id_name)
         (id_name, arr_sizes) = get_multi_array_name_and_length_from_lexp array
         (s10, addr_idx)      = linearize_multi_array state cur_blck arr_sizes array
-        --s20                = out s10 cur_blck (Comment $ PP.pretty_printer_naive $ show array )
         (s20, addr, is_pnt)  = make_array_access_address s10 cur_blck array id_name decl_pos addr_idx is_address
     in  (s20, primitive_type, addr, is_pnt)
 
