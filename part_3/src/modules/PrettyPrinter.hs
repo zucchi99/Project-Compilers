@@ -7,6 +7,7 @@ import AbstractSyntax
 import Types
 import ErrM
 import Data.Maybe
+import Env
 
 -- __________________________ AUXILIAR CLASSES AND FUNCTIONS
 
@@ -128,12 +129,16 @@ instance PrettyPrinterClass Declaration where
         ident False numtabs "= "                                            ++
         pretty_printer False numtabs value
     pretty_printer newline numtabs(DeclarationVariable id var_type value_maybe param_maybe pos env errors) =
-        pretty_printer newline numtabs id                                 ++
-        ident False numtabs ":"                                             ++
-        pretty_printer False numtabs var_type                             ++
-        if isNothing value_maybe then "" else 
-            ident False numtabs "= "                                        ++
-            pretty_printer False numtabs (fromJust value_maybe)
+        let (before, t) = case param_maybe of
+                Just Reference  -> ("var", pType var_type)
+                _               -> ("", var_type)
+        in ident newline numtabs before                                         ++
+            pretty_printer False numtabs id                                 ++
+            ident False numtabs ":"                                             ++
+            pretty_printer False numtabs t                             ++
+            if isNothing value_maybe then "" else 
+                ident False numtabs "= "                                        ++
+                pretty_printer False numtabs (fromJust value_maybe)
     pretty_printer newline numtabs (DeclarationFunction id params fun_type maybe_block pos env errors) =
         ident newline numtabs "function"                                    ++
         pretty_printer False numtabs id                                 ++
@@ -143,7 +148,7 @@ instance PrettyPrinterClass Declaration where
         pretty_printer False numtabs fun_type                                 ++
         ident False numtabs "; "                                            ++
         if isNothing maybe_block then "forward ;" else 
-            pretty_printer False numtabs (fromJust maybe_block)                  ++
+            pretty_printer False (numtabs + 1) (fromJust maybe_block)                  ++
             ident False numtabs ";"
     pretty_printer newline numtabs (DeclarationProcedure id params maybe_block pos env errors) =
         ident newline numtabs "procedure"                                   ++
@@ -152,7 +157,7 @@ instance PrettyPrinterClass Declaration where
         stringPrettyConcat False numtabs params "; " "separator" False      ++
         ident False numtabs ") ; "                                          ++
         if isNothing maybe_block then "forward ;" else 
-            pretty_printer False numtabs (fromJust maybe_block)                  ++
+            pretty_printer False (numtabs + 1) (fromJust maybe_block)                  ++
             ident False numtabs ";"
 
 instance PrettyPrinterClass [Declaration] where
@@ -164,7 +169,7 @@ instance PrettyPrinterClass Statement where
         pretty_printer newline numtabs block
     pretty_printer newline numtabs (StatementIf cond then_body maybe_else_body pos env errors) =
         ident newline numtabs "if"                                          ++
-        pretty_printer False numtabs cond                                 ++
+        pretty_printer False (numtabs + 1) cond                                 ++
         "then "                                                           ++
         pretty_printer newline (numtabs + 1) then_body                    ++      
         if isNothing maybe_else_body then "" else 

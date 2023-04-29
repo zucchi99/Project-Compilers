@@ -11,13 +11,12 @@ import Data.Maybe
 
 data Env = Env { env :: Map.Map String EnvEntry} deriving (Show)
 
-data ParameterType = Value | Reference | ValueResult
+data ParameterType = Value | Reference
     deriving (Show)
 
 instance Eq ParameterType where
     Value           == Value        = True
     Reference       == Reference    = True
-    ValueResult     == ValueResult  = True
     _               == _            = False
 
 data ConstType = 

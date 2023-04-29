@@ -25,17 +25,9 @@ data Block = Block                          { block_declarations :: [Declaration
 
 -- Declarations
 data Declaration
-    -- TAC DONE
     = DeclarationCostant                    { constant_name :: Ident, constant_type_maybe :: Maybe T.Type, constant_value :: RightExp, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
-    -- TAC DONE
     | DeclarationVariable                   { variable_name :: Ident, variable_type :: T.Type, variable_value_maybe :: Maybe RightExp, param_type_maybe :: Maybe E.ParameterType, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
-    -- NB v_value in params must be all nothing !               (OR we can accept default values)
-    -- NB (f_body == Nothing) <==> is forward
-    -- TAC TODO
     | DeclarationFunction                   { declaration_name :: Ident, declaration_params :: [Declaration], function_type :: T.Type, declaration_body_maybe :: Maybe Block, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
-    -- NB v_value in params must be all nothing !               (OR we can accept default values)
-    -- NB (f_body == Nothing) <==> is forward
-    -- TAC TODO
     | DeclarationProcedure                  { declaration_name :: Ident, declaration_params :: [Declaration], declaration_body_maybe :: Maybe Block, declaration_pos :: (Int, Int), declaration_env :: E.Env, declaration_errors :: [String] }
     deriving (Show)
 
@@ -49,7 +41,6 @@ data Statement
     | StatementAssign                       { assign :: Assign, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementFuncProcCall                 { call_name :: Ident, call_params :: [RightExp], statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementWrite                        { write_primitive :: WritePrimitive, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
-    -- TAC TODO
     | StatementRead                         { read_primitive :: ReadPrimitive, statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementBreak                        { statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
     | StatementContinue                     { statement_pos :: (Int, Int), statement_env :: E.Env, statement_errors :: [String] }
@@ -84,7 +75,6 @@ data RightExp
     | RightExpString                        { right_exp_string :: String, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpFuncProcCall                  { call_name_right_exp :: Ident, call_params_right_exp :: [RightExp], right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
     | RightExpLeftExp                       { left_exp_right_exp :: LeftExp, right_exp_pos :: (Int, Int), right_exp_type :: T.Type, right_exp_env :: E.Env, right_exp_errors :: [String] }
-    -- TAC TODO
     | RightExpCoercion                      { right_exp_coercion :: RightExp, right_exp_from_type :: T.Type, right_exp_type :: T.Type, right_exp_pos :: (Int, Int), right_exp_env :: E.Env, right_exp_errors :: [String] }
     deriving (Show)
 
@@ -92,11 +82,8 @@ data LeftExp
     = LeftExpIdent                          { left_exp_name :: Ident, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
     | LeftExpForIterator                    { left_exp_name :: Ident, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
     | LeftExpConst                          { left_exp_name :: Ident, value :: E.ConstType, left_exp_pos :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
-    -- TAC TODO
     | LeftExpArrayAccess                    { array_name :: LeftExp, array_pos :: [RightExp], left_exp_type :: T.Type, left_exp_pos  :: (Int, Int), left_exp_env :: E.Env, left_exp_errors :: [String] }
-    -- TAC TODO
     | LeftExpPointerValue                   { pointer_value :: LeftExp, left_exp_pos  :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
-    -- TAC TODO
     | LeftExpPointerAddress                 { pointer_address :: LeftExp, left_exp_pos  :: (Int, Int), left_exp_type :: T.Type, left_exp_env :: E.Env, left_exp_errors :: [String] }
     deriving (Show)
 

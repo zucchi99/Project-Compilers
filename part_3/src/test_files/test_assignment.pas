@@ -36,10 +36,7 @@ begin
   end;
   for j := 0 to 5 do
   begin
-    for j := 0 to 5 do
-    begin
-      writeInt(j);
-    end
+    j := 4; // Error, because j is read-only inside the loop
   end
 end.
 
