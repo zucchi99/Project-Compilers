@@ -600,12 +600,9 @@ gen_tac_of_list_RightExp state cur_blck (x:xs) addrs = gen_tac_of_list_RightExp 
     where (new_state, cur_blck1, addr) = gen_tac_of_RightExp state cur_blck x
 
 out_params :: State -> [Char] -> [Address] -> [PrimType] -> State
-out_params state cur_blck addresses type_addresses = 
-    out_params_aux state cur_blck (reverse addresses) (reverse type_addresses)
-        where 
-            out_params_aux state cur_blck []           []             = state
-            out_params_aux state cur_blck (addr:addrs) (taddr:taddrs) = out_params_aux new_state cur_blck addrs taddrs
-                where new_state = out state cur_blck (Parameter { param = addr, param_type = taddr })
+out_params state cur_blck10 []           []             = state
+out_params state cur_blck10 (addr:addrs) (taddr:taddrs) = out_params new_state cur_blck10 addrs taddrs
+    where new_state = out state cur_blck10 (Parameter { param = addr, param_type = taddr })
 
 gen_tac_of_StatementRead :: State -> String -> AS.Statement -> String -> String -> (State, String)
 gen_tac_of_StatementRead state cur_blck read_stmt _ _ = gen_tac_of_ReadPrimitive state cur_blck (AS.read_primitive read_stmt)
@@ -837,7 +834,7 @@ gen_tac_of_RightExpFuncProcCall state cur_blck r_exp =
 gen_tac_FuncProcCall state cur_blck params funproc_name env =
     let types                       = map (\x -> to_primitive_type (AS.right_exp_type x)) params
         (s10, cur_blck10, addrs)    = gen_tac_of_list_RightExp state cur_blck params []
-        s20                         =  out_params s10 cur_blck10 (reverse addrs) (reverse types)
+        s20                         = out_params s10 cur_blck10 addrs types
         (tmp_addr, s30)             = add_temp_var s20
         funproc_entry               = E.lookup env funproc_name
         funproc_call                = case funproc_entry of

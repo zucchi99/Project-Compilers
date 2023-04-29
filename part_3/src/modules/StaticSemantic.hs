@@ -110,12 +110,12 @@ apply_not main_r =
 create_params_for_func_proc :: [Declaration] -> ([(String, T.Type, E.ParameterType)], [String])
 create_params_for_func_proc params = unzip $ map create_param params where
     create_param decl = case (fromJust (param_type_maybe decl), (variable_type decl)) of
-        (E.Value, (T.ArrayType _ _))                        -> ((id_name (variable_name decl), variable_type decl, E.Value), Err.errMsgUnexpectedParams (id_name (variable_name decl)) (declaration_pos decl))
-        (E.Value, (T.PointerType _))                        -> ((id_name (variable_name decl), variable_type decl, E.Value), Err.errMsgUnexpectedParams (id_name (variable_name decl)) (declaration_pos decl))
+        (E.Value, (T.ArrayType _ _))                        -> ((id_name (variable_name decl), variable_type decl, E.Value), Err.errMsgUnexpectedParams (variable_type decl) (declaration_pos decl))
+        (E.Value, (T.PointerType _))                        -> ((id_name (variable_name decl), variable_type decl, E.Value), Err.errMsgUnexpectedParams (variable_type decl) (declaration_pos decl))
         (E.Value, _)                                        -> ((id_name (variable_name decl), variable_type decl, E.Value), "")
-        (E.Reference, (T.PointerType (T.PointerType _)))    -> ((id_name (variable_name decl), variable_type decl, E.Reference), Err.errMsgUnexpectedParams (id_name (variable_name decl)) (declaration_pos decl))
+        (E.Reference, (T.PointerType (T.PointerType _)))    -> ((id_name (variable_name decl), variable_type decl, E.Reference), Err.errMsgUnexpectedParams (T.pType (variable_type decl)) (declaration_pos decl))
         (E.Reference, (T.PointerType _))                    -> ((id_name (variable_name decl), variable_type decl, E.Reference), "")
-        (E.Reference, _)                                    -> ((id_name (variable_name decl), (variable_type decl), E.Reference), Err.errMsgUnexpectedParams (id_name (variable_name decl)) (declaration_pos decl))
+        (E.Reference, _)                                    -> ((id_name (variable_name decl), (variable_type decl), E.Reference), Err.errMsgUnexpectedParams (T.pType (variable_type decl)) (declaration_pos decl))
 
 -- Given the old environment, add or override the break and continue keywords
 add_break_continue :: E.Env -> (Int, Int) -> E.Env
@@ -180,7 +180,7 @@ is_maybe_left_exp _ = Nothing
 -- Not every left expression is acceptable as a parameter of a function
 -- This function checks if the left expression is acceptable
 is_acceptable_left_exp :: LeftExp -> (Bool, String)
-is_acceptable_left_exp (LeftExpPointerAddress _ _ _ _ _) = (False, "pointer address")
+--is_acceptable_left_exp (LeftExpPointerAddress _ _ _ _ _) = (False, "pointer address")
 is_acceptable_left_exp (LeftExpForIterator _ _ _ _ _) = (False, "for iterator")
 is_acceptable_left_exp (LeftExpConst _ _ _ _ _ _) = (False, "constant")
 is_acceptable_left_exp _ = (True, "")

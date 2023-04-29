@@ -15,7 +15,7 @@ begin
    x := number@;
    
    // WritePointerValue    ^l   = r   (*id in C)
-   y^ := 200;
+   y^ := number;
 
    // ReadPointerValue:    tmp  = ^l  (*id in C)
    // NullAssignment       l    = tmp 
