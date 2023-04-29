@@ -2,5 +2,5 @@ program forLoop;
 
 begin
 
-   break;
+   break; // There is no loop to break out of.
 end.

@@ -10,7 +10,7 @@ begin
    for i := 10 to 20 do
    begin
       b := b + i;
-      i := 0;
+      i := 0; // You can't do that
       continue;
       break;
    end;

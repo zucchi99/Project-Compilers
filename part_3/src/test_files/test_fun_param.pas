@@ -1,16 +1,12 @@
 program ciao;
 
-var p :integer;
-function p (a:integer ; var b: integer ; result c:integer) :integer;
-var
-    p : integer;
+function p (var b: integer) : integer;
 begin
-    p := 2;
+    p := b^;
 end;
 
 var
-    d: integer;
-
+    d: ^integer;
 begin
-    //p(d,d@,d@);
+    p(d);
 end.

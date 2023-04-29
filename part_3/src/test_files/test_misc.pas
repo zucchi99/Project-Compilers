@@ -2,7 +2,7 @@ program Hello;
 const x = 2.0;
 var a, b : integer;
 var j : integer;
-procedure t(); forward;
+procedure t(); forward; // Not implemented at all
 procedure f(); 
     procedure g();
     var a : integer;
@@ -17,7 +17,7 @@ begin;
 end;
 begin
   a := x + 2;
-  x := 2;
+  x := 2; // x it's a contant and can't be assigned
   if (x > 2) then
   begin
   // writeln ("Hello World 2")

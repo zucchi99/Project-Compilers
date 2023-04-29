@@ -19,10 +19,10 @@ const
    x = 3;
 
 begin
-
+   // x is already decalred as a constant.
    function p(x:integer; y:string; z:integer) : integer;
    begin
-      i := x;
+      i := x; // There is not return.
    end;
 
    begin

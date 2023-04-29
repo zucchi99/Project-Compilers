@@ -15,5 +15,5 @@ begin
         a := p();
         x:= p();
     end;
-    a := p();
+    a := p(); // p is not visible here
 end.

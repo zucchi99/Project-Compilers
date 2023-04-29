@@ -6,14 +6,14 @@ begin;
 end;
 
 // forward per singola passata del compilatore
-function fact2(n:integer) : integer ; forward;
+function fact2(n:integer) : integer ; forward; // not implemented
 
 function factorial(n: integer; accumulator: integer): integer;
 begin
   if n = 0 then
     factorial := accumulator
   else
-    factorial := fact2(n-1);
+    factorial := fact2(n-1); // used but not implemented
 
   factorial := 2;
 end;
