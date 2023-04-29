@@ -467,6 +467,12 @@ instance StaticSemanticClass Statement where
             -- create a for iterator entry for the enviroment, with params and return type
         let assign_checked = staticsemanticAux (assign {assign_env = env})
             (left_exp_iterator, assign_errs) = (left_exp_assignment assign_checked, assign_errors assign_checked)
+            
+            -- segno la posizione dell'iteratore come quella di dichiarazione
+            old_declaration_pos = case E.lookup env (id_name (left_exp_name left_exp_iterator)) of
+                Just entry  -> E.pos_decl entry
+                _           -> (0,0) -- dummy position
+
             -- Controllo che var sia intero
             var_errors = case left_exp_type left_exp_iterator of
                 T.IntegerType   -> []
@@ -479,7 +485,7 @@ instance StaticSemanticClass Statement where
                 _               -> [Err.errMsgUnexpectedType "The for condition " "integer" (right_exp_type cond_checked) (right_exp_pos cond_checked)]
 
             -- metto l'iteratore del for nell'env come ForIteratorEntry immutabile
-            env_with_iterator = E.addVar env (id_name (left_exp_name left_exp_iterator)) (E.ForIteratorEntry T.IntegerType False pos)
+            env_with_iterator = E.addVar env (id_name (left_exp_name left_exp_iterator)) (E.ForIteratorEntry T.IntegerType False old_declaration_pos)
 
             -- Controllo che il then_body sia corretto, aggiungendo break e continue all'env
             -- Il ForIteratorEntry è immutabile, quindi non può essere modificato, altrimenti ritorna un errore
