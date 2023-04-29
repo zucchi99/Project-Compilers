@@ -53,7 +53,7 @@ rules                           InitAssign          ::= {- empty -} | "=" RightE
 rules                           DeclarationFunc     ::= {- empty -} | "(" [VariableDeclFunc] ")" ;
 VariableDeclarationInsideF.     VariableDeclFunc    ::= ParameterType [Ident] ":" Type ; 
 separator nonempty Ident "," ;
-rules                           ParameterType       ::= {- empty -} | "var" | "result" ;
+rules                           ParameterType       ::= {- empty -} | "var" ;
 
 -- __________ FUNCTION AND PROCEDURE DECLARATIONS __________
 

@@ -72,18 +72,17 @@ import qualified Env as E
     'readString' { PT _ (TS _ 52) }
     'real' { PT _ (TS _ 53) }
     'repeat' { PT _ (TS _ 54) }
-    'result' { PT _ (TS _ 55) }
-    'string' { PT _ (TS _ 56) }
-    'then' { PT _ (TS _ 57) }
-    'to' { PT _ (TS _ 58) }
-    'true' { PT _ (TS _ 59) }
-    'until' { PT _ (TS _ 60) }
-    'var' { PT _ (TS _ 61) }
-    'while' { PT _ (TS _ 62) }
-    'writeChar' { PT _ (TS _ 63) }
-    'writeInt' { PT _ (TS _ 64) }
-    'writeReal' { PT _ (TS _ 65) }
-    'writeString' { PT _ (TS _ 66) }
+    'string' { PT _ (TS _ 55) }
+    'then' { PT _ (TS _ 56) }
+    'to' { PT _ (TS _ 57) }
+    'true' { PT _ (TS _ 58) }
+    'until' { PT _ (TS _ 59) }
+    'var' { PT _ (TS _ 60) }
+    'while' { PT _ (TS _ 61) }
+    'writeChar' { PT _ (TS _ 62) }
+    'writeInt' { PT _ (TS _ 63) }
+    'writeReal' { PT _ (TS _ 64) }
+    'writeString' { PT _ (TS _ 65) }
     L_ident  { PT _ (TV _) }
     L_integ  { PT _ (TI _) }
     L_doubl  { PT _ (TD _) }
@@ -221,7 +220,9 @@ VariableDeclFunc    : ParameterType ListIdent ':' Type    {
     let createDeclarationVariable :: Ident -> Declaration
         createDeclarationVariable ident = DeclarationVariable   {
             variable_name = ident,
-            variable_type = $4,
+            variable_type = case $1 of 
+                E.Reference -> T.PointerType $4
+                _           -> $4,
             variable_value_maybe = Nothing,
             param_type_maybe = Just $1,
             declaration_pos = (ident_pos ident),
@@ -234,7 +235,6 @@ VariableDeclFunc    : ParameterType ListIdent ':' Type    {
 ParameterType :: { E.ParameterType }
 ParameterType : {- empty -} { E.Value }
               | 'var' { E.Reference }
-              | 'result' { E.ValueResult }
 
 ListIdent   :: { [Ident] }
 ListIdent   : Ident                 { (:[]) $1 } 
