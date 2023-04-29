@@ -20,6 +20,7 @@ testami test = do
     let out_dir = "src/test_files/temp/"
     let pretty_out_file = out_dir ++ "pretty_print_" ++ test ++ ".pas"
     let static_out_file = out_dir ++ "pretty_print_" ++ test ++ ".static"
+    createDirectoryIfMissing True out_dir
 
     -- Read file
     input <- readFile $ concat ["src/test_files/test_", test, ".pas"]
@@ -65,7 +66,7 @@ testami test = do
     putStrLn $ Static.static_semantic_errors static
     putStrLn "Static Semantic data structure:"
     putStr $ show $ static
-    --putStr $ Printer.pretty_print_ast static "ident"
+    putStr $ Printer.pretty_print_ast static "ident"
 
     -- Static Semantic Debug
     let static_debug = Static.static_semantic_debug par
