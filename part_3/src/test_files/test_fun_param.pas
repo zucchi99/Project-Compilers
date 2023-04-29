@@ -1,10 +1,7 @@
 program ciao;
 
-procedure p (a:integer ; var b: integer ; result c:integer);
-    function g() : integer; 
-    begin
-        g := 3;
-    end;
+var p :integer;
+function p (a:integer ; var b: integer ; result c:integer) :integer;
 var
     p : integer;
 begin
@@ -15,5 +12,5 @@ var
     d: integer;
 
 begin
-    p(d,d@,d@);
+    //p(d,d@,d@);
 end.

@@ -328,12 +328,10 @@ instance StaticSemanticClass [Ident] where
 
 instance StaticSemanticClass Block where
     staticsemanticAux (Block decls stmts pos env errors) =
-            -- prendo tutto quello presente nell'env e lo aggiungo al blocco facendo presente che siamo nel blocco innestato
-        let nested_env = E.change_parent_env env
             -- parto dall'env e aggiungo le dichiarazioni
-            decls_checked = staticsemanticAux $ map (\x -> x {declaration_env = nested_env}) decls
+        let decls_checked = staticsemanticAux $ map (\x -> x {declaration_env = env}) decls
             (env_aft_decls, errs_aft_decls) = case decls_checked of
-                []  -> (nested_env, [])
+                []  -> (env, [])
                 xs  -> (declaration_env (last xs), foldl (\acc x -> acc ++ (declaration_errors x)) [] xs)
             -- controllo che tutte le forward declaration nel blocco corrente siano state definite -> altrimenti errore
             errs_forw_decls = map (\x -> Err.errMsgNotImplemented x pos) (E.getForward env_aft_decls)
@@ -342,7 +340,7 @@ instance StaticSemanticClass Block where
             -- Ogni statement può modificare l'env, ma non può aggiugnere nuove dichiarazioni
             stmts_checked = staticsemanticAux $ map (\x -> x {statement_env = env_aft_update}) stmts
             (env_aft_stmts, errs_aft_stmts) = case stmts_checked of
-                []  -> (nested_env, [])
+                []  -> (env, [])
                 xs  -> (statement_env (last xs), foldl (\acc x -> acc ++ (statement_errors x)) [] xs)
             -- concat all errors
             tot_errors = errors ++ errs_aft_decls ++ errs_forw_decls ++ errs_aft_stmts
@@ -390,9 +388,9 @@ instance StaticSemanticClass Declaration where
             -- check if is already present in the env a forward declaration for a function
             (env_after_adding_func, err_already_declared) = checkPresenceDeclFuncProc new_fun_entry (id_name id) env pos
 
-            -- parto dall'env vuoto e aggiungo le dichiarazioni
-            env_before_params = E.mkSingletonEnv (id_name id) new_fun_entry
-            -- env_before_params = E.addVar env (id_name id) new_fun_entry
+            -- prendo tutto quello presente nell'env e lo aggiungo al blocco facendo presente che andremo nel blocco innestato
+            nested_env = E.change_parent_env env
+            env_before_params = E.addVar nested_env (id_name id) new_fun_entry
 
             -- aggiungo i parametri alla funzione
             params_checked = staticsemanticAux $ map (\x -> x {declaration_env = env_before_params}) params
@@ -444,9 +442,9 @@ instance StaticSemanticClass Declaration where
             -- check if is already present in the env a forward declaration for a function
             (env_after_adding_proc, err_already_declared) = checkPresenceDeclFuncProc new_pro_entry (id_name id) env pos
 
-            -- parto dall'env vuoto e aggiungo le dichiarazioni
-            env_before_params = E.mkSingletonEnv (id_name id) new_pro_entry
-            -- env_before_params = E.addVar env (id_name id) new_pro_entry
+            -- prendo tutto quello presente nell'env e lo aggiungo al blocco facendo presente che andremo nel blocco innestato
+            nested_env = E.change_parent_env env
+            env_before_params = E.addVar nested_env (id_name id) new_pro_entry
 
             -- aggiungo i parametri alla funzione
             params_checked = staticsemanticAux $ map (\x -> x {declaration_env = env_before_params}) params
@@ -483,7 +481,9 @@ instance StaticSemanticClass Statement where
             --                                  ^^^
             -- env in questo caso è l'enviroment da cui vogliamo iniziare a fare il merge
             -- così facendo è possibile aggiungere le dichiarazioni dei parametri o aggiungere i break e i continue
-        let block_checked = staticsemanticAux (block {block_env = env})
+
+            -- prendo tutto quello presente nell'env e lo aggiungo al blocco facendo presente che andremo nel blocco innestato
+        let block_checked = staticsemanticAux (block {block_env = E.change_parent_env env})
         in (StatementBlock block_checked pos env (errors ++ (block_errors block_checked)))
 
     staticsemanticAux (StatementIf cond then_body maybe_else_body pos env errors) =
