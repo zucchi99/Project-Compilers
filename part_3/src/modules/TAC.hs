@@ -570,13 +570,6 @@ gen_tac_of_VariableAssignment state cur_blck assgn_stmt =
         s30                       = add_assignment_instruction s20 cur_blck10 l_exp prim_type l_addr r_addr is_pnt
     in (s30, cur_blck10)
 
-{-
-is_pointer (AS.LeftExpPointerValue {}) = True
-is_pointer l_exp                       = False {- case (AS.left_exp_type l_exp) of
-                                            (T.PointerType {}) -> True
-                                            _                  -> False
--}-}
-
 add_assignment_instruction :: State -> String -> AS.LeftExp -> PrimType -> Address -> Address -> Bool -> State
 add_assignment_instruction state cur_blck l_exp prim_type l_addr r_addr is_pnt = 
     if   is_pnt 
@@ -625,17 +618,18 @@ gen_tac_of_Ident ident =
 
 gen_tac_of_LeftExp :: State -> String -> AS.LeftExp -> Bool -> (State, PrimType, Address, Bool)
 gen_tac_of_LeftExp state cur_blck l_exp is_lexp = 
-    let prim_type = to_primitive_type (AS.left_exp_type l_exp)
+    let name = (AS.left_exp_name l_exp)
+        prim_type = to_primitive_type (AS.left_exp_type l_exp)
         s10       = state --out state cur_blck (Comment $ ( (show prim_type) ++ " -> " ++ (show l_exp)))
     in case l_exp of 
         -- variable
-        (AS.LeftExpIdent {})           -> (s10, prim_type, gen_tac_of_Ident (AS.left_exp_name l_exp), False)
-        (AS.LeftExpForIterator {})     -> (s10, prim_type, gen_tac_of_Ident (AS.left_exp_name l_exp), False)
+        (AS.LeftExpIdent {})           -> (s10, prim_type, gen_tac_of_Ident name, False)
+        (AS.LeftExpForIterator {})     -> (s10, prim_type, gen_tac_of_Ident name, False)
         -- only string-constants (non-string constants has been already substituted by static semantic)
-        (AS.LeftExpConst {})           -> (s10, prim_type, get_address_from_string_constant s10 (AS.id_name (AS.left_exp_name l_exp)), False)
+        (AS.LeftExpConst {})           -> (s10, prim_type, get_address_from_string_constant s10 (AS.id_name name), False)
         -- pointers
         (AS.LeftExpArrayAccess {})     -> gen_tac_of_ArrayAccess s10 cur_blck prim_type l_exp
-        (AS.LeftExpPointerValue {})    -> gen_tac_of_LeftExpPointerValue s10 cur_blck prim_type l_exp is_lexp
+        (AS.LeftExpPointerValue {})    -> (s10, prim_type, gen_tac_of_Ident $ get_pointer_ident l_exp, True)
         (AS.LeftExpPointerAddress {})  -> gen_tac_of_LeftExpPointerAddress s10 cur_blck l_exp
 
 gen_tac_of_LeftExpPointerAddress :: State -> String -> AS.LeftExp -> (State, PrimType, Address, Bool)
@@ -651,7 +645,7 @@ gen_tac_of_LeftExpPointerValue state cur_blck prim_type ptr_val is_lexp =
         (tmp_addr, s10) = add_temp_var state
         s20             = out s10 cur_blck (ReadPointerValue { l1 = tmp_addr, l2 = ident_addr })
         (s30, out_addr) = if is_lexp then (state, ident_addr) else (s20, tmp_addr)
-    in  (s30, prim_type, out_addr, False)
+    in  (s30, prim_type, ident_addr, True)
 
 get_pointer_ident :: AS.LeftExp -> AS.Ident
 get_pointer_ident l_exp = 
