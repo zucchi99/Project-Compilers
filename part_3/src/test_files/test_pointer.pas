@@ -10,14 +10,20 @@ begin
    // NullAssignment
    number := 100;
    
-   // ReadPointerAddress:  l  = @id (&id in C)
+   // ReadPointerAddress:  tmp  = @id (&id in C)
+   // NullAssignment       l    = tmp 
    x := number@;
    
-   // WritePointerValue    ^l = r   (*id in C)
+   // WritePointerValue    ^l   = r   (*id in C)
    y^ := 200;
 
-   // ReadPointerValue:    l  = ^l  (*id in C)
+   // ReadPointerValue:    tmp  = ^l  (*id in C)
+   // NullAssignment       l    = tmp 
    z := y^;
+
+   // ReadPointerValue:    tmp  = ^l  (*id in C)
+   // WritePointerValue    ^l   = tmp (*id in C)
+   x^ := y^;
    
 
 end.
