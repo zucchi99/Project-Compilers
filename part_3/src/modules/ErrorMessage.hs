@@ -100,10 +100,10 @@ errMsgWrongParams :: (Show a) => a -> (Int, Int) -> [Char]
 errMsgWrongParams t pos = printPos pos ++ "The function/procedure call for " ++ (show t) ++ " has a different number of parameters than the declaration"
 
 errMsgWrongNumberParams :: (Show a) => a -> (Int, Int) -> [Char]
-errMsgWrongNumberParams t pos = printPos pos ++ "Wrong number of parameters in function " ++ (show t)
+errMsgWrongNumberParams t pos = printPos pos ++ "Wrong number of parameters in function/procedure " ++ (show t)
 
 errMsgUnexpectedParams :: (Show a) => a -> (Int, Int) -> [Char]
-errMsgUnexpectedParams t pos = printPos pos ++ (show t) ++ "is not a valid argument for the function" 
+errMsgUnexpectedParams t pos = printPos pos ++ (show t) ++ " is not a valid parameter type for function/procedure" 
 
 errMsgCostNotPointArray :: String -> (Int, Int) -> String
 errMsgCostNotPointArray id pos = printPos pos ++ (show id) ++ ": A constant can't be an array or a pointer"

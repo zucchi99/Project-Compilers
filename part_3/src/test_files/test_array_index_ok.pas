@@ -2,22 +2,20 @@ program exArrays;
 
 var
    x :  array [0..3,0..1] of array [0..2] of integer ;
-   //p : ^array [0..3,0..1] of array [0..2] of integer ;
+   p : ^array [0..3,0..1] of array [0..2] of integer ;
    q : ^array [0..2] of integer ;
-   //i,j,k : integer;
+   i,j,k : integer;
 
 begin
-
-   //writeInt(x[1,2][0])
 
    // no copy di array
    //x := z;
 
    // use pointer of sub-array
-   q := x[1,2]@;
+   q := x[0,1]@;
 
    // use pointer of whole array
-   (*p := x@;
+   p := x@;
 
    // initialize multi dimensional array
    for i := 0 to 3 do
@@ -28,6 +26,6 @@ begin
             p^[i,j][k] := i + j + k;
             //writeInt(x[i,j][k])
          end;
-   *)
+   
 
 end.
